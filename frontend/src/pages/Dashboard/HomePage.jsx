@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  DollarOutlined, BarChartOutlined, GoldOutlined,
+  DollarOutlined, BarChartOutlined,
   UserSwitchOutlined, AimOutlined, FundOutlined,
   LineChartOutlined, PieChartOutlined, FileTextOutlined,
   TableOutlined, EditOutlined,
@@ -11,7 +11,6 @@ const ENTRY_MODULES = [
   { key: '/app/financial',  icon: <DollarOutlined />,      label: 'Financial Section',  desc: 'Income, expenditure & financial data',      color: '#990000' },
   { key: '/app/physical',   icon: <BarChartOutlined />,    label: 'Physical Section',   desc: 'Trainee & course physical data',             color: '#073354' },
   { key: '/app/budget',     icon: <FundOutlined />,        label: 'Budget Section',     desc: 'Budget allocations & utilization',           color: '#0077aa' },
-  { key: '/app/gem',        icon: <GoldOutlined />,        label: 'GEM Section',        desc: 'Government e-Marketplace data',              color: '#b8860b' },
   { key: '/app/placement',  icon: <UserSwitchOutlined />,  label: 'Placement Section',  desc: 'Trainee placement records',                  color: '#27673a' },
   { key: '/app/target',     icon: <AimOutlined />,         label: 'Annual Target',      desc: 'Targets for the financial year',             color: '#5b3fa0' },
 ];
@@ -24,7 +23,6 @@ const REPORT_MODULES = [
   { key: '/app/reports/trainees/age',         icon: <TableOutlined />,      label: 'Age Wise',                 desc: 'Trainees by age group',           color: '#b8860b' },
   { key: '/app/reports/budget',               icon: <FundOutlined />,       label: 'Budget Report',            desc: 'Budget details report',           color: '#0077aa' },
   { key: '/app/reports/target',               icon: <AimOutlined />,        label: 'Target Report',            desc: 'Annual target achievement',       color: '#073354' },
-  { key: '/app/reports/gem',                  icon: <GoldOutlined />,       label: 'Gem Report',               desc: 'GEM procurement report',          color: '#b8860b' },
   { key: '/app/reports/mpr',                  icon: <FileTextOutlined />,   label: 'MPR-AB Report',            desc: 'Monthly progress report',         color: '#990000' },
 ];
 

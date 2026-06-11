@@ -24,6 +24,10 @@ import AnalysisReportPage from './pages/Reports/AnalysisReportPage';
 import AnalysisReport from './pages/Reports/AnalysisReport';
 import RfdReportPage from './pages/Reports/RfdReportPage';
 import RfdReport from './pages/Reports/RfdReport';
+import FinancialPage from './pages/Financial/FinancialPage';
+import PhysicalPage from './pages/Physical/PhysicalPage';
+import BudgetPage from './pages/Budget/BudgetPage';
+import PlacementPage from './pages/Placement/PlacementPage';
 import ModifyDataPage from './pages/ModifyData/ModifyDataPage';
 import ContactUsPage from './pages/ContactUs/ContactUsPage';
 
@@ -105,6 +109,11 @@ export default function App() {
               <Route path="modify-data" element={<ModifyDataPage />} />
               {/* Contact Us */}
               <Route path="contact" element={<ContactUsPage />} />
+              {/* Entry forms */}
+              <Route path="financial" element={<FinancialPage />} />
+              <Route path="physical" element={<PhysicalPage />} />
+              <Route path="budget" element={<BudgetPage />} />
+              <Route path="placement" element={<PlacementPage />} />
               {/* Screens added one by one as we build them */}
               <Route path="*" element={
                 <div style={{ padding: 24, color: '#073354', fontWeight: 'bold' }}>

@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import {
   HomeOutlined, DollarOutlined, BarChartOutlined, PieChartOutlined,
-  TeamOutlined, AimOutlined, GoldOutlined, UserSwitchOutlined,
+  TeamOutlined, AimOutlined, UserSwitchOutlined,
   FileTextOutlined, EditOutlined, LockOutlined, LogoutOutlined,
   LineChartOutlined, FundOutlined, PhoneOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, DownOutlined,
@@ -23,7 +23,6 @@ function buildNav(role, section) {
     { key: '/app/financial',       icon: <DollarOutlined />,     label: 'Financial Section' },
     { key: '/app/physical',        icon: <BarChartOutlined />,   label: 'Physical Section' },
     { key: '/app/budget',          icon: <FundOutlined />,       label: 'Budget Section' },
-    { key: '/app/gem',             icon: <GoldOutlined />,       label: 'Gem Section' },
     { key: '/app/placement',       icon: <UserSwitchOutlined />, label: 'Placement Section' },
     { divider: 'Account' },
     { key: '/app/change-password', icon: <LockOutlined />,       label: 'Change Password' },
@@ -43,7 +42,6 @@ function buildNav(role, section) {
     { divider: 'Reports' },
     { key: '/app/reports/budget',                 icon: <FundOutlined />,      label: 'Budget Report' },
     { key: '/app/reports/target',                 icon: <AimOutlined />,       label: 'Target Report' },
-    { key: '/app/reports/gem',                    icon: <GoldOutlined />,      label: 'Gem Report' },
     { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: 'MPR-AB Report' },
     { key: '/app/reports/analysis',               icon: <PieChartOutlined />,  label: 'Analysis Report' },
     { key: '/app/reports/rfd',                    icon: <BarChartOutlined />,  label: 'Report for RFD' },

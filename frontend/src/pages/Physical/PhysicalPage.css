@@ -1,0 +1,306 @@
+/* ════════════════════════════════════════
+   Physical Page  —  polished version
+   ════════════════════════════════════════ */
+
+/* ── page wrapper ── */
+.phy-page {
+  padding: 0 0 32px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  background: #f4f6f9;
+  min-height: 100%;
+}
+
+/* ── top title bar ── */
+.phy-titlebar {
+  background: linear-gradient(135deg, #073354 0%, #0a4a78 100%);
+  color: #fff;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  margin-bottom: 14px;
+}
+
+.phy-titlebar-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.phy-page-label {
+  font-size: 11px;
+  opacity: 0.75;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.phy-institute {
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.phy-titlebar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.phy-meta-chip {
+  font-size: 11px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 12px;
+  padding: 2px 10px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.phy-note {
+  font-size: 11px;
+  font-weight: bold;
+  color: rgba(255,255,255,0.8);
+  font-style: italic;
+}
+
+/* ── card wrapper ── */
+.phy-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  margin: 0 16px;
+  overflow: hidden;
+}
+
+.phy-card-mt {
+  margin-top: 16px;
+}
+
+/* card section title */
+.phy-card-title {
+  background: linear-gradient(135deg, #073354 0%, #1a5f96 100%);
+  color: #e8c96a;
+  font-weight: bold;
+  font-size: 12px;
+  padding: 7px 16px;
+  letter-spacing: 0.4px;
+}
+
+/* ── scrollable wrapper ── */
+.phy-table-wrap {
+  overflow-x: auto;
+  padding: 12px;
+}
+
+/* ── main table ── */
+.phy-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #b8cfe8;
+  font-size: 12px;
+  background: #fff;
+}
+
+/* ── header cells ── */
+.phy-th {
+  background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
+  color: #e8c96a;
+  font-weight: bold;
+  text-align: center;
+  padding: 7px 6px;
+  border: 1px solid #718096;
+  vertical-align: middle;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ── data cells ── */
+.phy-cell {
+  border: 1px solid #c8dae8;
+  padding: 3px 4px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+/* hover highlight on data rows */
+.phy-table tbody tr:hover .phy-cell {
+  background-color: #f0f7ff !important;
+  transition: background-color 0.1s;
+}
+
+/* letter (B) cell */
+.phy-letter {
+  font-weight: bold;
+  text-align: center;
+  font-size: 13px;
+  background: #eaf0f8;
+  color: #073354;
+  width: 30px;
+}
+
+/* ── section header row ── */
+.phy-section-hdr {
+  background: #eef3f8;
+  font-size: 12px;
+  padding: 5px 8px;
+  font-weight: bold;
+  color: #073354;
+  letter-spacing: 0.5px;
+}
+
+/* sub-header row */
+.phy-sub-hdr {
+  background: #f5f5f5;
+  font-style: italic;
+  color: #444;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+/* section label (brown text like JSP) */
+.phy-slabel {
+  color: #804000;
+  font-size: 11.5px;
+  line-height: 1.4;
+  padding: 4px 6px;
+}
+
+/* bifurcation label cells */
+.phy-bifur-label {
+  color: #444;
+  font-size: 11.5px;
+  padding: 5px 8px;
+  line-height: 1.4;
+}
+
+/* ── inputs inside cells ── */
+.phy-input {
+  font-size: 11px;
+  text-align: right;
+  border: 1px solid #c8d8e8;
+  border-radius: 3px;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+/* editable "During the month" fields */
+.phy-editable {
+  background-color: #fffef0;
+  border-color: #aac0d8;
+}
+.phy-editable:hover {
+  border-color: #5a8ec4;
+}
+.phy-editable:focus {
+  outline: none;
+  border-color: #073354;
+  box-shadow: 0 0 0 2px rgba(7,51,84,0.15);
+  background-color: #fff;
+}
+
+/* read-only / calculated fields */
+.phy-ro {
+  background-color: #f1f4f8;
+  color: #445;
+  cursor: default;
+  border-color: #d0dce8;
+}
+
+/* Total row inputs */
+.phy-total-input {
+  background-color: #e8f0fa;
+  font-weight: bold;
+  border-color: #9ab5d0;
+  color: #073354;
+}
+
+/* ── LTC (Long Term Courses) sub-table ── */
+.phy-ltc-scroll {
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid #c8dae8;
+  border-radius: 4px;
+}
+
+.phy-ltc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.phy-ltc-th {
+  background: linear-gradient(180deg, #556070 0%, #3a4555 100%);
+  color: #e8c96a;
+  font-weight: bold;
+  text-align: center;
+  padding: 5px 6px;
+  border: 1px solid #718096;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.phy-ltc-cell {
+  border: 1px solid #d0dce8;
+  padding: 2px 4px;
+  font-size: 11px;
+  vertical-align: middle;
+}
+
+.phy-ltc-row1 { background: #F2F2F2; }
+.phy-ltc-row2 { background: #FBF8EF; }
+
+.phy-ltc-row1:hover, .phy-ltc-row2:hover {
+  background: #eaf3ff !important;
+}
+
+.phy-ltc-name-input {
+  font-size: 11px;
+  border: 1px solid #c8d8e8;
+  border-radius: 3px;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #fffef0;
+  border-color: #aac0d8;
+}
+.phy-ltc-name-input:focus {
+  outline: none;
+  border-color: #073354;
+  box-shadow: 0 0 0 2px rgba(7,51,84,0.12);
+  background-color: #fff;
+}
+
+/* ── action bar ── */
+.phy-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  margin: 16px 16px 0;
+  border-top: 1px solid #e4ecf4;
+  background: #f8fafc;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* ── responsive ── */
+@media (max-width: 900px) {
+  .phy-titlebar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .phy-titlebar-right {
+    align-items: flex-start;
+  }
+}
