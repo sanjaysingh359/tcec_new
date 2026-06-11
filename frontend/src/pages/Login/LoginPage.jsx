@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { message } from 'antd';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -39,13 +40,30 @@ export default function LoginPage() {
       message.error('Incorrect captcha. Please try again.');
       refreshCaptcha(); return;
     }
-    if (uid.trim() !== 'admin' || pwd !== 'admin') {
-      message.error('Invalid User ID or Password');
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/login', {
+        userId: uid.trim(),
+        password: pwd,
+      });
+      if (data.success) {
+        login({
+          userId: data.data.userId,
+          role:   data.data.role,
+          token:  data.data.token,
+        });
+        navigate('/dashboard');
+      } else {
+        message.error(data.message || 'Invalid User ID or Password');
+        refreshCaptcha();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Login failed. Please try again.';
+      message.error(msg);
       refreshCaptcha();
-      return;
+    } finally {
+      setLoading(false);
     }
-    login({ uid: 'admin', role: 'admin' });
-    navigate('/dashboard');
   }
 
   const now = new Date();

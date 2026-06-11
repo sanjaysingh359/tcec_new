@@ -1,0 +1,30 @@
+PostgreSQL 17 Connection Details
+=================================
+Host     : localhost
+Port     : 5432
+Database : dcmsme_tcec
+User     : postgres
+Password : postgres123
+
+JDBC URL (for Java Spring Boot / Maven):
+  jdbc:postgresql://localhost:5432/dcmsme_tcec
+
+Spring Boot application.properties:
+  spring.datasource.url=jdbc:postgresql://localhost:5432/dcmsme_tcec
+  spring.datasource.username=postgres
+  spring.datasource.password=postgres123
+  spring.datasource.driver-class-name=org.postgresql.Driver
+
+Maven dependency (pom.xml):
+  <dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+    <version>42.7.3</version>
+  </dependency>
+
+Start/Stop PostgreSQL:
+  Start : E:\postgresql17\start_postgres.bat
+  Stop  : E:\postgresql17\stop_postgres.bat
+  Log   : E:\postgresql17\pg.log
+  Data  : E:\postgresql17\data
+  Bin   : E:\postgresql17\pgsql\bin
