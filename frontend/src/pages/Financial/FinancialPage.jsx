@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { Button, message } from 'antd';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Button, message, Spin, Alert } from 'antd';
 import { SaveOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './FinancialPage.css';
 
 /* ─── pure helpers ─── */
@@ -18,12 +19,7 @@ const INIT_DTM = {
   revExpCash: '',     revExpAccrual: '',
 };
 
-/*
- * Replace these with real API data when backend is ready.
- * PREV_CUM = sum of Jan–(current-1) month DTM values for this fiscal year
- * TARGETS  = from v_financial_target / tbl_trng_exp_target
- */
-const PREV_CUM = {
+const ZERO_CUM = {
   cashTraining: 0,    cashTooling: 0,    cashOtherJob: 0,
   cashConsult: 0,     cashMisc: 0,       cashTesting: 0,
   accrualTraining: 0, accrualTooling: 0, accrualOtherJob: 0,
@@ -31,7 +27,7 @@ const PREV_CUM = {
   revExpCash: 0,      revExpAccrual: 0,
 };
 
-const TARGETS = {
+const ZERO_TARGETS = {
   cashTraining: 0,    cashTooling: 0,    cashOtherJob: 0,
   cashConsult: 0,     cashMisc: 0,       cashTesting: 0,    cashTotal: 0,
   accrualTraining: 0, accrualTooling: 0, accrualOtherJob: 0,
@@ -105,8 +101,35 @@ function UserCell({ value, onChange, bg = '#fff' }) {
    Main Component
    ═══════════════════════════════════════ */
 export default function FinancialPage() {
-  const { selection } = useAuth();
-  const [dtm, setDtm] = useState(INIT_DTM);
+  const { selection, user } = useAuth();
+  const [dtm, setDtm]         = useState(INIT_DTM);
+  const [PREV_CUM, setPrevCum] = useState(ZERO_CUM);
+  const [TARGETS, setTargets]  = useState(ZERO_TARGETS);
+  const [loading, setLoading]  = useState(false);
+  const [saving, setSaving]    = useState(false);
+  const [blocked, setBlocked]  = useState(false);
+  const [loadErr, setLoadErr]  = useState('');
+
+  useEffect(() => {
+    if (!selection?.instId || !selection?.month || !selection?.year) return;
+    setLoading(true); setBlocked(false); setLoadErr('');
+    api.get('/entry/financial/load', {
+      params: { instId: selection.instId, month: selection.month, year: selection.year }
+    }).then(r => {
+      const data = r.data?.data;
+      if (!data) return;
+      setPrevCum({ ...ZERO_CUM, ...(data.prevCum || {}) });
+      setTargets({ ...ZERO_TARGETS, ...(data.targets || {}) });
+      if (data.hasData) {
+        if (user?.role === 'SU') {
+          setDtm(prev => ({ ...prev, ...(data.existing || {}) }));
+        } else {
+          setBlocked(true);
+        }
+      }
+    }).catch(() => setLoadErr('Could not load form data from server.'))
+      .finally(() => setLoading(false));
+  }, [selection?.instId, selection?.month, selection?.year]);
 
   const handleChange = useCallback(
     (field) => (e) => {
@@ -147,15 +170,32 @@ export default function FinancialPage() {
   const prAccrCum  = cum.revExpAccrual   ? (accrCum  / cum.revExpAccrual)   * 100 : 0;
 
   const handleSubmit = () => {
-    // TODO: POST dtm + selection to /api/financial
-    message.success('Financial data submitted successfully!');
+    if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
+    setSaving(true);
+    api.post('/entry/financial/save', {
+      instId: selection.instId, month: selection.month, year: selection.year,
+      cashTraining: dtm.cashTraining, cashTooling: dtm.cashTooling,
+      cashOtherJob: dtm.cashOtherJob, cashConsult: dtm.cashConsult,
+      cashMisc: dtm.cashMisc, cashTesting: dtm.cashTesting,
+      accrualTraining: dtm.accrualTraining, accrualTooling: dtm.accrualTooling,
+      accrualOtherJob: dtm.accrualOtherJob, accrualConsult: dtm.accrualConsult,
+      accrualMisc: dtm.accrualMisc, accrualTesting: dtm.accrualTesting,
+      revExpCash: dtm.revExpCash, revExpAccrual: dtm.revExpAccrual,
+    }).then(() => message.success('Financial data saved successfully!'))
+      .catch(err => message.error(err.response?.data?.message || 'Save failed'))
+      .finally(() => setSaving(false));
   };
 
   const instName  = selection?.instName  || '—';
   const monthYear = selection ? `${selection.monthName} ${selection.year}` : '';
 
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
+
   return (
     <div className="fin-page">
+
+      {loadErr && <Alert type="warning" message={loadErr} style={{ margin: '8px 0' }} />}
+      {blocked && <Alert type="error" message="Data already submitted for this month. Contact SU to modify." style={{ margin: '8px 0' }} />}
 
       {/* ── Title bar ── */}
       <div className="fin-titlebar">
@@ -457,16 +497,12 @@ export default function FinancialPage() {
 
         {/* ── Action bar ── */}
         <div className="fin-actions">
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => setDtm(INIT_DTM)}
-          >
+          <Button icon={<ReloadOutlined />} onClick={() => setDtm(INIT_DTM)} disabled={blocked}>
             Reset
           </Button>
           <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            onClick={handleSubmit}
+            type="primary" icon={<SaveOutlined />}
+            onClick={handleSubmit} loading={saving} disabled={blocked}
             style={{ backgroundColor: '#073354', borderColor: '#073354' }}
           >
             Submit

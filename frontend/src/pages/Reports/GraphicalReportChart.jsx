@@ -144,13 +144,19 @@ export default function GraphicalReportChart() {
 
     api.get('/reports/graphical', { params: { instId, year } })
       .then(res => {
-        setChartData(res.data);
-        setError(null);
+        const rows = res.data?.data;
+        if (Array.isArray(rows) && rows.length > 0) {
+          setChartData(rows);
+          setError(null);
+        } else {
+          // Year exists but no data entered yet
+          setChartData([]);
+          setError('nodata');
+        }
       })
       .catch(() => {
-        // API not connected yet — show mock data with a notice
-        setChartData(MOCK_ROWS);
-        setError('demo');
+        setChartData([]);
+        setError('failed');
       })
       .finally(() => setLoading(false));
   }, [instId, year, navigate]);
@@ -196,9 +202,14 @@ export default function GraphicalReportChart() {
           <span className="gr-spinner" /> Loading chart data&hellip;
         </div>
       )}
-      {error === 'demo' && !loading && (
+      {error === 'nodata' && !loading && (
         <div className="gr-demo-banner">
-          📊 Showing sample data — live data will appear once the backend API is connected
+          ℹ No data found for {instName} — {year}. Data may not have been entered yet.
+        </div>
+      )}
+      {error === 'failed' && !loading && (
+        <div className="gr-demo-banner" style={{background:'#fff3cd',borderColor:'#ffc107',color:'#856404'}}>
+          ⚠ Could not load chart data. Please check your connection and try again.
         </div>
       )}
 

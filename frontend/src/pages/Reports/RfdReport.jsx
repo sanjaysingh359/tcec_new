@@ -12,8 +12,8 @@ const MOCK_INSTITUTES = [
 function ri(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
 function generateMockData() {
-  return MOCK_INSTITUTES.map(name => ({
-    name,
+  return MOCK_INSTITUTES.map(userId => ({
+    userId,
     tooling:     ri(10, 80),
     jobWork:     ri(5, 40),
     revTraining: ri(20, 100),
@@ -38,8 +38,8 @@ export default function RfdReport() {
   useEffect(() => {
     setLoading(true);
     api.get('/reports/rfd', { params: { month, year } })
-      .then(r => { setRows(r.data); setDemo(false); })
-      .catch(() => { setRows(generateMockData()); setDemo(true); })
+      .then(r => { setRows(r.data?.data || []); setDemo(false); })
+      .catch(() => { setRows([]); setDemo(true); })
       .finally(() => setLoading(false));
   }, [month, year]);
 
@@ -50,7 +50,7 @@ export default function RfdReport() {
       <div className="rpt-header">
         <div>
           <div className="rpt-header-title">RFD Report up to {monthName}-{year}</div>
-          {demo && <div className="rpt-demo-note">📊 Sample data — backend API not yet connected</div>}
+          {demo && <div className="rpt-demo-note">⚠ Could not load report data. Please try again.</div>}
         </div>
         <div className="rpt-header-actions">
           <button className="rpt-action-btn rpt-btn-back"  onClick={() => navigate('/app/reports/rfd')}>← Back</button>
@@ -91,7 +91,7 @@ export default function RfdReport() {
               {rows.map((r, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{idx + 1}</td>
-                  <td className="rpt-td">{r.name}</td>
+                  <td className="rpt-td">{r.userId}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.tooling}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.jobWork}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.revTraining}</td>

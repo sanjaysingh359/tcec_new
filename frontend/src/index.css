@@ -266,6 +266,19 @@ body {
   flex-direction: column;
   align-items: center;
 }
+.lg-error-box {
+  margin: 8px 0 4px;
+  padding: 9px 14px;
+  background: #fff0f0;
+  border: 1.5px solid #e53935;
+  border-left: 5px solid #e53935;
+  border-radius: 4px;
+  color: #b71c1c;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+}
 
 /* Form wrapper */
 .lp-form {
@@ -608,6 +621,40 @@ body {
   height: 28px !important;
   padding: 2px 6px !important;
   cursor: pointer;
+}
+
+/* Role badge in user bar */
+.db-role-badge { font-weight: normal; font-size: 11px; margin-left: 4px; }
+.db-role-su  { color: #FFE082; }
+.db-role-iu  { color: #B3E5FC; }
+
+/* Error banner inside form card */
+.db-error-bar {
+  background: #fff3f3;
+  border: 1px solid #f5c2c7;
+  color: #842029;
+  padding: 7px 12px;
+  font-size: 12px;
+  border-radius: 3px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* Read-only institute name field */
+.db-inst-readonly {
+  background: #f1f4f8 !important;
+  color: #073354;
+  font-weight: bold;
+  cursor: default;
+}
+
+/* Loading placeholder text */
+.db-loading-text {
+  color: #666;
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 0;
+  display: inline-block;
 }
 
 /* ════════════════════════════════

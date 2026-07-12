@@ -17,7 +17,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    // Redirect to login on 401 ONLY for authenticated calls (not the login request itself).
+    // Without this check, a wrong-password 401 would reload the page before the error message shows.
+    const isLoginCall = err.config?.url?.includes('/auth/login');
+    if (err.response?.status === 401 && !isLoginCall) {
       sessionStorage.clear();
       window.location.href = '/login';
     }

@@ -23,7 +23,7 @@ function generateMockData() {
     const trainA = ri(200, trainT);
     const unitT  = ri(100, 400);
     const unitA  = ri(60, unitT);
-    return { name, revT, revA, expT, expA, surpT, surpA, trainT, trainA, unitT, unitA };
+    return { userId: name, revT, revA, expT, expA, surpT, surpA, trainT, trainA, unitT, unitA };
   });
 }
 
@@ -39,8 +39,8 @@ export default function AnalysisReport() {
   useEffect(() => {
     setLoading(true);
     api.get('/reports/analysis', { params: { month, year } })
-      .then(r => { setRows(r.data); setDemo(false); })
-      .catch(() => { setRows(generateMockData()); setDemo(true); })
+      .then(r => { setRows(r.data?.data || []); setDemo(false); })
+      .catch(() => { setRows([]); setDemo(true); })
       .finally(() => setLoading(false));
   }, [month, year]);
 
@@ -51,7 +51,7 @@ export default function AnalysisReport() {
       <div className="rpt-header">
         <div>
           <div className="rpt-header-title">Performance Analysis up to {monthName}-{year}</div>
-          {demo && <div className="rpt-demo-note">📊 Sample data — backend API not yet connected</div>}
+          {demo && <div className="rpt-demo-note">⚠ Could not load report data. Please try again.</div>}
         </div>
         <div className="rpt-header-actions">
           <button className="rpt-action-btn rpt-btn-back"  onClick={() => navigate('/app/reports/analysis')}>← Back</button>
@@ -100,7 +100,7 @@ export default function AnalysisReport() {
               {rows.map((r, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{idx + 1}</td>
-                  <td className="rpt-td">{r.name}</td>
+                  <td className="rpt-td">{r.userId}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.revT}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.revA}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.expT}</td>

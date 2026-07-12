@@ -9,14 +9,15 @@ const MOCK_INSTITUTES = [
   'CFC Mumbai','CFC Nagpur',
 ];
 const MONTH_COLS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+const MONTH_KEYS = ['apr','may','jun','jul','aug','sep','oct','nov','dec','jan','feb','mar'];
 
 function generateMockData() {
-  return MOCK_INSTITUTES.map(name => {
+  return MOCK_INSTITUTES.map(userId => {
     const months = {};
-    MONTH_COLS.forEach(m => {
+    MONTH_KEYS.forEach(m => {
       months[m] = Math.random() > 0.28 ? 'OK' : 'NOT';
     });
-    return { name, ...months };
+    return { userId, ...months };
   });
 }
 
@@ -32,8 +33,8 @@ export default function MprReport() {
   useEffect(() => {
     setLoading(true);
     api.get('/reports/mpr', { params: { year } })
-      .then(r => { setRows(r.data); setDemo(false); })
-      .catch(() => { setRows(generateMockData()); setDemo(true); })
+      .then(r => { setRows(r.data?.data || []); setDemo(false); })
+      .catch(() => { setRows([]); setDemo(true); })
       .finally(() => setLoading(false));
   }, [year]);
 
@@ -42,7 +43,7 @@ export default function MprReport() {
       <div className="rpt-header">
         <div>
           <div className="rpt-header-title">Monthly Progress Report — {year}</div>
-          {demo && <div className="rpt-demo-note">📊 Sample data — backend API not yet connected</div>}
+          {demo && <div className="rpt-demo-note">⚠ Could not load report data. Please try again.</div>}
         </div>
         <div className="rpt-header-actions">
           <button className="rpt-action-btn rpt-btn-back"  onClick={() => navigate('/app/reports/mpr')}>← Back</button>
@@ -69,10 +70,10 @@ export default function MprReport() {
               {rows.map((r, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{idx + 1}</td>
-                  <td className="rpt-td">{r.name}</td>
-                  {MONTH_COLS.map(m => (
-                    <td key={m} className={r[m] === 'OK' ? 'rpt-ok' : 'rpt-not'}>
-                      {r[m]}
+                  <td className="rpt-td">{r.userId}</td>
+                  {MONTH_KEYS.map((mk, i) => (
+                    <td key={mk} className={r[mk] === 'OK' ? 'rpt-ok' : 'rpt-not'}>
+                      {r[mk]}
                     </td>
                   ))}
                 </tr>

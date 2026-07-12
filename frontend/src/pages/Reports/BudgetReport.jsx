@@ -21,7 +21,7 @@ function generateMockData() {
     const giaUtlDm = rand(10, 60);
     const giaUtlCum= rand(20, giaAmt * 0.6);
     const giaBal   = +(giaAmt - giaUtlCum).toFixed(2);
-    return { name, cryAmt, cryUtlDm, cryUtlCum, cryBal, giaAmt, giaUtlDm, giaUtlCum, giaBal };
+    return { userId: name, cryAmt, cryUtlDm, cryUtlCum, cryBal, giaAmt, giaUtlDm, giaUtlCum, giaBal };
   });
 }
 
@@ -37,8 +37,8 @@ export default function BudgetReport() {
   useEffect(() => {
     setLoading(true);
     api.get('/reports/budget', { params: { month, year } })
-      .then(r => { setRows(r.data); setDemo(false); })
-      .catch(() => { setRows(generateMockData()); setDemo(true); })
+      .then(r => { setRows(r.data?.data || []); setDemo(false); })
+      .catch(() => { setRows([]); setDemo(true); })
       .finally(() => setLoading(false));
   }, [month, year]);
 
@@ -58,7 +58,7 @@ export default function BudgetReport() {
       <div className="rpt-header">
         <div>
           <div className="rpt-header-title">Budget report up to {monthName}-{year}</div>
-          {demo && <div className="rpt-demo-note">📊 Sample data — backend API not yet connected</div>}
+          {demo && <div className="rpt-demo-note">⚠ Could not load report data. Please try again.</div>}
         </div>
         <div className="rpt-header-actions">
           <button className="rpt-action-btn rpt-btn-back"  onClick={() => navigate('/app/reports/budget')}>← Back</button>
@@ -95,7 +95,7 @@ export default function BudgetReport() {
               {rows.map((r, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{idx + 1}</td>
-                  <td className="rpt-td">{r.name}</td>
+                  <td className="rpt-td">{r.userId}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.cryAmt}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.cryUtlDm}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.cryUtlCum}</td>

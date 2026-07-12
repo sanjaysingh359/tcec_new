@@ -30,7 +30,8 @@ function buildNav(role, section) {
     { key: '__logout__',           icon: <LogoutOutlined />,     label: 'Logout' },
   ].filter(Boolean);
 
-  const reportNav = [
+  // SU sees all reports + Update/Delete; IU sees only Graphical + MPR-AB
+  const suReportNav = [
     { divider: 'Main' },
     { key: '/dashboard',                          icon: <HomeOutlined />,      label: 'Application Home Page' },
     { key: '/app/reports/graphical',              icon: <LineChartOutlined />, label: 'Graphical Representation' },
@@ -51,7 +52,19 @@ function buildNav(role, section) {
     { key: '__logout__',                          icon: <LogoutOutlined />,    label: 'Logout' },
   ];
 
-  return entry ? entryNav : reportNav;
+  const iuReportNav = [
+    { divider: 'Main' },
+    { key: '/dashboard',             icon: <HomeOutlined />,      label: 'Application Home Page' },
+    { key: '/app/reports/graphical', icon: <LineChartOutlined />, label: 'Graphical Representation' },
+    { divider: 'Reports' },
+    { key: '/app/reports/mpr',       icon: <FileTextOutlined />,  label: 'MPR-AB Report' },
+    { divider: 'Account' },
+    { key: '/app/contact',           icon: <PhoneOutlined />,     label: 'Contact Us' },
+    { key: '__logout__',             icon: <LogoutOutlined />,    label: 'Logout' },
+  ];
+
+  if (entry) return entryNav;
+  return isSU ? suReportNav : iuReportNav;
 }
 
 /* ── Custom nav components ── */
@@ -127,7 +140,7 @@ export default function MainLayout() {
 
   const nav = buildNav(user?.role, selection?.section);
   const currentKey = location.pathname;
-  const username = user?.uid || user?.userName || 'User';
+  const username = user?.userId || user?.uid || user?.userName || 'User';
   const isEntry  = selection?.section === '1';
 
   function handleLogout() { logout(); navigate('/login'); }

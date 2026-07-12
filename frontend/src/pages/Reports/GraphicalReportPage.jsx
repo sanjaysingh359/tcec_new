@@ -28,9 +28,9 @@ export default function GraphicalReportPage() {
 
   useEffect(() => {
     setLoadingInst(true);
-    api.get('/institutes')
+    api.get('/institutes/active')
       .then(res => {
-        setInstitutes(res.data || []);
+        setInstitutes(res.data?.data || []);
         setInstError(null);
       })
       .catch(() => {

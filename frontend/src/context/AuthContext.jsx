@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from 'react';
+import api from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -18,7 +19,13 @@ export function AuthProvider({ children }) {
     setUser(userData);
   }
 
-  function logout() {
+  async function logout() {
+    // Call backend to invalidate the token
+    try {
+      await api.post('/auth/logout');
+    } catch (_) {
+      // Silent — we clear local state regardless
+    }
     sessionStorage.removeItem('tcec_user');
     sessionStorage.removeItem('tcec_selection');
     setUser(null);

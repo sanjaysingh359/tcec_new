@@ -30,8 +30,8 @@ export default function AgeWiseReport() {
     if (!month || !year) { navigate('/app/reports/trainees/age', { replace: true }); return; }
     setLoading(true);
     api.get('/reports/trainees/age', { params: { month, year } })
-      .then(res => { setRows(res.data || []); setDemo(false); })
-      .catch(() => { setRows(makeMock()); setDemo(true); })
+      .then(res => { setRows(res.data?.data || []); setDemo(false); })
+      .catch(() => { setRows([]); setDemo(true); })
       .finally(() => setLoading(false));
   }, [month, year, navigate]);
 
@@ -52,7 +52,7 @@ export default function AgeWiseReport() {
       <div className="rpt-header">
         <div>
           <div className="rpt-header-title">Age wise trainees trained up to {monthName} {year}</div>
-          {demo && <div className="rpt-demo-note">📊 Sample data — backend API not yet connected</div>}
+          {demo && <div className="rpt-demo-note">⚠ Could not load report data. Please try again.</div>}
         </div>
         <div className="rpt-header-actions">
           <button className="rpt-action-btn rpt-btn-back" onClick={() => navigate('/app/reports/trainees/age')}>← Back</button>

@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Button } from 'antd';
+import { useState, useEffect } from 'react';
+import { Button, Spin, Alert, message } from 'antd';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './PhysicalPage.css';
 
 /* ═══════════════════════════════════════════════════════
@@ -91,29 +92,28 @@ const n = (v) => parseFloat(v) || 0;
 const BG1 = '#F2F2F2';
 const BG2 = '#FBF8EF';
 
+const ZERO_PREV = {
+  msmeNosNju: 0, msmeValuesNju: 0, otherNosNju: 0, otherValuesNju: 0,
+  msmeCons: 0, otherCons: 0, anyOther: 0,
+  stmNocComp: 0, stmNottComp: 0, trngOther: 0, trngTotalNoc: 0, trngTotalNot: 0,
+  seminarsNos: 0, seminarsPts: 0,
+  gen: 0, sc: 0, st: 0, obc: 0, min: 0,
+  men: 0, wmn: 0, transgender: 0,
+  thFail: 0, thPass: 0, twelfth: 0, iti: 0, diploma: 0,
+  gradNonTech: 0, gradTech: 0, pgNonTech: 0, pgTech: 0, phdMhil: 0,
+  a1520: 0, a2125: 0, a2630: 0, a3140: 0, above40: 0, ph: 0, ltcTotal: 0,
+};
+
 export default function PhysicalPage() {
-  const { selection } = useAuth();
+  const { selection, user } = useAuth();
 
-  /* ── stub previous-cumulative values (replaced by API later) ── */
-  const PREV = {
-    msmeNosNju: 0, msmeValuesNju: 0,
-    otherNosNju: 0, otherValuesNju: 0,
-    msmeCons: 0, otherCons: 0,
-    anyOther: 0,
-    stmNocComp: 0, stmNottComp: 0,
-    trngOther: 0, trngTotalNoc: 0, trngTotalNot: 0,
-    seminarsNos: 0, seminarsPts: 0,
-    GEN: 0, sc: 0, st: 0, obc: 0, min: 0,
-    MEN: 0, wmn: 0, TRANSGENDER: 0,
-    tenfail: 0, tenpass: 0, twelth: 0, ITI: 0, Diploma: 0,
-    GradNonTech: 0, GradTech: 0, PGNonTech: 0, PGTech: 0, PhdMhil: 0,
-    limit1: 0, limit2: 0, limit3: 0, limit4: 0, Above: 0,
-    ph: 0,
-  };
-
-  /* ── stub targets ── */
-  const FIX_VAL1 = 0; // phy_total_nos_target
-  const FIX_VAL2 = 0; // trng_total_not_target
+  const [PREV, setPrev]      = useState(ZERO_PREV);
+  const [FIX_VAL1, setFix1]  = useState(0); // phy_total_nos_target
+  const [FIX_VAL2, setFix2]  = useState(0); // trng_total_not_target
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving]   = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [loadErr, setLoadErr] = useState('');
 
   /* ── editable DTM state ── */
   const INIT_DTM = {
@@ -144,6 +144,44 @@ export default function PhysicalPage() {
       next[i] = { ...next[i], [field]: e.target.value };
       return next;
     });
+  };
+
+  useEffect(() => {
+    if (!selection?.instId || !selection?.month || !selection?.year) return;
+    setLoading(true); setBlocked(false); setLoadErr('');
+    api.get('/entry/physical/load', {
+      params: { instId: selection.instId, month: selection.month, year: selection.year }
+    }).then(r => {
+      const data = r.data?.data;
+      if (!data) return;
+      setPrev({ ...ZERO_PREV, ...(data.prevCum || {}) });
+      if (data.targets) {
+        if (data.targets.phyTotalNos != null) setFix1(data.targets.phyTotalNos);
+        if (data.targets.trngTotalNot != null) setFix2(data.targets.trngTotalNot);
+      }
+      if (data.hasData) {
+        if (user?.role === 'SU') {
+          const ex = data.existing || {};
+          setDtm(prev => ({ ...prev, ...ex }));
+        } else {
+          setBlocked(true);
+        }
+      }
+    }).catch(() => setLoadErr('Could not load form data from server.'))
+      .finally(() => setLoading(false));
+  }, [selection?.instId, selection?.month, selection?.year]);
+
+  const handleSave = () => {
+    if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
+    setSaving(true);
+    const ltcDtmTotal = ltcCourses.reduce((s, r) => s + n(r.dtm), 0);
+    api.post('/entry/physical/save', {
+      instId: selection.instId, month: selection.month, year: selection.year,
+      ...dtm,
+      ltcTotal: ltcDtmTotal,
+    }).then(() => message.success('Physical data saved successfully!'))
+      .catch(err => message.error(err.response?.data?.message || 'Save failed'))
+      .finally(() => setSaving(false));
   };
 
   /* ── Section B computed values ── */
@@ -178,7 +216,7 @@ export default function PhysicalPage() {
   const seminarsPtsCum = PREV.seminarsPts + n(dtm.seminarsPts);
 
   /* ── Bifurcation C (Category) ── */
-  const genCum  = PREV.GEN  + n(dtm.gen);
+  const genCum  = PREV.gen  + n(dtm.gen);
   const scCum   = PREV.sc   + n(dtm.sc);
   const stCum   = PREV.st   + n(dtm.st);
   const obcCum  = PREV.obc  + n(dtm.obc);
@@ -187,27 +225,27 @@ export default function PhysicalPage() {
   const catCumTotal  = genCum + scCum + stCum + obcCum + minCum;
 
   /* ── Bifurcation D (Gender) ── */
-  const menCum   = PREV.MEN        + n(dtm.men);
-  const wmnCum   = PREV.wmn        + n(dtm.wmn);
-  const transCum = PREV.TRANSGENDER + n(dtm.transgender);
+  const menCum   = PREV.men         + n(dtm.men);
+  const wmnCum   = PREV.wmn         + n(dtm.wmn);
+  const transCum = PREV.transgender + n(dtm.transgender);
   const genDtmTotal = n(dtm.men) + n(dtm.wmn) + n(dtm.transgender);
   const genCumTotal = menCum + wmnCum + transCum;
 
   /* ── Bifurcation E (Qualification part 1) ── */
-  const thFailCum    = PREV.tenfail    + n(dtm.thFail);
-  const thPassCum    = PREV.tenpass    + n(dtm.thPass);
-  const twelfthCum   = PREV.twelth     + n(dtm.twelfth);
-  const itiCum       = PREV.ITI        + n(dtm.iti);
-  const diplomaCum   = PREV.Diploma    + n(dtm.diploma);
-  const gradNTCum    = PREV.GradNonTech+ n(dtm.gradNonTech);
-  const gradTCum     = PREV.GradTech   + n(dtm.gradTech);
+  const thFailCum    = PREV.thFail     + n(dtm.thFail);
+  const thPassCum    = PREV.thPass     + n(dtm.thPass);
+  const twelfthCum   = PREV.twelfth    + n(dtm.twelfth);
+  const itiCum       = PREV.iti        + n(dtm.iti);
+  const diplomaCum   = PREV.diploma    + n(dtm.diploma);
+  const gradNTCum    = PREV.gradNonTech+ n(dtm.gradNonTech);
+  const gradTCum     = PREV.gradTech   + n(dtm.gradTech);
   const qualEDtmTot  = n(dtm.thFail)+n(dtm.thPass)+n(dtm.twelfth)+n(dtm.iti)+n(dtm.diploma)+n(dtm.gradNonTech)+n(dtm.gradTech);
   const qualECumTot  = thFailCum+thPassCum+twelfthCum+itiCum+diplomaCum+gradNTCum+gradTCum;
 
   /* ── Bifurcation F (Qualification part 2) ── */
-  const pgNTCum     = PREV.PGNonTech + n(dtm.pgNonTech);
-  const pgTCum      = PREV.PGTech    + n(dtm.pgTech);
-  const phdMhilCum  = PREV.PhdMhil   + n(dtm.phdMhil);
+  const pgNTCum     = PREV.pgNonTech + n(dtm.pgNonTech);
+  const pgTCum      = PREV.pgTech    + n(dtm.pgTech);
+  const phdMhilCum  = PREV.phdMhil   + n(dtm.phdMhil);
   const qualFDtmTot = n(dtm.pgNonTech)+n(dtm.pgTech)+n(dtm.phdMhil);
   const qualFCumTot = pgNTCum+pgTCum+phdMhilCum;
   // Grand totals for E+F
@@ -215,11 +253,11 @@ export default function PhysicalPage() {
   const qualAllCum = qualECumTot + qualFCumTot;
 
   /* ── Bifurcation G (Age) ── */
-  const a1520Cum  = PREV.limit1 + n(dtm.a1520);
-  const a2125Cum  = PREV.limit2 + n(dtm.a2125);
-  const a2630Cum  = PREV.limit3 + n(dtm.a2630);
-  const a3140Cum  = PREV.limit4 + n(dtm.a3140);
-  const aboveCum  = PREV.Above  + n(dtm.above40);
+  const a1520Cum  = PREV.a1520  + n(dtm.a1520);
+  const a2125Cum  = PREV.a2125  + n(dtm.a2125);
+  const a2630Cum  = PREV.a2630  + n(dtm.a2630);
+  const a3140Cum  = PREV.a3140  + n(dtm.a3140);
+  const aboveCum  = PREV.above40+ n(dtm.above40);
   const ageDtmTot = n(dtm.a1520)+n(dtm.a2125)+n(dtm.a2630)+n(dtm.a3140)+n(dtm.above40);
   const ageCumTot = a1520Cum+a2125Cum+a2630Cum+a3140Cum+aboveCum;
 
@@ -232,9 +270,13 @@ export default function PhysicalPage() {
     setLtcCourses(Array.from({ length: 25 }, () => ({ name: '', dtm: '', cumMon: '' })));
   };
 
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
+
   /* ── Render ── */
   return (
     <div className="phy-page">
+      {loadErr && <Alert type="warning" message={loadErr} style={{ margin: '8px 0' }} />}
+      {blocked && <Alert type="error" message="Data already submitted for this month. Contact SU to modify." style={{ margin: '8px 0' }} />}
 
       {/* ── Title Bar ── */}
       <div className="phy-titlebar">
@@ -774,8 +816,8 @@ export default function PhysicalPage() {
 
       {/* ── Action bar ── */}
       <div className="phy-actions">
-        <Button onClick={handleReset}>Reset</Button>
-        <Button type="primary">Save</Button>
+        <Button onClick={handleReset} disabled={blocked}>Reset</Button>
+        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked}>Save</Button>
       </div>
 
     </div>

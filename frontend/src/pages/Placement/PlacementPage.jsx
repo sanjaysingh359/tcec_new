@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Button } from 'antd';
+import { useState, useEffect } from 'react';
+import { Button, Spin, Alert, message } from 'antd';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './PlacementPage.css';
 
 const n = (v) => parseFloat(v) || 0;
@@ -58,18 +59,53 @@ const E_ROWS = [
   { key: 'cndToBePlcd', no: '(viii)', label: 'Candidates who were yet to be placed',                                                          bg: BG1 },
 ];
 
-/* ── Stub previous-cumulative values (replaced by API later) ── */
 const ALL_ROWS = [...D_ROWS, ...E_ROWS];
-const PREV = Object.fromEntries(ALL_ROWS.map(r => [r.key, 0]));
+const ZERO_PREV = Object.fromEntries(ALL_ROWS.map(r => [r.key, 0]));
 const INIT = Object.fromEntries(ALL_ROWS.map(r => [r.key, '']));
 
 /* ═══════════════════════════════════════════════════════
    Main component
    ═══════════════════════════════════════════════════════ */
 export default function PlacementPage() {
-  const { selection } = useAuth();
-  const [dtm, setDtm] = useState(INIT);
+  const { selection, user } = useAuth();
+  const [dtm, setDtm]       = useState(INIT);
+  const [PREV, setPrev]      = useState(ZERO_PREV);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving]   = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [loadErr, setLoadErr] = useState('');
   const set = k => e => setDtm(prev => ({ ...prev, [k]: e.target.value }));
+
+  useEffect(() => {
+    if (!selection?.instId || !selection?.month || !selection?.year) return;
+    setLoading(true); setBlocked(false); setLoadErr('');
+    api.get('/entry/placement/load', {
+      params: { instId: selection.instId, month: selection.month, year: selection.year }
+    }).then(r => {
+      const data = r.data?.data;
+      if (!data) return;
+      setPrev({ ...ZERO_PREV, ...(data.prevCum || {}) });
+      if (data.hasData) {
+        if (user?.role === 'SU') {
+          const ex = data.existing || {};
+          setDtm(prev => ({ ...prev, ...ex }));
+        } else {
+          setBlocked(true);
+        }
+      }
+    }).catch(() => setLoadErr('Could not load form data from server.'))
+      .finally(() => setLoading(false));
+  }, [selection?.instId, selection?.month, selection?.year]);
+
+  const handleSave = () => {
+    if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
+    setSaving(true);
+    api.post('/entry/placement/save', {
+      instId: selection.instId, month: selection.month, year: selection.year, ...dtm,
+    }).then(() => message.success('Placement data saved successfully!'))
+      .catch(err => message.error(err.response?.data?.message || 'Save failed'))
+      .finally(() => setSaving(false));
+  };
 
   /* ── derived cumulatives: PREV_CUM + current DTM ── */
   const cum = Object.fromEntries(
@@ -84,8 +120,12 @@ export default function PlacementPage() {
 
   const handleReset = () => setDtm(INIT);
 
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
+
   return (
     <div className="plc-page">
+      {loadErr && <Alert type="warning" message={loadErr} style={{ margin: '8px 0' }} />}
+      {blocked && <Alert type="error" message="Data already submitted for this month. Contact SU to modify." style={{ margin: '8px 0' }} />}
 
       {/* ── Title Bar ── */}
       <div className="plc-titlebar">
@@ -220,8 +260,8 @@ export default function PlacementPage() {
 
       {/* ── Action bar ── */}
       <div className="plc-actions">
-        <Button onClick={handleReset}>Reset</Button>
-        <Button type="primary">Save</Button>
+        <Button onClick={handleReset} disabled={blocked}>Reset</Button>
+        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked}>Save</Button>
       </div>
 
     </div>

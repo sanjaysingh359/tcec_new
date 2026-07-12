@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Button } from 'antd';
+import { useState, useEffect } from 'react';
+import { Button, Spin, Alert, message } from 'antd';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './BudgetPage.css';
 
 /* ═══════════════════════════════════════════════════════
@@ -54,24 +55,25 @@ function LabelCell({ children, colSpan = 1, rowSpan = 1, align = 'left', bg }) {
 const n = (v) => parseFloat(v) || 0;
 
 export default function BudgetPage() {
-  const { selection } = useAuth();
+  const { selection, user } = useAuth();
 
-  /* ── stub previous-cumulative values (replaced by API later) ── */
-  const PREV_CF_CUM      = 0;   // sum of CRY_FWD_UTIL_DM for prev months this year
-  const PREV_GIA_CUM     = 0;   // sum of GIA_UTIL_DM for prev months this year
-  const PREV_MACHINE_CUM = 0;   // sum of MACHINE_DTM for prev months this year
+  const [PREV_CF_CUM, setPrevCf]      = useState(0);
+  const [PREV_GIA_CUM, setPrevGia]    = useState(0);
+  const [PREV_MACHINE_CUM, setPrevMac]= useState(0);
+  const [BE_BUDGET, setBeBudget]      = useState('0.00');
+  const [loading, setLoading]         = useState(false);
+  const [saving, setSaving]           = useState(false);
+  const [blocked, setBlocked]         = useState(false);
+  const [loadErr, setLoadErr]         = useState('');
 
-  /* ── stub targets ── */
-  const BE_BUDGET  = '0.00';   // Annual Budget Estimate from tbl_trng_exp_target
-  const FIX_VAL1   = '0.00';   // CRY_FWD_AMT from January (carry-forward amount)
   const YEAR_LABEL = selection
     ? `${parseInt(selection.year) || 'YYYY'}-${(parseInt(selection.year) + 1) || 'YYYY'}`
     : 'YYYY-YYYY';
 
   /* ── form state ── */
   const INIT = {
-    cfAmount:    FIX_VAL1,   // Carry Forward Amount (pre-filled)
-    cfDtm:       '',          // CF Utilization During Month
+    cfAmount:    '0.00',
+    cfDtm:       '',
     giaAmount:   '',          // GIA Amount
     giaDtm:      '',          // GIA Utilization During Month
     // Staff Strength — Sanctioned
@@ -89,6 +91,55 @@ export default function BudgetPage() {
   const [form, setForm] = useState(INIT);
   const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
+  useEffect(() => {
+    if (!selection?.instId || !selection?.month || !selection?.year) return;
+    setLoading(true); setBlocked(false); setLoadErr('');
+    api.get('/entry/budget/load', {
+      params: { instId: selection.instId, month: selection.month, year: selection.year }
+    }).then(r => {
+      const data = r.data?.data;
+      if (!data) return;
+      const pc = data.prevCum || {};
+      setPrevCf(parseFloat(pc.cfCum) || 0);
+      setPrevGia(parseFloat(pc.giaCum) || 0);
+      setPrevMac(parseFloat(pc.machineCum) || 0);
+      if (data.targets?.beBudget != null)
+        setBeBudget(parseFloat(data.targets.beBudget).toFixed(2));
+      if (data.hasData) {
+        if (user?.role === 'SU') {
+          const ex = data.existing || {};
+          setForm(prev => ({
+            ...prev,
+            cfAmount: ex.cfAmount?.toString() || prev.cfAmount,
+            cfDtm: ex.cfDtm?.toString() || '',
+            giaAmount: ex.giaAmount?.toString() || '',
+            giaDtm: ex.giaDtm?.toString() || '',
+            ssA: ex.ssA?.toString() || '', ssB: ex.ssB?.toString() || '',
+            ssC: ex.ssC?.toString() || '', ssD: ex.ssD?.toString() || '',
+            posA: ex.posA?.toString() || '', posB: ex.posB?.toString() || '',
+            posC: ex.posC?.toString() || '', posD: ex.posD?.toString() || '',
+            machineDtm: ex.machineDtm?.toString() || '',
+            detailVisit: ex.detailVisit || '', sigAchiev: ex.sigAchiev || '',
+            shortFalls: ex.shortFalls || '',
+          }));
+        } else {
+          setBlocked(true);
+        }
+      }
+    }).catch(() => setLoadErr('Could not load form data from server.'))
+      .finally(() => setLoading(false));
+  }, [selection?.instId, selection?.month, selection?.year]);
+
+  const handleSave = () => {
+    if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
+    setSaving(true);
+    api.post('/entry/budget/save', {
+      instId: selection.instId, month: selection.month, year: selection.year, ...form,
+    }).then(() => message.success('Budget data saved successfully!'))
+      .catch(err => message.error(err.response?.data?.message || 'Save failed'))
+      .finally(() => setSaving(false));
+  };
+
   /* ── computed values ── */
   const cfCum    = PREV_CF_CUM      + n(form.cfDtm);
   const cfBal    = n(form.cfAmount) - cfCum;
@@ -104,11 +155,16 @@ export default function BudgetPage() {
 
   const handleReset = () => setForm(INIT);
 
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
+
   /* ── remaining char counts ── */
   const MAX_CHARS = 400;
 
   return (
     <div className="bud-page">
+
+      {loadErr && <Alert type="warning" message={loadErr} style={{ margin: '8px 0' }} />}
+      {blocked && <Alert type="error" message="Data already submitted for this month. Contact SU to modify." style={{ margin: '8px 0' }} />}
 
       {/* ── Title Bar ── */}
       <div className="bud-titlebar">
@@ -324,8 +380,8 @@ export default function BudgetPage() {
 
       {/* ── Action bar ── */}
       <div className="bud-actions">
-        <Button onClick={handleReset}>Reset</Button>
-        <Button type="primary">Save</Button>
+        <Button onClick={handleReset} disabled={blocked}>Reset</Button>
+        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked}>Save</Button>
       </div>
 
     </div>

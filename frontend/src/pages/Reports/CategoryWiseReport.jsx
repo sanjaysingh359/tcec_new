@@ -45,8 +45,14 @@ export default function CategoryWiseReport() {
     if (!month || !year) { navigate('/app/reports/trainees/category', { replace: true }); return; }
     setLoading(true);
     api.get('/reports/trainees/category', { params: { month, year } })
-      .then(res => { setRows(res.data || []); setDemo(false); })
-      .catch(() => { setRows(makeMockRows()); setDemo(true); })
+      .then(res => {
+        setRows(res.data?.data || []);
+        setDemo(false);
+      })
+      .catch(() => {
+        setRows([]);
+        setDemo(true);
+      })
       .finally(() => setLoading(false));
   }, [month, year, navigate]);
 
@@ -80,7 +86,7 @@ export default function CategoryWiseReport() {
           </div>
           {demo && (
             <div className="rpt-demo-note">
-              📊 Sample data — backend API not yet connected
+              ⚠ Could not load report data. Please check your connection and try again.
             </div>
           )}
         </div>

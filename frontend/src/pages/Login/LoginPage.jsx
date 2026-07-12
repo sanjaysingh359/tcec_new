@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { message } from 'antd';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -22,6 +21,7 @@ export default function LoginPage() {
   const [pwd, setPwd]   = useState('');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     if (user) navigate('/dashboard', { replace: true });
@@ -34,10 +34,11 @@ export default function LoginPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!uid.trim())  { message.error('Please enter User Name'); return; }
-    if (!pwd.trim())  { message.error('Please enter Password');  return; }
+    setErrorMsg('');
+    if (!uid.trim())  { setErrorMsg('Please enter User Name'); return; }
+    if (!pwd.trim())  { setErrorMsg('Please enter Password');  return; }
     if (code.trim() !== captcha.answer) {
-      message.error('Incorrect captcha. Please try again.');
+      setErrorMsg('Incorrect captcha answer. Please try again.');
       refreshCaptcha(); return;
     }
     setLoading(true);
@@ -54,12 +55,11 @@ export default function LoginPage() {
         });
         navigate('/dashboard');
       } else {
-        message.error(data.message || 'Invalid User ID or Password');
+        setErrorMsg(data.message || 'Invalid User ID or Password');
         refreshCaptcha();
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Login failed. Please try again.';
-      message.error(msg);
+      setErrorMsg(err.response?.data?.message || 'Login failed. Please try again.');
       refreshCaptcha();
     } finally {
       setLoading(false);
@@ -114,14 +114,14 @@ export default function LoginPage() {
                     <tr>
                       <td className="lp-lbl"><span className="lp-req">*</span> User Name:</td>
                       <td className="lp-inp">
-                        <input type="text" value={uid} onChange={e => setUid(e.target.value)}
+                        <input type="text" value={uid} onChange={e => { setUid(e.target.value); setErrorMsg(''); }}
                           maxLength={45} className="lp-field" autoComplete="off" />
                       </td>
                     </tr>
                     <tr>
                       <td className="lp-lbl"><span className="lp-req">*</span> Password:</td>
                       <td className="lp-inp">
-                        <input type="password" value={pwd} onChange={e => setPwd(e.target.value)}
+                        <input type="password" value={pwd} onChange={e => { setPwd(e.target.value); setErrorMsg(''); }}
                           maxLength={45} className="lp-field" autoComplete="off" />
                       </td>
                     </tr>
@@ -139,6 +139,13 @@ export default function LoginPage() {
                         <button type="button" onClick={refreshCaptcha} className="lp-refresh">↻</button>
                       </td>
                     </tr>
+                    {errorMsg && (
+                      <tr>
+                        <td colSpan="2">
+                          <div className="lg-error-box">⚠ {errorMsg}</div>
+                        </td>
+                      </tr>
+                    )}
                     <tr>
                       <td colSpan="2" className="lp-submit-row">
                         <input type="submit"
