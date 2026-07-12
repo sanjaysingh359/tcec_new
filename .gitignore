@@ -23,12 +23,13 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
-# Java / Maven (for future backend)
+# Java / Maven
 target/
 *.class
-*.jar
 *.war
 *.ear
+# Keep the runnable JAR for deployment
+!backend/target/tcec-api-1.0.0.jar
 
 # Environment files
 .env
