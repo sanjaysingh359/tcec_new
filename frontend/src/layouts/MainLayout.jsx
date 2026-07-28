@@ -7,6 +7,7 @@ import {
   FileTextOutlined, EditOutlined, LockOutlined, LogoutOutlined,
   LineChartOutlined, FundOutlined, PhoneOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, DownOutlined,
+  UsergroupAddOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,6 +26,7 @@ function buildNav(role, section) {
     { key: '/app/budget',          icon: <FundOutlined />,       label: 'Budget Section' },
     { key: '/app/placement',       icon: <UserSwitchOutlined />, label: 'Placement Section' },
     { divider: 'Account' },
+    isSU && { key: '/app/users',   icon: <UsergroupAddOutlined />, label: 'User Management' },
     { key: '/app/change-password', icon: <LockOutlined />,       label: 'Change Password' },
     { key: '/app/contact',         icon: <PhoneOutlined />,      label: 'Contact Us' },
     { key: '__logout__',           icon: <LogoutOutlined />,     label: 'Logout' },
@@ -48,6 +50,7 @@ function buildNav(role, section) {
     { key: '/app/reports/rfd',                    icon: <BarChartOutlined />,  label: 'Report for RFD' },
     { key: '/app/modify-data',                    icon: <EditOutlined />,      label: 'Update / Delete' },
     { divider: 'Account' },
+    { key: '/app/users',                          icon: <UsergroupAddOutlined />, label: 'User Management' },
     { key: '/app/contact',                        icon: <PhoneOutlined />,     label: 'Contact Us' },
     { key: '__logout__',                          icon: <LogoutOutlined />,    label: 'Logout' },
   ];
