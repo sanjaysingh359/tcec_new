@@ -30,6 +30,7 @@ import BudgetPage from './pages/Budget/BudgetPage';
 import PlacementPage from './pages/Placement/PlacementPage';
 import ModifyDataPage from './pages/ModifyData/ModifyDataPage';
 import ContactUsPage from './pages/ContactUs/ContactUsPage';
+import TargetPage from './pages/Target/TargetPage';
 
 const antTheme = {
   token: {
@@ -114,7 +115,7 @@ export default function App() {
               <Route path="reports/rfd/report" element={<SuRoute><RfdReport /></SuRoute>} />
               <Route path="modify-data" element={<SuRoute><ModifyDataPage /></SuRoute>} />
               {/* Annual Target — SU only */}
-              <Route path="target" element={<SuRoute><div style={{ padding: 24, color: '#073354', fontWeight: 'bold' }}>Annual Target — Coming Soon</div></SuRoute>} />
+              <Route path="target" element={<SuRoute><TargetPage /></SuRoute>} />
               {/* Contact Us */}
               <Route path="contact" element={<ContactUsPage />} />
               {/* Entry forms — both roles */}
