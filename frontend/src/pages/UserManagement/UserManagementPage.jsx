@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button, Table, Tag, Modal, Form, Input, Select, Popconfirm, message, Space, Badge } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, LockOutlined, TeamOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, LockOutlined, TeamOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons';
 import api from '../../services/api';
 
 const { Option } = Select;
@@ -10,10 +10,15 @@ export default function UserManagementPage() {
   const [institutes, setInstitutes] = useState([]);
   const [loading,    setLoading]    = useState(false);
   const [modalOpen,  setModalOpen]  = useState(false);
-  const [editUser,   setEditUser]   = useState(null); // null = create, else = user object
+  const [editUser,   setEditUser]   = useState(null);
   const [saving,     setSaving]     = useState(false);
-  const [form] = Form.useForm();
 
+  // ── filter state ──
+  const [searchId,     setSearchId]     = useState('');
+  const [filterRole,   setFilterRole]   = useState('');
+  const [filterInstId, setFilterInstId] = useState('');
+
+  const [form] = Form.useForm();
   const selectedRole = Form.useWatch('role', form);
 
   const loadUsers = () => {
@@ -31,20 +36,25 @@ export default function UserManagementPage() {
       .catch(() => {});
   }, []);
 
-  const openCreate = () => {
-    setEditUser(null);
-    form.resetFields();
-    setModalOpen(true);
-  };
+  // ── filtered data ──
+  const filtered = useMemo(() => {
+    return users.filter(u => {
+      if (searchId     && !u.userId.toLowerCase().includes(searchId.toLowerCase())) return false;
+      if (filterRole   && u.role !== filterRole) return false;
+      if (filterInstId && u.instId !== filterInstId) return false;
+      return true;
+    });
+  }, [users, searchId, filterRole, filterInstId]);
+
+  const hasFilter = searchId || filterRole || filterInstId;
+
+  const clearFilters = () => { setSearchId(''); setFilterRole(''); setFilterInstId(''); };
+
+  const openCreate = () => { setEditUser(null); form.resetFields(); setModalOpen(true); };
 
   const openEdit = (user) => {
     setEditUser(user);
-    form.setFieldsValue({
-      userId:   user.userId,
-      role:     user.role,
-      instId:   user.instId || undefined,
-      password: '',
-    });
+    form.setFieldsValue({ userId: user.userId, role: user.role, instId: user.instId || undefined, password: '' });
     setModalOpen(true);
   };
 
@@ -54,26 +64,19 @@ export default function UserManagementPage() {
       setSaving(true);
       if (editUser) {
         await api.put(`/admin/users/${editUser.userId}`, {
-          role:     vals.role,
-          password: vals.password || '',
-          instId:   vals.instId || '',
+          role: vals.role, password: vals.password || '', instId: vals.instId || '',
         });
         message.success('User updated successfully');
       } else {
         await api.post('/admin/users', {
-          userId:   vals.userId,
-          password: vals.password,
-          role:     vals.role,
-          instId:   vals.instId || '',
+          userId: vals.userId, password: vals.password, role: vals.role, instId: vals.instId || '',
         });
         message.success('User created successfully');
       }
       setModalOpen(false);
       loadUsers();
     } catch (err) {
-      if (err?.response?.data?.message) {
-        message.error(err.response.data.message);
-      }
+      if (err?.response?.data?.message) message.error(err.response.data.message);
     } finally {
       setSaving(false);
     }
@@ -91,7 +94,7 @@ export default function UserManagementPage() {
 
   const columns = [
     {
-      title: '#', dataIndex: 'idx', key: 'idx', width: 50,
+      title: '#', key: 'idx', width: 46,
       render: (_, __, i) => <span style={{ color: '#888', fontSize: 12 }}>{i + 1}</span>,
     },
     {
@@ -103,7 +106,7 @@ export default function UserManagementPage() {
       ),
     },
     {
-      title: 'Role', dataIndex: 'role', key: 'role', width: 100,
+      title: 'Role', dataIndex: 'role', key: 'role', width: 120,
       render: v => v === 'SU'
         ? <Tag color="#073354" style={{ fontWeight: 'bold' }}>Super User</Tag>
         : <Tag color="green"  style={{ fontWeight: 'bold' }}>IU User</Tag>,
@@ -123,8 +126,7 @@ export default function UserManagementPage() {
             title={`Delete user "${row.userId}"?`}
             description="This cannot be undone."
             onConfirm={() => handleDelete(row.userId)}
-            okText="Delete" okButtonProps={{ danger: true }}
-            cancelText="Cancel"
+            okText="Delete" okButtonProps={{ danger: true }} cancelText="Cancel"
           >
             <Button size="small" danger icon={<DeleteOutlined />}>Delete</Button>
           </Popconfirm>
@@ -147,9 +149,7 @@ export default function UserManagementPage() {
         borderRadius: '0 0 6px 6px', boxShadow: '0 2px 6px rgba(0,0,0,0.18)', marginBottom: 14,
       }}>
         <div>
-          <div style={{ fontSize: 11, opacity: 0.75, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 2 }}>
-            Administration
-          </div>
+          <div style={{ fontSize: 11, opacity: 0.75, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 2 }}>Administration</div>
           <div style={{ fontSize: 18, fontWeight: 'bold' }}>
             <TeamOutlined style={{ marginRight: 8 }} />User &amp; Role Management
           </div>
@@ -166,13 +166,11 @@ export default function UserManagementPage() {
       </div>
 
       {/* Stats strip */}
-      <div style={{
-        display: 'flex', gap: 12, margin: '0 16px 14px',
-      }}>
+      <div style={{ display: 'flex', gap: 12, margin: '0 16px 14px' }}>
         {[
-          { label: 'Total Users', val: users.length, color: '#073354' },
-          { label: 'Super Users (SU)', val: suCount, color: '#0a4a78' },
-          { label: 'Institute Users (IU)', val: iuCount, color: '#2e7d32' },
+          { label: 'Total Users',         val: users.length, color: '#073354' },
+          { label: 'Super Users (SU)',     val: suCount,      color: '#0a4a78' },
+          { label: 'Institute Users (IU)', val: iuCount,      color: '#2e7d32' },
         ].map(({ label, val, color }) => (
           <div key={label} style={{
             flex: 1, background: '#fff', borderRadius: 8, padding: '12px 16px',
@@ -185,19 +183,82 @@ export default function UserManagementPage() {
         ))}
       </div>
 
-      {/* Table */}
+      {/* Table card */}
       <div style={{ margin: '0 16px', background: '#fff', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        <div style={{ padding: '10px 16px', background: 'linear-gradient(90deg,#eef3f8,#dce8f4)', borderBottom: '2px solid #b8cfe8', fontWeight: 'bold', color: '#073354', fontSize: 13 }}>
-          All Users
+
+        {/* Filter bar */}
+        <div style={{
+          padding: '10px 16px', background: 'linear-gradient(90deg,#eef3f8,#dce8f4)',
+          borderBottom: '2px solid #b8cfe8',
+          display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
+        }}>
+          <span style={{ fontWeight: 'bold', color: '#073354', fontSize: 13, marginRight: 4 }}>
+            Filters:
+          </span>
+
+          {/* Search by User ID */}
+          <Input
+            prefix={<SearchOutlined style={{ color: '#aaa' }} />}
+            placeholder="Search User ID..."
+            value={searchId}
+            onChange={e => setSearchId(e.target.value)}
+            allowClear
+            style={{ width: 200, fontSize: 12 }}
+          />
+
+          {/* Filter by Role */}
+          <Select
+            placeholder="All Roles"
+            value={filterRole || undefined}
+            onChange={v => setFilterRole(v || '')}
+            allowClear
+            style={{ width: 150, fontSize: 12 }}
+          >
+            <Option value="SU"><Tag color="#073354">Super User</Tag></Option>
+            <Option value="IU"><Tag color="green">IU User</Tag></Option>
+          </Select>
+
+          {/* Filter by Institute */}
+          <Select
+            showSearch
+            placeholder="All Institutes"
+            value={filterInstId || undefined}
+            onChange={v => setFilterInstId(v || '')}
+            allowClear
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              option?.children?.toString().toLowerCase().includes(input.toLowerCase())
+            }
+            style={{ width: 220, fontSize: 12 }}
+          >
+            {institutes.map(inst => (
+              <Option key={inst.instId} value={inst.instId}>
+                {inst.instName}
+              </Option>
+            ))}
+          </Select>
+
+          {hasFilter && (
+            <Button size="small" icon={<ClearOutlined />} onClick={clearFilters}
+              style={{ color: '#990000', borderColor: '#990000' }}>
+              Clear
+            </Button>
+          )}
+
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#666' }}>
+            Showing <b>{filtered.length}</b> of <b>{users.length}</b> users
+          </span>
         </div>
+
         <Table
-          dataSource={users}
+          dataSource={filtered}
           columns={columns}
           rowKey="userId"
           loading={loading}
           size="small"
           pagination={{ pageSize: 20, showSizeChanger: false }}
           style={{ fontSize: 13 }}
+          locale={{ emptyText: 'No users match the current filters.' }}
         />
       </div>
 
@@ -221,12 +282,8 @@ export default function UserManagementPage() {
           <Form.Item name="userId" label="User ID"
             rules={[{ required: true, message: 'User ID is required' }]}
           >
-            <Input
-              prefix={<UserOutlined />}
-              disabled={!!editUser}
-              placeholder="Enter user ID (e.g. admin, TCEC-Bengaluru)"
-              style={{ fontFamily: 'monospace' }}
-            />
+            <Input prefix={<UserOutlined />} disabled={!!editUser}
+              placeholder="e.g. admin, TCEC-Bengaluru" style={{ fontFamily: 'monospace' }} />
           </Form.Item>
 
           <Form.Item name="role" label="Role" initialValue="IU"
@@ -246,8 +303,7 @@ export default function UserManagementPage() {
             <Form.Item name="instId" label="Assign Institute"
               rules={[{ required: true, message: 'Select an institute for IU role' }]}
             >
-              <Select
-                showSearch placeholder="Search and select institute"
+              <Select showSearch placeholder="Search and select institute"
                 optionFilterProp="children"
                 filterOption={(input, option) =>
                   option?.children?.toString().toLowerCase().includes(input.toLowerCase())
@@ -262,15 +318,12 @@ export default function UserManagementPage() {
             </Form.Item>
           )}
 
-          <Form.Item
-            name="password"
+          <Form.Item name="password"
             label={editUser ? 'New Password (leave blank to keep current)' : 'Password'}
             rules={editUser ? [] : [{ required: true, message: 'Password is required' }]}
           >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder={editUser ? 'Leave blank to keep current password' : 'Enter password'}
-            />
+            <Input.Password prefix={<LockOutlined />}
+              placeholder={editUser ? 'Leave blank to keep current password' : 'Enter password'} />
           </Form.Item>
         </Form>
       </Modal>
