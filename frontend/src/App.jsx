@@ -32,6 +32,10 @@ import ModifyDataPage from './pages/ModifyData/ModifyDataPage';
 import ContactUsPage from './pages/ContactUs/ContactUsPage';
 import TargetPage from './pages/Target/TargetPage';
 import UserManagementPage from './pages/UserManagement/UserManagementPage';
+import AchievementPage from './pages/Achievement/AchievementPage';
+import AchievementReportPage from './pages/Reports/AchievementReportPage';
+import AchievementReport from './pages/Reports/AchievementReport';
+import AchievementStatusPage from './pages/Reports/AchievementStatusPage';
 
 const antTheme = {
   token: {
@@ -114,12 +118,17 @@ export default function App() {
               <Route path="reports/analysis/report" element={<SuRoute><AnalysisReport /></SuRoute>} />
               <Route path="reports/rfd" element={<SuRoute><RfdReportPage /></SuRoute>} />
               <Route path="reports/rfd/report" element={<SuRoute><RfdReport /></SuRoute>} />
+              <Route path="reports/achievement" element={<SuRoute><AchievementReportPage /></SuRoute>} />
+              <Route path="reports/achievement/report" element={<SuRoute><AchievementReport /></SuRoute>} />
+              <Route path="reports/achievement/status" element={<SuRoute><AchievementStatusPage /></SuRoute>} />
               <Route path="modify-data" element={<SuRoute><ModifyDataPage /></SuRoute>} />
               <Route path="users" element={<SuRoute><UserManagementPage /></SuRoute>} />
               {/* Annual Target — SU only */}
               <Route path="target" element={<SuRoute><TargetPage /></SuRoute>} />
               {/* Contact Us */}
               <Route path="contact" element={<ContactUsPage />} />
+              {/* Significant Achievement — both roles */}
+              <Route path="achievement" element={<AchievementPage />} />
               {/* Entry forms — both roles */}
               <Route path="financial" element={<FinancialPage />} />
               <Route path="physical" element={<PhysicalPage />} />

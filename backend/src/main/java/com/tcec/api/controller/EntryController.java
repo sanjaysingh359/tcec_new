@@ -465,6 +465,10 @@ public class EntryController {
         Map<String, Object> targets = new LinkedHashMap<>();
         tgt.ifPresent(t -> targets.put("beBudget", t.getBeBudget() != null ? t.getBeBudget() : 0));
 
+        // hasData = true only if budget financial data was submitted (not just achievement text)
+        boolean hasFinancialData = cur.isPresent()
+                && (cur.get().getCryFwdAmt() != null || cur.get().getGiaAmt() != null);
+
         Map<String, Object> existing = null;
         if (cur.isPresent()) {
             TblBudget b = cur.get();
@@ -488,7 +492,7 @@ public class EntryController {
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("hasData", cur.isPresent());
+        result.put("hasData", hasFinancialData);
         result.put("prevCum", prevCum);
         result.put("existing", existing);
         result.put("targets", targets);
@@ -507,7 +511,9 @@ public class EntryController {
         String year   = str(body, "year");
 
         Optional<TblBudget> existingOpt = budRepo.findByInstIdAndMonthsAndYears(instId, month, year);
-        if (existingOpt.isPresent() && !"SU".equals(role))
+        boolean hasFinancialData = existingOpt.isPresent()
+                && (existingOpt.get().getCryFwdAmt() != null || existingOpt.get().getGiaAmt() != null);
+        if (hasFinancialData && !"SU".equals(role))
             return ResponseEntity.badRequest().body(ApiResponse.error("Data already submitted for this month"));
 
         int mo = Integer.parseInt(month);
@@ -535,8 +541,12 @@ public class EntryController {
         b.setStfStPosA(intVal(body.get("posA"))); b.setStfStPosB(intVal(body.get("posB")));
         b.setStfStPosC(intVal(body.get("posC"))); b.setStfStPosD(intVal(body.get("posD")));
         b.setDetailsVisit((String) body.get("detailVisit"));
-        b.setSignificant((String) body.get("sigAchiev"));
         b.setShortsFall((String) body.get("shortFalls"));
+        // Only overwrite significant if budget form sends non-empty value (achievement page owns this field)
+        String sigAchiev = (String) body.get("sigAchiev");
+        if (sigAchiev != null && !sigAchiev.isBlank()) {
+            b.setSignificant(sigAchiev);
+        }
 
         BigDecimal cfCum  = sumBD(prev, TblBudget::getCryFwdUtilDm).add(cfDtm);
         BigDecimal giaCum = sumBD(prev, TblBudget::getGiaUtilDm).add(giaDtm);
@@ -664,6 +674,60 @@ public class EntryController {
 
         plaRepo.save(pl);
         return ResponseEntity.ok(ApiResponse.ok("Saved successfully"));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SIGNIFICANT ACHIEVEMENT (stored in tbl_budget.significant)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @GetMapping("/achievement/load")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> loadAchievement(
+            @RequestParam String instId, @RequestParam String month, @RequestParam String year,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        if (!isAuth(authHeader)) return unauthorized();
+
+        Optional<TblBudget> cur = budRepo.findByInstIdAndMonthsAndYears(instId, month, year);
+        boolean hasData = cur.isPresent()
+                && cur.get().getSignificant() != null
+                && !cur.get().getSignificant().isBlank();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("hasData", hasData);
+        result.put("text", hasData ? cur.get().getSignificant() : "");
+        return ResponseEntity.ok(ApiResponse.ok("OK", result));
+    }
+
+    @PostMapping("/achievement/save")
+    public ResponseEntity<ApiResponse<String>> saveAchievement(
+            @RequestBody Map<String, Object> body,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        if (!isAuth(authHeader)) return unauthorized();
+        String role   = getRole(authHeader);
+        String instId = str(body, "instId");
+        String month  = str(body, "month");
+        String year   = str(body, "year");
+        String text   = str(body, "text");
+
+        Optional<TblBudget> existingOpt = budRepo.findByInstIdAndMonthsAndYears(instId, month, year);
+        boolean alreadySubmitted = existingOpt.isPresent()
+                && existingOpt.get().getSignificant() != null
+                && !existingOpt.get().getSignificant().isBlank();
+        if (alreadySubmitted && !"SU".equals(role))
+            return ResponseEntity.badRequest().body(ApiResponse.error("Achievement already submitted for this month"));
+
+        TblBudget b = existingOpt.orElseGet(() -> {
+            TblBudget nb = new TblBudget();
+            nb.setInstId(instId);
+            nb.setMonths(month);
+            nb.setYears(year);
+            nb.setMonthsYear(month + "-" + year);
+            return nb;
+        });
+        b.setSignificant(text);
+        budRepo.save(b);
+        return ResponseEntity.ok(ApiResponse.ok("Achievement saved successfully"));
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

@@ -198,29 +198,16 @@ export default function TargetPage() {
                 </td>
               </tr>
 
-              {/* ── E. Training Target ── */}
+              {/* ── E. Number of Unit Benefited ── */}
               <tr>
                 <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>E.</td>
                 <td className="tgt-cell tgt-section-hdr" colSpan={4}>
-                  <b style={{ color: '#811700' }}>Training &amp; Assistance Targets</b>
+                  <b style={{ color: '#811700' }}>Number of Unit Benefited</b>
                 </td>
               </tr>
               <tr>
                 <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(i)</td>
-                <td className="tgt-cell tgt-label" style={{ background: '#F2F2F2' }}>Annual Training Target (No. of Trainees)</td>
-                <td className="tgt-cell tgt-center" colSpan={2}>
-                  <input
-                    className="tgt-input tgt-editable"
-                    type="number" min="0" step="1"
-                    value={form.taTarget} onChange={set('taTarget')} placeholder="0"
-                    style={{ width: 160 }}
-                  />
-                </td>
-              </tr>
-              <tr>
-                <td className="tgt-cell" style={{ background: '#eaf0f8' }}></td>
-                <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(ii)</td>
-                <td className="tgt-cell tgt-label" style={{ background: '#FBF8EF' }}>Annual NJU Target (No. of Units Assisted)</td>
+                <td className="tgt-cell tgt-label" style={{ background: '#F2F2F2' }}>Annual NJU Target (No. of Units Assisted)</td>
                 <td className="tgt-cell tgt-center" colSpan={2}>
                   <input
                     className="tgt-input tgt-editable"
@@ -231,9 +218,29 @@ export default function TargetPage() {
                 </td>
               </tr>
 
-              {/* ── F. Budget Estimate ── */}
+              {/* ── F. Training Activities ── */}
               <tr>
                 <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>F.</td>
+                <td className="tgt-cell tgt-section-hdr" colSpan={4}>
+                  <b style={{ color: '#811700' }}>Training Activities</b>
+                </td>
+              </tr>
+              <tr>
+                <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(i)</td>
+                <td className="tgt-cell tgt-label" style={{ background: '#FBF8EF' }}>Annual Training Target (No. of Trainees)</td>
+                <td className="tgt-cell tgt-center" colSpan={2}>
+                  <input
+                    className="tgt-input tgt-editable"
+                    type="number" min="0" step="1"
+                    value={form.taTarget} onChange={set('taTarget')} placeholder="0"
+                    style={{ width: 160 }}
+                  />
+                </td>
+              </tr>
+
+              {/* ── G. Budget Estimate ── */}
+              <tr>
+                <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>G.</td>
                 <td className="tgt-cell tgt-section-hdr" colSpan={4}>
                   <b style={{ color: '#811700' }}>Budget Estimate</b>
                 </td>
@@ -281,8 +288,9 @@ export default function TargetPage() {
       <div style={{ margin: '10px 16px 0', fontSize: 11, color: '#666', display: 'flex', gap: 20, flexWrap: 'wrap' }}>
         <span><b style={{ color: '#073354' }}>C</b> : Auto Calculated</span>
         <span><b style={{ color: '#073354' }}>A–D</b> : Financial Targets (₹ Lakhs)</span>
-        <span><b style={{ color: '#073354' }}>E</b> : Physical Targets (Numbers)</span>
-        <span><b style={{ color: '#073354' }}>F</b> : Budget Estimate (₹ Lakhs)</span>
+        <span><b style={{ color: '#073354' }}>E</b> : Number of Unit Benefited (Numbers)</span>
+        <span><b style={{ color: '#073354' }}>F</b> : Training Activities (Numbers)</span>
+        <span><b style={{ color: '#073354' }}>G</b> : Budget Estimate (₹ Lakhs)</span>
       </div>
 
       {/* ── Action bar ── */}

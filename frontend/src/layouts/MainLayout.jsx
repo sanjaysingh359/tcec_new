@@ -7,7 +7,7 @@ import {
   FileTextOutlined, EditOutlined, LockOutlined, LogoutOutlined,
   LineChartOutlined, FundOutlined, PhoneOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, DownOutlined,
-  UsergroupAddOutlined,
+  UsergroupAddOutlined, TrophyOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,6 +25,7 @@ function buildNav(role, section) {
     { key: '/app/physical',        icon: <BarChartOutlined />,   label: 'Physical Section' },
     { key: '/app/budget',          icon: <FundOutlined />,       label: 'Budget Section' },
     { key: '/app/placement',       icon: <UserSwitchOutlined />, label: 'Placement Section' },
+    { key: '/app/achievement',     icon: <TrophyOutlined />,     label: 'Significant Achievement' },
     { divider: 'Account' },
     isSU && { key: '/app/users',   icon: <UsergroupAddOutlined />, label: 'User Management' },
     { key: '/app/change-password', icon: <LockOutlined />,       label: 'Change Password' },
@@ -48,6 +49,8 @@ function buildNav(role, section) {
     { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: 'MPR-AB Report' },
     { key: '/app/reports/analysis',               icon: <PieChartOutlined />,  label: 'Analysis Report' },
     { key: '/app/reports/rfd',                    icon: <BarChartOutlined />,  label: 'Report for RFD' },
+    { key: '/app/reports/achievement',            icon: <TrophyOutlined />,    label: 'Significant Achievement Report' },
+    { key: '/app/reports/achievement/status',     icon: <TrophyOutlined />,    label: 'Achievement Status' },
     { key: '/app/modify-data',                    icon: <EditOutlined />,      label: 'Update / Delete' },
     { divider: 'Account' },
     { key: '/app/users',                          icon: <UsergroupAddOutlined />, label: 'User Management' },

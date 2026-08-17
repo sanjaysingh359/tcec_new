@@ -1498,6 +1498,24 @@ body {
   padding: 3px 2px;
   border: 1px solid #ccc;
 }
+.rpt-partial-a {
+  background: #b36a00;
+  color: #fff;
+  font-weight: bold;
+  text-align: center;
+  font-size: 11px;
+  padding: 3px 2px;
+  border: 1px solid #ccc;
+}
+.rpt-partial-b {
+  background: #1a4a8a;
+  color: #fff;
+  font-weight: bold;
+  text-align: center;
+  font-size: 11px;
+  padding: 3px 2px;
+  border: 1px solid #ccc;
+}
 
 /* ── Modify Data page ── */
 .md-panel {

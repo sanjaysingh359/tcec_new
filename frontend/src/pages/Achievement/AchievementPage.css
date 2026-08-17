@@ -1,0 +1,117 @@
+.ach-page {
+  padding: 0 0 32px;
+  background: #f4f6f9;
+  min-height: 100%;
+}
+
+.ach-titlebar {
+  background: linear-gradient(135deg, #073354 0%, #0a4a78 100%);
+  color: #fff;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  margin-bottom: 14px;
+}
+
+.ach-titlebar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ach-page-label {
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.ach-institute {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.ach-titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ach-meta-chip {
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.ach-card {
+  background: #fff;
+  border: 1px solid #c8d8ec;
+  border-radius: 6px;
+  margin: 0 16px 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+
+.ach-card-title {
+  background: linear-gradient(90deg, #073354 0%, #0a4a78 100%);
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  padding: 8px 16px;
+}
+
+.ach-card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ach-label {
+  font-size: 12px;
+  color: #555;
+}
+
+.ach-textarea {
+  width: 100%;
+  border: 1px solid #b8cfe8;
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 13px;
+  font-family: Arial, Helvetica, sans-serif;
+  resize: vertical;
+  line-height: 1.6;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.ach-textarea:focus {
+  border-color: #073354;
+}
+
+.ach-textarea:disabled {
+  background: #f5f5f5;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.ach-char-count {
+  font-size: 11px;
+  color: #999;
+  text-align: right;
+}
+
+.ach-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 16px;
+  margin-top: 4px;
+}

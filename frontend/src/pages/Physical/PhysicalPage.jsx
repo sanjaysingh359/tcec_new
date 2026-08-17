@@ -132,9 +132,7 @@ export default function PhysicalPage() {
   };
 
   const [dtm, setDtm] = useState(INIT_DTM);
-  const [ltcCourses, setLtcCourses] = useState(
-    Array.from({ length: 25 }, () => ({ name: '', dtm: '', cumMon: '' }))
-  );
+  const [ltcCourses, setLtcCourses] = useState([{ name: '', dtm: '', cumMon: '' }]);
 
   const set = (key) => (e) => setDtm((prev) => ({ ...prev, [key]: e.target.value }));
 
@@ -145,6 +143,9 @@ export default function PhysicalPage() {
       return next;
     });
   };
+
+  const addLtcRow = () => setLtcCourses(prev => [...prev, { name: '', dtm: '', cumMon: '' }]);
+  const removeLtcRow = (i) => setLtcCourses(prev => prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i));
 
   useEffect(() => {
     if (!selection?.instId || !selection?.month || !selection?.year) return;
@@ -267,7 +268,7 @@ export default function PhysicalPage() {
   /* ── Handlers ── */
   const handleReset = () => {
     setDtm(INIT_DTM);
-    setLtcCourses(Array.from({ length: 25 }, () => ({ name: '', dtm: '', cumMon: '' })));
+    setLtcCourses([{ name: '', dtm: '', cumMon: '' }]);
   };
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
@@ -424,11 +425,12 @@ export default function PhysicalPage() {
                       <thead>
                         <tr>
                           <th className="phy-ltc-th" style={{ width: 36 }}>S.No</th>
-                          <th className="phy-ltc-th" style={{ width: 260 }}>Name of the program</th>
+                          <th className="phy-ltc-th" style={{ width: 240 }}>Name of the program</th>
                           <th className="phy-ltc-th" style={{ width: 70 }}>Target</th>
                           <th className="phy-ltc-th" style={{ width: 90 }}>During the Month</th>
                           <th className="phy-ltc-th" style={{ width: 90 }}>Cumulative upto the month</th>
                           <th className="phy-ltc-th" style={{ width: 90 }}>Cumulative %age</th>
+                          {!blocked && <th className="phy-ltc-th" style={{ width: 36 }}></th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -440,6 +442,7 @@ export default function PhysicalPage() {
                                 className="phy-ltc-name-input phy-editable"
                                 value={row.name}
                                 onChange={setLtc(i, 'name')}
+                                disabled={blocked}
                                 style={{ width: '98%' }}
                               />
                             </td>
@@ -451,6 +454,7 @@ export default function PhysicalPage() {
                                 className="phy-input phy-editable"
                                 value={row.dtm}
                                 onChange={setLtc(i, 'dtm')}
+                                disabled={blocked}
                                 style={{ width: 72 }}
                               />
                             </td>
@@ -459,12 +463,28 @@ export default function PhysicalPage() {
                                 className="phy-input phy-editable"
                                 value={row.cumMon}
                                 onChange={setLtc(i, 'cumMon')}
+                                disabled={blocked}
                                 style={{ width: 72 }}
                               />
                             </td>
                             <td className="phy-ltc-cell" style={{ textAlign: 'center', background: '#f1f4f8' }}>
                               <input className="phy-input phy-ro" value="-" readOnly style={{ width: 60 }} />
                             </td>
+                            {!blocked && (
+                              <td className="phy-ltc-cell" style={{ textAlign: 'center' }}>
+                                <button
+                                  onClick={() => removeLtcRow(i)}
+                                  disabled={ltcCourses.length <= 1}
+                                  title="Remove row"
+                                  style={{
+                                    background: ltcCourses.length <= 1 ? '#ccc' : '#aa0000',
+                                    color: '#fff', border: 'none', borderRadius: 3,
+                                    width: 22, height: 22, cursor: ltcCourses.length <= 1 ? 'default' : 'pointer',
+                                    fontSize: 14, lineHeight: '20px', padding: 0,
+                                  }}
+                                >×</button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                         {/* Total row */}
@@ -482,7 +502,22 @@ export default function PhysicalPage() {
                           <td className="phy-ltc-cell" style={{ textAlign: 'center', background: '#f1f4f8' }}>
                             <input className="phy-input phy-ro" value="-" readOnly style={{ width: 60 }} />
                           </td>
+                          {!blocked && <td className="phy-ltc-cell" />}
                         </tr>
+                        {/* Add row button */}
+                        {!blocked && (
+                          <tr>
+                            <td colSpan={7} style={{ padding: '6px 8px' }}>
+                              <button
+                                onClick={addLtcRow}
+                                style={{
+                                  background: '#073354', color: '#fff', border: 'none', borderRadius: 4,
+                                  padding: '4px 14px', cursor: 'pointer', fontSize: 12,
+                                }}
+                              >+ Add Course</button>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>

@@ -515,12 +515,20 @@ public class ReportController {
 
         List<UserIdMapping> mappings = mappingRepo.findRealInstituteUsers();
 
-        // Collect set of months that exist in tbl_financial per instId
-        Map<String, Set<String>> submittedByInst = new HashMap<>();
+        // Section A: Financial submission months per institute
+        Map<String, Set<String>> finByInst = new HashMap<>();
         finRepo.findByYears(year).forEach(f -> {
             String instId = f.getInstId() == null ? "" : f.getInstId().trim();
             String mon    = f.getMonths()  == null ? "" : f.getMonths().trim();
-            submittedByInst.computeIfAbsent(instId, k -> new HashSet<>()).add(mon);
+            finByInst.computeIfAbsent(instId, k -> new HashSet<>()).add(mon);
+        });
+
+        // Section B: Physical submission months per institute
+        Map<String, Set<String>> phyByInst = new HashMap<>();
+        phyRepo.findByYears(year).forEach(p -> {
+            String instId = p.getInstId() == null ? "" : p.getInstId().trim();
+            String mon    = p.getMonths()  == null ? "" : p.getMonths().trim();
+            phyByInst.computeIfAbsent(instId, k -> new HashSet<>()).add(mon);
         });
 
         List<MprReportRow> result = new ArrayList<>();
@@ -534,26 +542,129 @@ public class ReportController {
             String instName = instRepo.findByInstId(instId)
                     .map(TlInstitute::getInstName).orElse(instId);
 
-            Set<String> submitted = submittedByInst.getOrDefault(instId, Set.of());
             result.add(new MprReportRow(
                     instName,
-                    submitted.contains("1")  ? "OK" : "NOT",
-                    submitted.contains("2")  ? "OK" : "NOT",
-                    submitted.contains("3")  ? "OK" : "NOT",
-                    submitted.contains("4")  ? "OK" : "NOT",
-                    submitted.contains("5")  ? "OK" : "NOT",
-                    submitted.contains("6")  ? "OK" : "NOT",
-                    submitted.contains("7")  ? "OK" : "NOT",
-                    submitted.contains("8")  ? "OK" : "NOT",
-                    submitted.contains("9")  ? "OK" : "NOT",
-                    submitted.contains("10") ? "OK" : "NOT",
-                    submitted.contains("11") ? "OK" : "NOT",
-                    submitted.contains("12") ? "OK" : "NOT"
+                    mprCell(instId, "1",  finByInst, phyByInst),
+                    mprCell(instId, "2",  finByInst, phyByInst),
+                    mprCell(instId, "3",  finByInst, phyByInst),
+                    mprCell(instId, "4",  finByInst, phyByInst),
+                    mprCell(instId, "5",  finByInst, phyByInst),
+                    mprCell(instId, "6",  finByInst, phyByInst),
+                    mprCell(instId, "7",  finByInst, phyByInst),
+                    mprCell(instId, "8",  finByInst, phyByInst),
+                    mprCell(instId, "9",  finByInst, phyByInst),
+                    mprCell(instId, "10", finByInst, phyByInst),
+                    mprCell(instId, "11", finByInst, phyByInst),
+                    mprCell(instId, "12", finByInst, phyByInst)
             ));
         }
 
         result.sort(Comparator.comparing(MprReportRow::userId, String.CASE_INSENSITIVE_ORDER));
         return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GET /api/reports/achievement?month=X&year=Y
+    // Per-institute significant achievement text for selected month
+    // ─────────────────────────────────────────────────────────────────────────
+    @GetMapping("/achievement")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> achievement(
+            @RequestParam String month, @RequestParam String year,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        String token = AuthService.extractToken(authHeader);
+        if (token == null || authService.getUserByToken(token).isEmpty())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Authentication required"));
+
+        List<UserIdMapping> mappings = mappingRepo.findRealInstituteUsers();
+
+        Map<String, TblBudget> budByInst = budRepo.findByYears(year).stream()
+                .filter(b -> month.equals(b.getMonths() == null ? "" : b.getMonths().trim()))
+                .collect(Collectors.toMap(
+                        b -> b.getInstId() == null ? "" : b.getInstId().trim(),
+                        b -> b, (a, b) -> a));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (UserIdMapping m : mappings) {
+            String instId = m.getInstId();
+            if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
+            seen.add(instId);
+
+            String instName = instRepo.findByInstId(instId)
+                    .map(TlInstitute::getInstName).orElse(instId);
+
+            TblBudget b = budByInst.get(instId);
+            String text = (b != null && b.getSignificant() != null) ? b.getSignificant().trim() : "";
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("instName", instName);
+            row.put("text", text);
+            row.put("noData", text.isBlank());
+            result.add(row);
+        }
+
+        result.sort(Comparator.comparing(r -> (String) r.get("instName"), String.CASE_INSENSITIVE_ORDER));
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GET /api/reports/achievement/status?year=Y
+    // Per-institute × per-month grid: "Y" if significant text exists, else "N"
+    // ─────────────────────────────────────────────────────────────────────────
+    @GetMapping("/achievement/status")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> achievementStatus(
+            @RequestParam String year,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        String token = AuthService.extractToken(authHeader);
+        if (token == null || authService.getUserByToken(token).isEmpty())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Authentication required"));
+
+        List<UserIdMapping> mappings = mappingRepo.findRealInstituteUsers();
+
+        Map<String, Set<String>> achByInst = new HashMap<>();
+        budRepo.findByYears(year).forEach(b -> {
+            if (b.getSignificant() != null && !b.getSignificant().isBlank()) {
+                String instId = b.getInstId() == null ? "" : b.getInstId().trim();
+                String mon    = b.getMonths()  == null ? "" : b.getMonths().trim();
+                achByInst.computeIfAbsent(instId, k -> new HashSet<>()).add(mon);
+            }
+        });
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (UserIdMapping m : mappings) {
+            String instId = m.getInstId();
+            if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
+            seen.add(instId);
+
+            String instName = instRepo.findByInstId(instId)
+                    .map(TlInstitute::getInstName).orElse(instId);
+
+            Set<String> submitted = achByInst.getOrDefault(instId, Set.of());
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("userId", instName);
+            for (int mn = 1; mn <= 12; mn++) {
+                row.put(String.valueOf(mn), submitted.contains(String.valueOf(mn)) ? "Y" : "N");
+            }
+            result.add(row);
+        }
+
+        result.sort(Comparator.comparing(r -> (String) r.get("userId"), String.CASE_INSENSITIVE_ORDER));
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    private String mprCell(String instId, String month,
+            Map<String, Set<String>> fin, Map<String, Set<String>> phy) {
+        boolean hasF = fin.getOrDefault(instId, Set.of()).contains(month);
+        boolean hasP = phy.getOrDefault(instId, Set.of()).contains(month);
+        if (hasF && hasP) return "OK";
+        if (hasF)         return "A";
+        if (hasP)         return "B";
+        return "NOT";
     }
 
     // ─────────────────────────────────────────────────────────────────────────

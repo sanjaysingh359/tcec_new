@@ -71,11 +71,11 @@ export default function MprReport() {
                 <tr key={idx} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{idx + 1}</td>
                   <td className="rpt-td">{r.userId}</td>
-                  {MONTH_KEYS.map((mk, i) => (
-                    <td key={mk} className={r[mk] === 'OK' ? 'rpt-ok' : 'rpt-not'}>
-                      {r[mk]}
-                    </td>
-                  ))}
+                  {MONTH_KEYS.map((mk) => {
+                    const v = r[mk];
+                    const cls = v === 'OK' ? 'rpt-ok' : v === 'A' ? 'rpt-partial-a' : v === 'B' ? 'rpt-partial-b' : 'rpt-not';
+                    return <td key={mk} className={cls}>{v}</td>;
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -83,11 +83,15 @@ export default function MprReport() {
         </div>
       )}
 
-      <div className="rpt-nodata-legend" style={{ marginTop: 8 }}>
+      <div className="rpt-nodata-legend" style={{ marginTop: 8, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <span className="rpt-ok" style={{ padding:'2px 8px', borderRadius:2 }}>OK</span>
-        &nbsp;= Data submitted &nbsp;&nbsp;
+        &nbsp;= Both A+B submitted &nbsp;
+        <span className="rpt-partial-a" style={{ padding:'2px 8px', borderRadius:2 }}>A</span>
+        &nbsp;= Only Financial (A) &nbsp;
+        <span className="rpt-partial-b" style={{ padding:'2px 8px', borderRadius:2 }}>B</span>
+        &nbsp;= Only Physical (B) &nbsp;
         <span className="rpt-not" style={{ padding:'2px 8px', borderRadius:2 }}>NOT</span>
-        &nbsp;= Data not submitted
+        &nbsp;= Neither submitted
       </div>
     </div>
   );
