@@ -92,6 +92,8 @@ public class EntryController {
             existing.put("accrualTesting",  bd(e.getTestCalServicesAccDtm()));
             existing.put("revExpCash",      bd(e.getRevExpCashDtm()));
             existing.put("revExpAccrual",   bd(e.getRevExpAccrualDtm()));
+            existing.put("perRecCashAch",    bd(e.getPerRecCashDtm()));
+            existing.put("perRecAccrualAch", bd(e.getPerRecAccrualDtm()));
         }
 
         Map<String, Object> targets = buildFinancialTargets(instId, year);
@@ -145,6 +147,8 @@ public class EntryController {
         BigDecimal accrTestDtm    = dbd(body, "accrualTesting");
         BigDecimal revExpCashDtm  = dbd(body, "revExpCash");
         BigDecimal revExpAccrDtm  = dbd(body, "revExpAccrual");
+        BigDecimal perRecCashAch  = dbd(body, "perRecCashAch");
+        BigDecimal perRecAccrAch  = dbd(body, "perRecAccrualAch");
 
         e.setRevEarCashTrngDtm(cashTrngDtm);
         e.setRevEarCashPrdtnToolingDtm(cashToolDtm);
@@ -160,6 +164,8 @@ public class EntryController {
         e.setTestCalServicesAccDtm(accrTestDtm);
         e.setRevExpCashDtm(revExpCashDtm);
         e.setRevExpAccrualDtm(revExpAccrDtm);
+        e.setPerRecCashDtm(perRecCashAch);
+        e.setPerRecAccrualDtm(perRecAccrAch);
 
         // Cumulative = sum of prev DTMs + current DTM
         e.setRevEarCashTrngCum(      sumBD(prev, TblFinancial::getRevEarCashTrngDtm).add(cashTrngDtm));
@@ -202,10 +208,14 @@ public class EntryController {
                 .findFirst();
 
         Map<String, Object> prevCum = new LinkedHashMap<>();
-        prevCum.put("msmeNosNju",    sumInt(prev, TblPhysical::getNjuMsmeNoDtm));
-        prevCum.put("msmeValuesNju", sumBD(prev, TblPhysical::getNjuMsmeValueDtm));
-        prevCum.put("otherNosNju",   sumInt(prev, TblPhysical::getNjuOtherNoDtm));
-        prevCum.put("otherValuesNju",sumBD(prev, TblPhysical::getNjuOtherValueDtm));
+        prevCum.put("twMsmeNos",     sumInt(prev, TblPhysical::getMsmeNosToolingDtm));
+        prevCum.put("twMsmeValues",  sumBD(prev, TblPhysical::getMsmeValuesToolingDtm));
+        prevCum.put("twOtherNos",    sumInt(prev, TblPhysical::getOtherNosToolingDtm));
+        prevCum.put("twOtherValues", sumBD(prev, TblPhysical::getOtherValuesToolingDtm));
+        prevCum.put("ojwMsmeNos",    sumInt(prev, TblPhysical::getMsmeNosOtherjobDtm));
+        prevCum.put("ojwMsmeValues", sumBD(prev, TblPhysical::getMsmeValuesOtherjobDtm));
+        prevCum.put("ojwOtherNos",   sumInt(prev, TblPhysical::getOtherNosOtherjobDtm));
+        prevCum.put("ojwOtherValues",sumBD(prev, TblPhysical::getOtherValuesOtherjobDtm));
         prevCum.put("msmeCons",      sumInt(prev, TblPhysical::getConsltMsmeDtm));
         prevCum.put("otherCons",     sumBD(prev, TblPhysical::getConsltOtherDtm));
         prevCum.put("anyOther",      sumBD(prev, TblPhysical::getAnyOtherDtm));
@@ -253,10 +263,14 @@ public class EntryController {
         if (cur.isPresent()) {
             TblPhysical p = cur.get();
             existing = new LinkedHashMap<>();
-            existing.put("msmeNosNju",    intVal(p.getNjuMsmeNoDtm()));
-            existing.put("msmeValuesNju", bd(p.getNjuMsmeValueDtm()));
-            existing.put("otherNosNju",   intVal(p.getNjuOtherNoDtm()));
-            existing.put("otherValuesNju",bd(p.getNjuOtherValueDtm()));
+            existing.put("twMsmeNos",     intVal(p.getMsmeNosToolingDtm()));
+            existing.put("twMsmeValues",  bd(p.getMsmeValuesToolingDtm()));
+            existing.put("twOtherNos",    intVal(p.getOtherNosToolingDtm()));
+            existing.put("twOtherValues", bd(p.getOtherValuesToolingDtm()));
+            existing.put("ojwMsmeNos",    intVal(p.getMsmeNosOtherjobDtm()));
+            existing.put("ojwMsmeValues", bd(p.getMsmeValuesOtherjobDtm()));
+            existing.put("ojwOtherNos",   intVal(p.getOtherNosOtherjobDtm()));
+            existing.put("ojwOtherValues",bd(p.getOtherValuesOtherjobDtm()));
             existing.put("msmeCons",      intVal(p.getConsltMsmeDtm()));
             existing.put("otherCons",     bd(p.getConsltOtherDtm()));
             existing.put("anyOther",      bd(p.getAnyOtherDtm()));
@@ -327,8 +341,10 @@ public class EntryController {
         p.setMonthsYear(month + "-" + year);
 
         // DTM
-        int njuMsmeNo   = intVal(body.get("msmeNosNju"));
-        int njuOtherNo  = intVal(body.get("otherNosNju"));
+        int twMsmeNo    = intVal(body.get("twMsmeNos"));
+        int twOtherNo   = intVal(body.get("twOtherNos"));
+        int ojwMsmeNo   = intVal(body.get("ojwMsmeNos"));
+        int ojwOtherNo  = intVal(body.get("ojwOtherNos"));
         int consltMsme  = intVal(body.get("msmeCons"));
         int anyOther    = 0; // stored as BigDecimal — set below
         int stcNcc      = intVal(body.get("stmNocComp"));
@@ -364,14 +380,18 @@ public class EntryController {
         int ph          = intVal(body.get("ph"));
         int ltcTotal    = intVal(body.get("ltcTotal"));
 
-        BigDecimal msmeValNju  = dbd(body, "msmeValuesNju");
-        BigDecimal otherValNju = dbd(body, "otherValuesNju");
+        BigDecimal twMsmeVal   = dbd(body, "twMsmeValues");
+        BigDecimal twOtherVal  = dbd(body, "twOtherValues");
+        BigDecimal ojwMsmeVal  = dbd(body, "ojwMsmeValues");
+        BigDecimal ojwOtherVal = dbd(body, "ojwOtherValues");
         BigDecimal otherConsBD = dbd(body, "otherCons");
         BigDecimal anyOtherBD  = dbd(body, "anyOther");
 
         // Set DTM
-        p.setNjuMsmeNoDtm(njuMsmeNo);   p.setNjuMsmeValueDtm(msmeValNju);
-        p.setNjuOtherNoDtm(njuOtherNo); p.setNjuOtherValueDtm(otherValNju);
+        p.setMsmeNosToolingDtm(twMsmeNo);   p.setMsmeValuesToolingDtm(twMsmeVal);
+        p.setOtherNosToolingDtm(twOtherNo); p.setOtherValuesToolingDtm(twOtherVal);
+        p.setMsmeNosOtherjobDtm(ojwMsmeNo); p.setMsmeValuesOtherjobDtm(ojwMsmeVal);
+        p.setOtherNosOtherjobDtm(ojwOtherNo); p.setOtherValuesOtherjobDtm(ojwOtherVal);
         p.setConsltMsmeDtm(consltMsme); p.setConsltOtherDtm(otherConsBD);
         p.setAnyOtherDtm(anyOtherBD);
         p.setTaStcNccDtm(stcNcc);  p.setTaStcNttDtm(stcNtt);
@@ -391,10 +411,14 @@ public class EntryController {
         p.setTaLtcDtm(ltcTotal);
 
         // Cumulative
-        p.setNjuMsmeNoCum(      sumInt(prev, TblPhysical::getNjuMsmeNoDtm)   + njuMsmeNo);
-        p.setNjuMsmeValueCum(   sumBD(prev, TblPhysical::getNjuMsmeValueDtm).add(msmeValNju));
-        p.setNjuOtherNoCum(     sumInt(prev, TblPhysical::getNjuOtherNoDtm)  + njuOtherNo);
-        p.setNjuOtherValueCum(  sumBD(prev, TblPhysical::getNjuOtherValueDtm).add(otherValNju));
+        p.setMsmeNosToolingCumuMon(   sumInt(prev, TblPhysical::getMsmeNosToolingDtm)    + twMsmeNo);
+        p.setMsmeValuesToolingCumuMon(sumBD(prev, TblPhysical::getMsmeValuesToolingDtm).add(twMsmeVal));
+        p.setOtherNosToolingCumuMon(  sumInt(prev, TblPhysical::getOtherNosToolingDtm)   + twOtherNo);
+        p.setOtherValuesToolingCumuMon(sumBD(prev, TblPhysical::getOtherValuesToolingDtm).add(twOtherVal));
+        p.setMsmeNosOtherjobCumuMon(  sumInt(prev, TblPhysical::getMsmeNosOtherjobDtm)   + ojwMsmeNo);
+        p.setMsmeValuesOtherjobCumuMon(sumBD(prev, TblPhysical::getMsmeValuesOtherjobDtm).add(ojwMsmeVal));
+        p.setOtherNosOtherjobCumuMon( sumInt(prev, TblPhysical::getOtherNosOtherjobDtm)  + ojwOtherNo);
+        p.setOtherValuesOtherjobCumuMon(sumBD(prev, TblPhysical::getOtherValuesOtherjobDtm).add(ojwOtherVal));
         p.setConsltMsmeCum(     sumInt(prev, TblPhysical::getConsltMsmeDtm)  + consltMsme);
         p.setConsltOtherCum(    sumInt(prev, r -> r.getConsltOtherDtm() != null ? r.getConsltOtherDtm().intValue() : 0) + (int)otherConsBD.doubleValue());
         p.setAnyOtherCum(       sumInt(prev, r -> r.getAnyOtherDtm() != null ? r.getAnyOtherDtm().intValue() : 0) + (int)anyOtherBD.doubleValue());

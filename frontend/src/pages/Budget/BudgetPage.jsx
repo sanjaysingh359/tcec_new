@@ -64,6 +64,7 @@ export default function BudgetPage() {
   const [loading, setLoading]         = useState(false);
   const [saving, setSaving]           = useState(false);
   const [blocked, setBlocked]         = useState(false);
+  const [hasData, setHasData]         = useState(false);
   const [loadErr, setLoadErr]         = useState('');
 
   const YEAR_LABEL = selection
@@ -93,7 +94,7 @@ export default function BudgetPage() {
 
   useEffect(() => {
     if (!selection?.instId || !selection?.month || !selection?.year) return;
-    setLoading(true); setBlocked(false); setLoadErr('');
+    setLoading(true); setBlocked(false); setHasData(false); setLoadErr('');
     api.get('/entry/budget/load', {
       params: { instId: selection.instId, month: selection.month, year: selection.year }
     }).then(r => {
@@ -106,25 +107,23 @@ export default function BudgetPage() {
       if (data.targets?.beBudget != null)
         setBeBudget(parseFloat(data.targets.beBudget).toFixed(2));
       if (data.hasData) {
-        if (user?.role === 'SU') {
-          const ex = data.existing || {};
-          setForm(prev => ({
-            ...prev,
-            cfAmount: ex.cfAmount?.toString() || prev.cfAmount,
-            cfDtm: ex.cfDtm?.toString() || '',
-            giaAmount: ex.giaAmount?.toString() || '',
-            giaDtm: ex.giaDtm?.toString() || '',
-            ssA: ex.ssA?.toString() || '', ssB: ex.ssB?.toString() || '',
-            ssC: ex.ssC?.toString() || '', ssD: ex.ssD?.toString() || '',
-            posA: ex.posA?.toString() || '', posB: ex.posB?.toString() || '',
-            posC: ex.posC?.toString() || '', posD: ex.posD?.toString() || '',
-            machineDtm: ex.machineDtm?.toString() || '',
-            detailVisit: ex.detailVisit || '', sigAchiev: ex.sigAchiev || '',
-            shortFalls: ex.shortFalls || '',
-          }));
-        } else {
-          setBlocked(true);
-        }
+        setHasData(true);
+        const ex = data.existing || {};
+        setForm(prev => ({
+          ...prev,
+          cfAmount: ex.cfAmount?.toString() || prev.cfAmount,
+          cfDtm: ex.cfDtm?.toString() || '',
+          giaAmount: ex.giaAmount?.toString() || '',
+          giaDtm: ex.giaDtm?.toString() || '',
+          ssA: ex.ssA?.toString() || '', ssB: ex.ssB?.toString() || '',
+          ssC: ex.ssC?.toString() || '', ssD: ex.ssD?.toString() || '',
+          posA: ex.posA?.toString() || '', posB: ex.posB?.toString() || '',
+          posC: ex.posC?.toString() || '', posD: ex.posD?.toString() || '',
+          machineDtm: ex.machineDtm?.toString() || '',
+          detailVisit: ex.detailVisit || '', sigAchiev: ex.sigAchiev || '',
+          shortFalls: ex.shortFalls || '',
+        }));
+        if (user?.role !== 'SU') setBlocked(true);
       }
     }).catch(() => setLoadErr('Could not load form data from server.'))
       .finally(() => setLoading(false));
@@ -380,8 +379,10 @@ export default function BudgetPage() {
 
       {/* ── Action bar ── */}
       <div className="bud-actions">
-        <Button onClick={handleReset} disabled={blocked}>Reset</Button>
-        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked}>Save</Button>
+        <Button onClick={handleReset}>Reset</Button>
+        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked || hasData}>Add</Button>
+        <Button onClick={handleSave} loading={saving} disabled={blocked || !hasData}>Update</Button>
+        <Button onClick={() => window.print()}>Print</Button>
       </div>
 
     </div>

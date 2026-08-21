@@ -35,3 +35,14 @@ target/
 .env
 .env.local
 .env.*.local
+
+# External config override (contains credentials)
+backend/config/
+
+# Database dumps / migration scripts
+postgresDb/
+mysql_dump.sql
+pg_migration.sql
+
+# Temp / scratch files
+backend/set

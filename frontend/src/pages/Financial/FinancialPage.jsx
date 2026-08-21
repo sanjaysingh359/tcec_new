@@ -17,6 +17,7 @@ const INIT_DTM = {
   accrualTraining: '', accrualTooling: '', accrualOtherJob: '',
   accrualConsult: '', accrualMisc: '',    accrualTesting: '',
   revExpCash: '',     revExpAccrual: '',
+  perRecCashAch: '', perRecAccrualAch: '',
 };
 
 const ZERO_CUM = {
@@ -108,11 +109,12 @@ export default function FinancialPage() {
   const [loading, setLoading]  = useState(false);
   const [saving, setSaving]    = useState(false);
   const [blocked, setBlocked]  = useState(false);
+  const [hasData, setHasData]  = useState(false);
   const [loadErr, setLoadErr]  = useState('');
 
   useEffect(() => {
     if (!selection?.instId || !selection?.month || !selection?.year) return;
-    setLoading(true); setBlocked(false); setLoadErr('');
+    setLoading(true); setBlocked(false); setHasData(false); setLoadErr('');
     api.get('/entry/financial/load', {
       params: { instId: selection.instId, month: selection.month, year: selection.year }
     }).then(r => {
@@ -121,11 +123,9 @@ export default function FinancialPage() {
       setPrevCum({ ...ZERO_CUM, ...(data.prevCum || {}) });
       setTargets({ ...ZERO_TARGETS, ...(data.targets || {}) });
       if (data.hasData) {
-        if (user?.role === 'SU') {
-          setDtm(prev => ({ ...prev, ...(data.existing || {}) }));
-        } else {
-          setBlocked(true);
-        }
+        setHasData(true);
+        setDtm(prev => ({ ...prev, ...(data.existing || {}) }));
+        if (user?.role !== 'SU') setBlocked(true);
       }
     }).catch(() => setLoadErr('Could not load form data from server.'))
       .finally(() => setLoading(false));
@@ -181,6 +181,7 @@ export default function FinancialPage() {
       accrualOtherJob: dtm.accrualOtherJob, accrualConsult: dtm.accrualConsult,
       accrualMisc: dtm.accrualMisc, accrualTesting: dtm.accrualTesting,
       revExpCash: dtm.revExpCash, revExpAccrual: dtm.revExpAccrual,
+      perRecCashAch: dtm.perRecCashAch, perRecAccrualAch: dtm.perRecAccrualAch,
     }).then(() => message.success('Financial data saved successfully!'))
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
@@ -481,14 +482,14 @@ export default function FinancialPage() {
                 <TargetCell value={TARGETS.perRecCash} bg={R1} />
                 <CalcCell   value={prCashDtm} bg={R1} />
                 <CalcCell   value={prCashCum} bg={R1} />
-                <DashCell bg={R1} />
+                <UserCell   value={dtm.perRecCashAch} onChange={handleChange('perRecCashAch')} bg={R1} />
               </tr>
               <tr>
                 <td className="fin-cell" colSpan={2} style={{ background: R2 }}>Accrual Basis</td>
                 <TargetCell value={TARGETS.perRecAccrual} bg={R2} />
                 <CalcCell   value={prAccrDtm} bg={R2} />
                 <CalcCell   value={prAccrCum} bg={R2} />
-                <DashCell bg={R2} />
+                <UserCell   value={dtm.perRecAccrualAch} onChange={handleChange('perRecAccrualAch')} bg={R2} />
               </tr>
 
             </tbody>
@@ -497,16 +498,14 @@ export default function FinancialPage() {
 
         {/* ── Action bar ── */}
         <div className="fin-actions">
-          <Button icon={<ReloadOutlined />} onClick={() => setDtm(INIT_DTM)} disabled={blocked}>
-            Reset
-          </Button>
+          <Button icon={<ReloadOutlined />} onClick={() => setDtm(INIT_DTM)}>Reset</Button>
           <Button
             type="primary" icon={<SaveOutlined />}
-            onClick={handleSubmit} loading={saving} disabled={blocked}
+            onClick={handleSubmit} loading={saving} disabled={blocked || hasData}
             style={{ backgroundColor: '#073354', borderColor: '#073354' }}
-          >
-            Submit
-          </Button>
+          >Add</Button>
+          <Button icon={<SaveOutlined />} onClick={handleSubmit} loading={saving} disabled={blocked || !hasData}>Update</Button>
+          <Button onClick={() => window.print()}>Print</Button>
         </div>
       </div>
     </div>

@@ -73,12 +73,13 @@ export default function PlacementPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving]   = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [hasData, setHasData] = useState(false);
   const [loadErr, setLoadErr] = useState('');
   const set = k => e => setDtm(prev => ({ ...prev, [k]: e.target.value }));
 
   useEffect(() => {
     if (!selection?.instId || !selection?.month || !selection?.year) return;
-    setLoading(true); setBlocked(false); setLoadErr('');
+    setLoading(true); setBlocked(false); setHasData(false); setLoadErr('');
     api.get('/entry/placement/load', {
       params: { instId: selection.instId, month: selection.month, year: selection.year }
     }).then(r => {
@@ -86,12 +87,9 @@ export default function PlacementPage() {
       if (!data) return;
       setPrev({ ...ZERO_PREV, ...(data.prevCum || {}) });
       if (data.hasData) {
-        if (user?.role === 'SU') {
-          const ex = data.existing || {};
-          setDtm(prev => ({ ...prev, ...ex }));
-        } else {
-          setBlocked(true);
-        }
+        setHasData(true);
+        setDtm(prev => ({ ...prev, ...(data.existing || {}) }));
+        if (user?.role !== 'SU') setBlocked(true);
       }
     }).catch(() => setLoadErr('Could not load form data from server.'))
       .finally(() => setLoading(false));
@@ -260,8 +258,10 @@ export default function PlacementPage() {
 
       {/* ── Action bar ── */}
       <div className="plc-actions">
-        <Button onClick={handleReset} disabled={blocked}>Reset</Button>
-        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked}>Save</Button>
+        <Button onClick={handleReset}>Reset</Button>
+        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked || hasData}>Add</Button>
+        <Button onClick={handleSave} loading={saving} disabled={blocked || !hasData}>Update</Button>
+        <Button onClick={() => window.print()}>Print</Button>
       </div>
 
     </div>

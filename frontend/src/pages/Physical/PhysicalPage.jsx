@@ -93,7 +93,8 @@ const BG1 = '#F2F2F2';
 const BG2 = '#FBF8EF';
 
 const ZERO_PREV = {
-  msmeNosNju: 0, msmeValuesNju: 0, otherNosNju: 0, otherValuesNju: 0,
+  twMsmeNos: 0, twMsmeValues: 0, twOtherNos: 0, twOtherValues: 0,
+  ojwMsmeNos: 0, ojwMsmeValues: 0, ojwOtherNos: 0, ojwOtherValues: 0,
   msmeCons: 0, otherCons: 0, anyOther: 0,
   stmNocComp: 0, stmNottComp: 0, trngOther: 0, trngTotalNoc: 0, trngTotalNot: 0,
   seminarsNos: 0, seminarsPts: 0,
@@ -113,12 +114,13 @@ export default function PhysicalPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving]   = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [hasData, setHasData] = useState(false);
   const [loadErr, setLoadErr] = useState('');
 
   /* ── editable DTM state ── */
   const INIT_DTM = {
-    msmeNosNju: '', msmeValuesNju: '',
-    otherNosNju: '', otherValuesNju: '',
+    twMsmeNos: '', twMsmeValues: '', twOtherNos: '', twOtherValues: '',
+    ojwMsmeNos: '', ojwMsmeValues: '', ojwOtherNos: '', ojwOtherValues: '',
     msmeCons: '', otherCons: '',
     anyOther: '',
     stmNocComp: '', stmNottComp: '', trngOther: '',
@@ -149,7 +151,7 @@ export default function PhysicalPage() {
 
   useEffect(() => {
     if (!selection?.instId || !selection?.month || !selection?.year) return;
-    setLoading(true); setBlocked(false); setLoadErr('');
+    setLoading(true); setBlocked(false); setHasData(false); setLoadErr('');
     api.get('/entry/physical/load', {
       params: { instId: selection.instId, month: selection.month, year: selection.year }
     }).then(r => {
@@ -161,12 +163,9 @@ export default function PhysicalPage() {
         if (data.targets.trngTotalNot != null) setFix2(data.targets.trngTotalNot);
       }
       if (data.hasData) {
-        if (user?.role === 'SU') {
-          const ex = data.existing || {};
-          setDtm(prev => ({ ...prev, ...ex }));
-        } else {
-          setBlocked(true);
-        }
+        setHasData(true);
+        setDtm(prev => ({ ...prev, ...(data.existing || {}) }));
+        if (user?.role !== 'SU') setBlocked(true);
       }
     }).catch(() => setLoadErr('Could not load form data from server.'))
       .finally(() => setLoading(false));
@@ -186,21 +185,35 @@ export default function PhysicalPage() {
   };
 
   /* ── Section B computed values ── */
-  const msmeNosNjuCum    = PREV.msmeNosNju    + n(dtm.msmeNosNju);
-  const msmeValuesNjuCum = PREV.msmeValuesNju + n(dtm.msmeValuesNju);
-  const otherNosNjuCum   = PREV.otherNosNju   + n(dtm.otherNosNju);
-  const otherValuesNjuCum= PREV.otherValuesNju+ n(dtm.otherValuesNju);
+  // (a) Tooling Work
+  const twMsmeNosCum    = PREV.twMsmeNos    + n(dtm.twMsmeNos);
+  const twMsmeValuesCum = PREV.twMsmeValues + n(dtm.twMsmeValues);
+  const twOtherNosCum   = PREV.twOtherNos   + n(dtm.twOtherNos);
+  const twOtherValuesCum= PREV.twOtherValues+ n(dtm.twOtherValues);
+  // (b) Other Job Work
+  const ojwMsmeNosCum    = PREV.ojwMsmeNos    + n(dtm.ojwMsmeNos);
+  const ojwMsmeValuesCum = PREV.ojwMsmeValues + n(dtm.ojwMsmeValues);
+  const ojwOtherNosCum   = PREV.ojwOtherNos   + n(dtm.ojwOtherNos);
+  const ojwOtherValuesCum= PREV.ojwOtherValues+ n(dtm.ojwOtherValues);
+  // (c) Consultancies
   const msmeConsCum      = PREV.msmeCons      + n(dtm.msmeCons);
   const otherConsCum     = PREV.otherCons     + n(dtm.otherCons);
+  // (d) Any Others
   const anyOtherCum      = PREV.anyOther      + n(dtm.anyOther);
 
-  // Physical total Nos (a+b+c)
-  const phyTotalNosDtm = n(dtm.msmeNosNju) + n(dtm.otherNosNju) + n(dtm.msmeCons) + n(dtm.otherCons) + n(dtm.anyOther);
-  const phyTotalNosCum = msmeNosNjuCum + otherNosNjuCum + msmeConsCum + otherConsCum + anyOtherCum;
+  // Physical total Nos (a+b+c+d)
+  const phyTotalNosDtm = n(dtm.twMsmeNos) + n(dtm.twOtherNos)
+    + n(dtm.ojwMsmeNos) + n(dtm.ojwOtherNos)
+    + n(dtm.msmeCons) + n(dtm.otherCons) + n(dtm.anyOther);
+  const phyTotalNosCum = twMsmeNosCum + twOtherNosCum
+    + ojwMsmeNosCum + ojwOtherNosCum
+    + msmeConsCum + otherConsCum + anyOtherCum;
 
-  // Physical total Values (only NJU has values)
-  const phyTotalValuesDtm = n(dtm.msmeValuesNju) + n(dtm.otherValuesNju);
-  const phyTotalValuesCum = msmeValuesNjuCum + otherValuesNjuCum;
+  // Physical total Values (Tooling + OtherJob)
+  const phyTotalValuesDtm = n(dtm.twMsmeValues) + n(dtm.twOtherValues)
+    + n(dtm.ojwMsmeValues) + n(dtm.ojwOtherValues);
+  const phyTotalValuesCum = twMsmeValuesCum + twOtherValuesCum
+    + ojwMsmeValuesCum + ojwOtherValuesCum;
 
   /* ── Training computed values ── */
   const ltcDtmTotal  = ltcCourses.reduce((s, r) => s + n(r.dtm),    0);
@@ -317,53 +330,86 @@ export default function PhysicalPage() {
 
               {/* ─ B. PHYSICAL header ─ */}
               <tr>
-                <td className="phy-cell phy-letter" rowSpan={13}><b>B.</b></td>
+                <td className="phy-cell phy-letter" rowSpan={18}><b>B.</b></td>
                 <td className="phy-cell phy-section-hdr" colSpan={7}><b>PHYSICAL</b></td>
               </tr>
               <tr>
                 <td className="phy-cell phy-sub-hdr" colSpan={7}><b>Number of unit benefited</b></td>
               </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={7}>(a) <b>Number of job undertaken</b></td>
-              </tr>
 
-              {/* (i) MSMEs */}
+              {/* (a) Tooling Work */}
+              <tr>
+                <td className="phy-cell phy-slabel" colSpan={7}>(a) <b>Number of Tooling Work</b></td>
+              </tr>
               <tr>
                 <td className="phy-cell phy-slabel" rowSpan={2}>(i) MSMEs</td>
                 <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Nos.</td>
                 <DashCell bg={BG1} />
-                <EditCell value={dtm.msmeNosNju}    onChange={set('msmeNosNju')}    bg={BG1} />
-                <CalcCell value={msmeNosNjuCum}    bg={BG1} />
+                <EditCell value={dtm.twMsmeNos}    onChange={set('twMsmeNos')}    bg={BG1} />
+                <CalcCell value={twMsmeNosCum}     bg={BG1} />
                 <DashCell bg={BG1} />
               </tr>
               <tr>
                 <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Values (Rs. In Lakh)</td>
                 <DashCell bg={BG2} />
-                <EditCell value={dtm.msmeValuesNju} onChange={set('msmeValuesNju')} bg={BG2} />
-                <CalcCell value={msmeValuesNjuCum}  bg={BG2} />
+                <EditCell value={dtm.twMsmeValues} onChange={set('twMsmeValues')} bg={BG2} />
+                <CalcCell value={twMsmeValuesCum}  bg={BG2} />
                 <DashCell bg={BG2} />
               </tr>
-
-              {/* (ii) Others */}
               <tr>
                 <td className="phy-cell phy-slabel" rowSpan={2}>(ii) Others</td>
                 <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Nos.</td>
                 <DashCell bg={BG1} />
-                <EditCell value={dtm.otherNosNju}    onChange={set('otherNosNju')}    bg={BG1} />
-                <CalcCell value={otherNosNjuCum}    bg={BG1} />
+                <EditCell value={dtm.twOtherNos}    onChange={set('twOtherNos')}    bg={BG1} />
+                <CalcCell value={twOtherNosCum}     bg={BG1} />
                 <DashCell bg={BG1} />
               </tr>
               <tr>
                 <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Values (Rs. In Lakh)</td>
                 <DashCell bg={BG2} />
-                <EditCell value={dtm.otherValuesNju} onChange={set('otherValuesNju')} bg={BG2} />
-                <CalcCell value={otherValuesNjuCum}  bg={BG2} />
+                <EditCell value={dtm.twOtherValues} onChange={set('twOtherValues')} bg={BG2} />
+                <CalcCell value={twOtherValuesCum}  bg={BG2} />
                 <DashCell bg={BG2} />
               </tr>
 
-              {/* (b) Consultancies */}
+              {/* (b) Other Job Work */}
               <tr>
-                <td className="phy-cell phy-slabel" colSpan={7}>(b) <b>Consultancies</b></td>
+                <td className="phy-cell phy-slabel" colSpan={7}>(b) <b>Number of Other Job Work</b></td>
+              </tr>
+              <tr>
+                <td className="phy-cell phy-slabel" rowSpan={2}>(i) MSMEs</td>
+                <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Nos.</td>
+                <DashCell bg={BG1} />
+                <EditCell value={dtm.ojwMsmeNos}    onChange={set('ojwMsmeNos')}    bg={BG1} />
+                <CalcCell value={ojwMsmeNosCum}     bg={BG1} />
+                <DashCell bg={BG1} />
+              </tr>
+              <tr>
+                <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Values (Rs. In Lakh)</td>
+                <DashCell bg={BG2} />
+                <EditCell value={dtm.ojwMsmeValues} onChange={set('ojwMsmeValues')} bg={BG2} />
+                <CalcCell value={ojwMsmeValuesCum}  bg={BG2} />
+                <DashCell bg={BG2} />
+              </tr>
+              <tr>
+                <td className="phy-cell phy-slabel" rowSpan={2}>(ii) Others</td>
+                <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Nos.</td>
+                <DashCell bg={BG1} />
+                <EditCell value={dtm.ojwOtherNos}    onChange={set('ojwOtherNos')}    bg={BG1} />
+                <CalcCell value={ojwOtherNosCum}     bg={BG1} />
+                <DashCell bg={BG1} />
+              </tr>
+              <tr>
+                <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Values (Rs. In Lakh)</td>
+                <DashCell bg={BG2} />
+                <EditCell value={dtm.ojwOtherValues} onChange={set('ojwOtherValues')} bg={BG2} />
+                <CalcCell value={ojwOtherValuesCum}  bg={BG2} />
+                <DashCell bg={BG2} />
+              </tr>
+
+              {/* (c) Consultancies */}
+              <tr>
+                <td className="phy-cell phy-slabel" colSpan={7}>(c) <b>Consultancies</b></td>
               </tr>
               <tr>
                 <td className="phy-cell phy-slabel" colSpan={3}>(i) MSMEs</td>
@@ -380,18 +426,18 @@ export default function PhysicalPage() {
                 <DashCell bg={BG2} />
               </tr>
 
-              {/* (c) Any others */}
+              {/* (d) Any Others */}
               <tr>
-                <td className="phy-cell phy-slabel" colSpan={3}>(c) <b>Any others</b></td>
+                <td className="phy-cell phy-slabel" colSpan={3}>(d) <b>Any Others</b></td>
                 <DashCell bg={BG1} />
                 <EditCell value={dtm.anyOther}  onChange={set('anyOther')}  bg={BG1} />
                 <CalcCell value={anyOtherCum}   bg={BG1} />
                 <DashCell bg={BG1} />
               </tr>
 
-              {/* Total (a+b+c) */}
+              {/* Total (a+b+c+d) */}
               <tr>
-                <td className="phy-cell phy-slabel" rowSpan={2}><b>Total<br />(a+b+c)</b></td>
+                <td className="phy-cell phy-slabel" rowSpan={2}><b>Total<br />(a+b+c+d)</b></td>
                 <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Nos.</td>
                 <TgtCell value={FIX_VAL1} bg={BG2} />
                 <CalcCell value={phyTotalNosDtm}  bg={BG2} total />
@@ -851,8 +897,10 @@ export default function PhysicalPage() {
 
       {/* ── Action bar ── */}
       <div className="phy-actions">
-        <Button onClick={handleReset} disabled={blocked}>Reset</Button>
-        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked}>Save</Button>
+        <Button onClick={handleReset}>Reset</Button>
+        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked || hasData}>Add</Button>
+        <Button onClick={handleSave} loading={saving} disabled={blocked || !hasData}>Update</Button>
+        <Button onClick={() => window.print()}>Print</Button>
       </div>
 
     </div>

@@ -45,7 +45,7 @@ if not defined PSQL_EXE if exist "C:\Program Files\PostgreSQL\16\bin\psql.exe" s
 if defined PSQL_EXE (
     set PGPASSWORD=postgres123
     "%PSQL_EXE%" -h 127.0.0.1 -U postgres -c "SELECT 1;" >nul 2>&1
-    if %errorlevel% == 0 (
+    if not errorlevel 1 (
         echo     PostgreSQL is already running. OK.
         goto START_APP
     )
