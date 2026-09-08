@@ -223,6 +223,14 @@
   width: 110px;
 }
 
+/* ── Section E: 3-category table (NSQF / NSQF exempted / Non NSQF) ── */
+.plc-table-e { min-width: 900px; }
+.plc-table-e .plc-input,
+.plc-table-e .plc-total-input { width: 76px; }
+.plc-table-e .plc-th { font-size: 11px; padding: 6px 5px; }
+/* category-group divider: heavier border on the first column of each group */
+.plc-table-e .plc-grp-start { border-left: 2px solid #9db8d4; }
+
 /* ── summary strip ── */
 .plc-summary-strip {
   display: flex;
@@ -299,4 +307,97 @@
   .plc-titlebar-right { align-items: flex-start; }
   .plc-summary-strip { flex-direction: column; align-items: flex-start; }
   .plc-summary-divider { width: 100%; height: 1px; }
+}
+
+/* ── print-only header (shown only while printing this page) ── */
+.plc-print-header { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT  —  print only the form (Sections D & E), no app shell.
+   `body.plc-printing` is toggled by PlacementPage on beforeprint /
+   afterprint, so these rules never affect any other screen.
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+  @page { size: A4 landscape; margin: 12mm; }
+
+  /* hide the app chrome + on-screen-only bits */
+  body.plc-printing .ml-topbar,
+  body.plc-printing .ml-sidebar,
+  body.plc-printing .ml-footer,
+  body.plc-printing .plc-titlebar,
+  body.plc-printing .plc-actions,
+  body.plc-printing .plc-legend,
+  body.plc-printing .plc-summary-strip,
+  body.plc-printing .ant-alert { display: none !important; }
+
+  /* let the shell collapse so content flows across pages */
+  body.plc-printing .ml-shell,
+  body.plc-printing .ml-body,
+  body.plc-printing .ml-main,
+  body.plc-printing .ml-content-area {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  body.plc-printing .plc-page { background: #fff; padding: 0; font-size: 11px; }
+
+  body.plc-printing .plc-print-header {
+    display: block;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 6px;
+  }
+  body.plc-printing .plc-print-title { font-size: 13px; font-weight: bold; color: #000; }
+  body.plc-printing .plc-print-sub   { font-size: 12px; color: #000; margin-top: 2px; }
+
+  body.plc-printing .plc-card {
+    box-shadow: none !important;
+    border: 1px solid #999;
+    margin: 0 0 12px !important;
+    page-break-inside: avoid;
+  }
+  body.plc-printing .plc-card-title {
+    background: #eee !important;
+    color: #000 !important;
+    border-bottom: 1px solid #999;
+  }
+
+  body.plc-printing .plc-table-wrap { overflow: visible !important; padding: 6px !important; }
+  body.plc-printing .plc-table,
+  body.plc-printing .plc-table-e { min-width: 0 !important; width: 100%; }
+  body.plc-printing .plc-table-e { font-size: 9px; }
+
+  /* dark gradient headers → plain grey so they're legible on paper */
+  body.plc-printing .plc-th {
+    background: #e4e4e4 !important;
+    color: #000 !important;
+    border: 1px solid #999 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.plc-printing .plc-letter,
+  body.plc-printing .plc-total-row .plc-cell,
+  body.plc-printing .plc-total-label {
+    background: #f0f0f0 !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* inputs → borderless text so the printout reads like a filled paper form */
+  body.plc-printing .plc-input {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #000 !important;
+    width: 100% !important;
+    text-align: center;
+    padding: 1px 2px !important;
+  }
+  body.plc-printing .plc-table-e .plc-input,
+  body.plc-printing .plc-table-e .plc-total-input { width: 100% !important; }
 }

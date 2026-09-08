@@ -611,9 +611,11 @@ public class EntryController {
                 .findFirst();
 
         Map<String, Object> prevCum = new LinkedHashMap<>();
+        // ── Section D: Trainees trained under ──
         prevCum.put("nsqfCom",    sumInt(prev, TblPlacement::getNsqfComDm));
         prevCum.put("nsqfExe",    sumInt(prev, TblPlacement::getNsqfExDm));
         prevCum.put("nonNsqf",    sumInt(prev, TblPlacement::getNonNsqfDm));
+        // ── Section E: Placement — NSQF category (ps_*) ──
         prevCum.put("trnCert",    sumInt(prev, TblPlacement::getPsTrnCertDm));
         prevCum.put("trnOptPlc",  sumInt(prev, TblPlacement::getPsTrnOptPlcDm));
         prevCum.put("trnRegSmrk", sumInt(prev, TblPlacement::getPsTrnRegSmprkDm));
@@ -622,6 +624,24 @@ public class EntryController {
         prevCum.put("cndOptHstd", sumInt(prev, TblPlacement::getPsTrnOptHstdDm));
         prevCum.put("cndOptSlfs", sumInt(prev, TblPlacement::getPsCndOptSlfsDm));
         prevCum.put("cndToBePlcd",sumInt(prev, TblPlacement::getPsCndToBeplcdDm));
+        // ── Section E: Placement — NSQF-exempted category (nsqf_ex_ram11..18), rows i–viii ──
+        prevCum.put("trnCertEx",    sumInt(prev, TblPlacement::getNsqfExRam11Dm));
+        prevCum.put("trnOptPlcEx",  sumInt(prev, TblPlacement::getNsqfExRam12Dm));
+        prevCum.put("trnRegSmrkEx", sumInt(prev, TblPlacement::getNsqfExRam13Dm));
+        prevCum.put("cndPlcdEx",    sumInt(prev, TblPlacement::getNsqfExRam14Dm));
+        prevCum.put("empTrnEx",     sumInt(prev, TblPlacement::getNsqfExRam15Dm));
+        prevCum.put("cndOptHstdEx", sumInt(prev, TblPlacement::getNsqfExRam16Dm));
+        prevCum.put("cndOptSlfsEx", sumInt(prev, TblPlacement::getNsqfExRam17Dm));
+        prevCum.put("cndToBePlcdEx",sumInt(prev, TblPlacement::getNsqfExRam18Dm));
+        // ── Section E: Placement — Non-NSQF category (non_nsqf_ram31..38), rows i–viii ──
+        prevCum.put("trnCertNon",    sumInt(prev, TblPlacement::getNonNsqfRam31Dm));
+        prevCum.put("trnOptPlcNon",  sumInt(prev, TblPlacement::getNonNsqfRam32Dm));
+        prevCum.put("trnRegSmrkNon", sumInt(prev, TblPlacement::getNonNsqfRam33Dm));
+        prevCum.put("cndPlcdNon",    sumInt(prev, TblPlacement::getNonNsqfRam34Dm));
+        prevCum.put("empTrnNon",     sumInt(prev, TblPlacement::getNonNsqfRam35Dm));
+        prevCum.put("cndOptHstdNon", sumInt(prev, TblPlacement::getNonNsqfRam36Dm));
+        prevCum.put("cndOptSlfsNon", sumInt(prev, TblPlacement::getNonNsqfRam37Dm));
+        prevCum.put("cndToBePlcdNon",sumInt(prev, TblPlacement::getNonNsqfRam38Dm));
 
         Map<String, Object> existing = null;
         if (cur.isPresent()) {
@@ -630,6 +650,7 @@ public class EntryController {
             existing.put("nsqfCom",    intVal(pl.getNsqfComDm()));
             existing.put("nsqfExe",    intVal(pl.getNsqfExDm()));
             existing.put("nonNsqf",    intVal(pl.getNonNsqfDm()));
+            // NSQF category
             existing.put("trnCert",    intVal(pl.getPsTrnCertDm()));
             existing.put("trnOptPlc",  intVal(pl.getPsTrnOptPlcDm()));
             existing.put("trnRegSmrk", intVal(pl.getPsTrnRegSmprkDm()));
@@ -638,6 +659,24 @@ public class EntryController {
             existing.put("cndOptHstd", intVal(pl.getPsTrnOptHstdDm()));
             existing.put("cndOptSlfs", intVal(pl.getPsCndOptSlfsDm()));
             existing.put("cndToBePlcd",intVal(pl.getPsCndToBeplcdDm()));
+            // NSQF-exempted category
+            existing.put("trnCertEx",    intVal(pl.getNsqfExRam11Dm()));
+            existing.put("trnOptPlcEx",  intVal(pl.getNsqfExRam12Dm()));
+            existing.put("trnRegSmrkEx", intVal(pl.getNsqfExRam13Dm()));
+            existing.put("cndPlcdEx",    intVal(pl.getNsqfExRam14Dm()));
+            existing.put("empTrnEx",     intVal(pl.getNsqfExRam15Dm()));
+            existing.put("cndOptHstdEx", intVal(pl.getNsqfExRam16Dm()));
+            existing.put("cndOptSlfsEx", intVal(pl.getNsqfExRam17Dm()));
+            existing.put("cndToBePlcdEx",intVal(pl.getNsqfExRam18Dm()));
+            // Non-NSQF category
+            existing.put("trnCertNon",    intVal(pl.getNonNsqfRam31Dm()));
+            existing.put("trnOptPlcNon",  intVal(pl.getNonNsqfRam32Dm()));
+            existing.put("trnRegSmrkNon", intVal(pl.getNonNsqfRam33Dm()));
+            existing.put("cndPlcdNon",    intVal(pl.getNonNsqfRam34Dm()));
+            existing.put("empTrnNon",     intVal(pl.getNonNsqfRam35Dm()));
+            existing.put("cndOptHstdNon", intVal(pl.getNonNsqfRam36Dm()));
+            existing.put("cndOptSlfsNon", intVal(pl.getNonNsqfRam37Dm()));
+            existing.put("cndToBePlcdNon",intVal(pl.getNonNsqfRam38Dm()));
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -675,6 +714,7 @@ public class EntryController {
         int nsqfCom    = intVal(body.get("nsqfCom"));
         int nsqfExe    = intVal(body.get("nsqfExe"));
         int nonNsqf    = intVal(body.get("nonNsqf"));
+        // Section E — NSQF category
         int trnCert    = intVal(body.get("trnCert"));
         int trnOptPlc  = intVal(body.get("trnOptPlc"));
         int trnRegSmrk = intVal(body.get("trnRegSmrk"));
@@ -683,10 +723,30 @@ public class EntryController {
         int cndOptHstd = intVal(body.get("cndOptHstd"));
         int cndOptSlfs = intVal(body.get("cndOptSlfs"));
         int cndToBePlcd= intVal(body.get("cndToBePlcd"));
+        // Section E — NSQF-exempted category (rows i–viii)
+        int trnCertEx    = intVal(body.get("trnCertEx"));
+        int trnOptPlcEx  = intVal(body.get("trnOptPlcEx"));
+        int trnRegSmrkEx = intVal(body.get("trnRegSmrkEx"));
+        int cndPlcdEx    = intVal(body.get("cndPlcdEx"));
+        int empTrnEx     = intVal(body.get("empTrnEx"));
+        int cndOptHstdEx = intVal(body.get("cndOptHstdEx"));
+        int cndOptSlfsEx = intVal(body.get("cndOptSlfsEx"));
+        int cndToBePlcdEx= intVal(body.get("cndToBePlcdEx"));
+        // Section E — Non-NSQF category (rows i–viii)
+        int trnCertNon    = intVal(body.get("trnCertNon"));
+        int trnOptPlcNon  = intVal(body.get("trnOptPlcNon"));
+        int trnRegSmrkNon = intVal(body.get("trnRegSmrkNon"));
+        int cndPlcdNon    = intVal(body.get("cndPlcdNon"));
+        int empTrnNon     = intVal(body.get("empTrnNon"));
+        int cndOptHstdNon = intVal(body.get("cndOptHstdNon"));
+        int cndOptSlfsNon = intVal(body.get("cndOptSlfsNon"));
+        int cndToBePlcdNon= intVal(body.get("cndToBePlcdNon"));
 
         pl.setNsqfComDm(nsqfCom);    pl.setNsqfComCum( sumInt(prev, TblPlacement::getNsqfComDm)    + nsqfCom);
         pl.setNsqfExDm(nsqfExe);     pl.setNsqfExCum(  sumInt(prev, TblPlacement::getNsqfExDm)     + nsqfExe);
         pl.setNonNsqfDm(nonNsqf);    pl.setNonNsqfCum( sumInt(prev, TblPlacement::getNonNsqfDm)    + nonNsqf);
+
+        // Section E — NSQF category
         pl.setPsTrnCertDm(trnCert);   pl.setPsTrnCertCum(sumInt(prev, TblPlacement::getPsTrnCertDm) + trnCert);
         pl.setPsTrnOptPlcDm(trnOptPlc); pl.setPsTrnOptPlcCum(sumInt(prev, TblPlacement::getPsTrnOptPlcDm) + trnOptPlc);
         pl.setPsTrnRegSmprkDm(trnRegSmrk); pl.setPsTrnRegSmprkCum(sumInt(prev, TblPlacement::getPsTrnRegSmprkDm) + trnRegSmrk);
@@ -695,6 +755,26 @@ public class EntryController {
         pl.setPsTrnOptHstdDm(cndOptHstd); pl.setPsTrnOptHstdCum(sumInt(prev, TblPlacement::getPsTrnOptHstdDm) + cndOptHstd);
         pl.setPsCndOptSlfsDm(cndOptSlfs); pl.setPsCndOptSlfsCum(sumInt(prev, TblPlacement::getPsCndOptSlfsDm) + cndOptSlfs);
         pl.setPsCndToBeplcdDm(cndToBePlcd); pl.setPsCndToBeplcdCum(sumInt(prev, TblPlacement::getPsCndToBeplcdDm) + cndToBePlcd);
+
+        // Section E — NSQF-exempted category (nsqf_ex_ram11..18)
+        pl.setNsqfExRam11Dm(trnCertEx);    pl.setNsqfExRam11Cum(sumInt(prev, TblPlacement::getNsqfExRam11Dm) + trnCertEx);
+        pl.setNsqfExRam12Dm(trnOptPlcEx);  pl.setNsqfExRam12Cum(sumInt(prev, TblPlacement::getNsqfExRam12Dm) + trnOptPlcEx);
+        pl.setNsqfExRam13Dm(trnRegSmrkEx); pl.setNsqfExRam13Cum(sumInt(prev, TblPlacement::getNsqfExRam13Dm) + trnRegSmrkEx);
+        pl.setNsqfExRam14Dm(cndPlcdEx);    pl.setNsqfExRam14Cum(sumInt(prev, TblPlacement::getNsqfExRam14Dm) + cndPlcdEx);
+        pl.setNsqfExRam15Dm(empTrnEx);     pl.setNsqfExRam15Cum(sumInt(prev, TblPlacement::getNsqfExRam15Dm) + empTrnEx);
+        pl.setNsqfExRam16Dm(cndOptHstdEx); pl.setNsqfExRam16Cum(sumInt(prev, TblPlacement::getNsqfExRam16Dm) + cndOptHstdEx);
+        pl.setNsqfExRam17Dm(cndOptSlfsEx); pl.setNsqfExRam17Cum(sumInt(prev, TblPlacement::getNsqfExRam17Dm) + cndOptSlfsEx);
+        pl.setNsqfExRam18Dm(cndToBePlcdEx);pl.setNsqfExRam18Cum(sumInt(prev, TblPlacement::getNsqfExRam18Dm) + cndToBePlcdEx);
+
+        // Section E — Non-NSQF category (non_nsqf_ram31..38)
+        pl.setNonNsqfRam31Dm(trnCertNon);    pl.setNonNsqfRam31Cum(sumInt(prev, TblPlacement::getNonNsqfRam31Dm) + trnCertNon);
+        pl.setNonNsqfRam32Dm(trnOptPlcNon);  pl.setNonNsqfRam32Cum(sumInt(prev, TblPlacement::getNonNsqfRam32Dm) + trnOptPlcNon);
+        pl.setNonNsqfRam33Dm(trnRegSmrkNon); pl.setNonNsqfRam33Cum(sumInt(prev, TblPlacement::getNonNsqfRam33Dm) + trnRegSmrkNon);
+        pl.setNonNsqfRam34Dm(cndPlcdNon);    pl.setNonNsqfRam34Cum(sumInt(prev, TblPlacement::getNonNsqfRam34Dm) + cndPlcdNon);
+        pl.setNonNsqfRam35Dm(empTrnNon);     pl.setNonNsqfRam35Cum(sumInt(prev, TblPlacement::getNonNsqfRam35Dm) + empTrnNon);
+        pl.setNonNsqfRam36Dm(cndOptHstdNon); pl.setNonNsqfRam36Cum(sumInt(prev, TblPlacement::getNonNsqfRam36Dm) + cndOptHstdNon);
+        pl.setNonNsqfRam37Dm(cndOptSlfsNon); pl.setNonNsqfRam37Cum(sumInt(prev, TblPlacement::getNonNsqfRam37Dm) + cndOptSlfsNon);
+        pl.setNonNsqfRam38Dm(cndToBePlcdNon);pl.setNonNsqfRam38Cum(sumInt(prev, TblPlacement::getNonNsqfRam38Dm) + cndToBePlcdNon);
 
         plaRepo.save(pl);
         return ResponseEntity.ok(ApiResponse.ok("Saved successfully"));
