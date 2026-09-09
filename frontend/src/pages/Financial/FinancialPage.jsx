@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button, message, Spin, Alert } from 'antd';
-import { SaveOutlined, ReloadOutlined } from '@ant-design/icons';
+import { SaveOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './FinancialPage.css';
@@ -108,6 +108,7 @@ export default function FinancialPage() {
   const [TARGETS, setTargets]  = useState(ZERO_TARGETS);
   const [loading, setLoading]  = useState(false);
   const [saving, setSaving]    = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [blocked, setBlocked]  = useState(false);
   const [hasData, setHasData]  = useState(false);
   const [loadErr, setLoadErr]  = useState('');
@@ -185,6 +186,26 @@ export default function FinancialPage() {
     }).then(() => message.success('Financial data saved successfully!'))
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
+  };
+
+  /* ── SU only: clear this month's submitted record so the institute can re-enter ── */
+  const handleClear = () => {
+    if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
+    const label = `${selection.monthName || selection.month} ${selection.year}`;
+    if (!window.confirm(
+      `Clear the submitted Financial data for ${selection.instName || selection.instId} — ${label}?\n\n` +
+      `This deletes the month's entry. The institute will be able to fill it in again.`
+    )) return;
+    setClearing(true);
+    api.delete('/admin/data', {
+      params: { instId: selection.instId, year: selection.year, month: selection.month, section: '01' },
+    }).then(() => {
+      message.success('Financial data cleared — the institute can now re-enter it.');
+      setDtm(INIT_DTM);
+      setHasData(false);
+      setBlocked(false);
+    }).catch(err => message.error(err.response?.data?.message || 'Clear failed'))
+      .finally(() => setClearing(false));
   };
 
   const instName  = selection?.instName  || '—';
@@ -505,6 +526,11 @@ export default function FinancialPage() {
             style={{ backgroundColor: '#073354', borderColor: '#073354' }}
           >Add</Button>
           <Button icon={<SaveOutlined />} onClick={handleSubmit} loading={saving} disabled={blocked || !hasData}>Update</Button>
+          {user?.role === 'SU' && hasData && (
+            <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>
+              Clear Data
+            </Button>
+          )}
           <Button onClick={() => window.print()}>Print</Button>
         </div>
       </div>

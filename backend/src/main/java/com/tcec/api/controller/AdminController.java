@@ -145,7 +145,8 @@ public class AdminController {
             @RequestParam String section,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        if (!isAuth(authHeader))
+        // Clearing a submitted section is an admin-only action
+        if (!isSu(authHeader))
             return unauthorized();
 
         try {
