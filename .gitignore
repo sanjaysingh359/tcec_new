@@ -24,12 +24,14 @@ pnpm-debug.log*
 *.sw?
 
 # Java / Maven
-target/
+# Anchored to the Maven module — a bare "target/" also matches
+# frontend/src/pages/Target/ on case-insensitive (Windows/macOS) filesystems.
+/backend/target/**
 *.class
 *.war
 *.ear
 # Keep the runnable JAR for deployment
-!backend/target/tcec-api-1.0.0.jar
+!/backend/target/tcec-api-1.0.0.jar
 
 # Environment files
 .env
