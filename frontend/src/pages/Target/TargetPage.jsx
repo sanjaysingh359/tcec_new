@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Spin, Alert, message } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './TargetPage.css';
@@ -36,22 +37,25 @@ function CalcCell({ value, highlight = false }) {
 }
 
 export default function TargetPage() {
-  const { selection } = useAuth();
+  const { selection, user } = useAuth();
   const [form, setForm]       = useState(INIT);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving]   = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [hasData, setHasData] = useState(false);
   const [loadErr, setLoadErr] = useState('');
 
   const set = k => e => setForm(prev => ({ ...prev, [k]: e.target.value }));
 
   useEffect(() => {
     if (!selection?.instId || !selection?.year) return;
-    setLoading(true); setLoadErr('');
+    setLoading(true); setLoadErr(''); setHasData(false);
     api.get('/target/load', {
       params: { instId: selection.instId, year: selection.year }
     }).then(r => {
       const data = r.data?.data;
       if (data?.hasData) {
+        setHasData(true);
         setForm({
           revEarnCash: data.revEarnCash ?? '',
           revEarnAcc:  data.revEarnAcc  ?? '',
@@ -81,6 +85,24 @@ export default function TargetPage() {
   };
 
   const handleReset = () => setForm(INIT);
+
+  /* ── SU only: clear the saved annual targets so they can be set again ── */
+  const handleClear = () => {
+    if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
+    if (!window.confirm(
+      `Clear the saved Annual Targets for ${selection.instName || selection.instId} — ${selection.year}?\n\n` +
+      `The Financial / Physical / Budget screens will show no target until new ones are saved.`
+    )) return;
+    setClearing(true);
+    api.delete('/target', {
+      params: { instId: selection.instId, year: selection.year },
+    }).then(() => {
+      message.success('Annual Targets cleared.');
+      setForm(INIT);
+      setHasData(false);
+    }).catch(err => message.error(err.response?.data?.message || 'Clear failed'))
+      .finally(() => setClearing(false));
+  };
 
   /* ── auto-calculated fields ── */
   const incExpCash = n(form.revEarnCash) - n(form.revExpCash);
@@ -297,6 +319,9 @@ export default function TargetPage() {
       <div className="tgt-actions">
         <Button onClick={handleReset}>Reset</Button>
         <Button type="primary" onClick={handleSave} loading={saving}>Save Targets</Button>
+        {user?.role === 'SU' && hasData && (
+          <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
+        )}
       </div>
     </div>
   );

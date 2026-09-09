@@ -28,6 +28,14 @@ public class TargetController {
         return token != null && authService.getUserByToken(token).isPresent();
     }
 
+    private boolean isSu(String auth) {
+        String token = AuthService.extractToken(auth);
+        if (token == null) return false;
+        return authService.getUserByToken(token)
+                .map(u -> "SU".equals(u.getRole() == null ? "" : u.getRole().trim()))
+                .orElse(false);
+    }
+
     /** GET /api/target/load?instId=X&year=Y */
     @GetMapping("/load")
     public ResponseEntity<ApiResponse<Map<String, Object>>> load(
@@ -58,13 +66,13 @@ public class TargetController {
         return ResponseEntity.ok(ApiResponse.ok("OK", result));
     }
 
-    /** POST /api/target/save */
+    /** POST /api/target/save — admin only */
     @PostMapping("/save")
     public ResponseEntity<ApiResponse<Void>> save(
             @RequestBody Map<String, Object> body,
             @RequestHeader("Authorization") String auth) {
 
-        if (!isAuth(auth)) return ResponseEntity.status(401)
+        if (!isSu(auth)) return ResponseEntity.status(401)
                 .body(ApiResponse.error("Unauthorized"));
 
         String instId = (String) body.get("instId");
@@ -91,6 +99,21 @@ public class TargetController {
 
         repo.save(t);
         return ResponseEntity.ok(ApiResponse.ok("Target saved successfully", null));
+    }
+
+    /** DELETE /api/target?instId=X&year=Y — admin only.
+     *  Clears the saved annual targets so they can be set again. */
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Void>> delete(
+            @RequestParam String instId,
+            @RequestParam String year,
+            @RequestHeader("Authorization") String auth) {
+
+        if (!isSu(auth)) return ResponseEntity.status(401)
+                .body(ApiResponse.error("Unauthorized"));
+
+        repo.findByInstIdAndYears(instId, year).ifPresent(repo::delete);
+        return ResponseEntity.ok(ApiResponse.ok("Targets cleared successfully", null));
     }
 
     private int intVal(Object v) {
