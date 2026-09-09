@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Spin, Alert, message } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './PlacementPage.css';
@@ -81,6 +82,7 @@ export default function PlacementPage() {
   const [PREV, setPrev]      = useState(ZERO_PREV);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving]   = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [hasData, setHasData] = useState(false);
   const [loadErr, setLoadErr] = useState('');
@@ -141,6 +143,26 @@ export default function PlacementPage() {
   }));
 
   const handleReset = () => setDtm(INIT);
+
+  /* ── SU only: clear this month's submitted record so the institute can re-enter ── */
+  const handleClear = () => {
+    if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
+    const when = `${selection.monthName || selection.month} ${selection.year}`;
+    if (!window.confirm(
+      `Clear the submitted Placement Section data for ${selection.instName || selection.instId} — ${when}?\n\n` +
+      `This deletes the month's entry. The institute will be able to fill it in again.`
+    )) return;
+    setClearing(true);
+    api.delete('/admin/data', {
+      params: { instId: selection.instId, year: selection.year, month: selection.month, section: '04' },
+    }).then(() => {
+      message.success('Placement Section data cleared — the institute can now re-enter it.');
+      setDtm(INIT);
+      setHasData(false);
+      setBlocked(false);
+    }).catch(err => message.error(err.response?.data?.message || 'Clear failed'))
+      .finally(() => setClearing(false));
+  };
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
 
@@ -315,6 +337,9 @@ export default function PlacementPage() {
         <Button onClick={handleReset}>Reset</Button>
         <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked || hasData}>Add</Button>
         <Button onClick={handleSave} loading={saving} disabled={blocked || !hasData}>Update</Button>
+        {user?.role === 'SU' && hasData && (
+          <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
+        )}
         <Button onClick={() => window.print()}>Print</Button>
       </div>
 

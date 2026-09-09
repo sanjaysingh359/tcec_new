@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -134,8 +135,13 @@ public class AdminController {
 
     // ─────────────────────────────────────────────────────────────────────────
     // DELETE /api/admin/data?instId=X&year=Y&month=M&section=01
-    // Deletes one month's record from the specified section table.
-    // section: 01=Financial, 02=Budget, 03=Physical, 04=Placement
+    // Clears one month's data for the specified section so the institute can
+    // enter it again.  section: 01=Financial, 02=Budget, 03=Physical,
+    // 04=Placement, 05=Significant Achievement.
+    //
+    // Financial / Physical / Placement have dedicated tables → the row is
+    // deleted. Budget and Achievement share tbl_budget, so each clears only
+    // its own fields and the row is removed only once nothing is left.
     // ─────────────────────────────────────────────────────────────────────────
     @DeleteMapping("/data")
     public ResponseEntity<ApiResponse<String>> deleteData(
@@ -152,18 +158,52 @@ public class AdminController {
         try {
             switch (section) {
                 case "01" -> finRepo.deleteRecord(instId, month, year);
-                case "02" -> budRepo.deleteRecord(instId, month, year);
+                case "02" -> clearBudgetSection(instId, month, year);
                 case "03" -> phyRepo.deleteRecord(instId, month, year);
                 case "04" -> plaRepo.deleteRecord(instId, month, year);
+                case "05" -> clearAchievement(instId, month, year);
                 default   -> { return ResponseEntity.badRequest()
                                        .body(ApiResponse.error("Unknown section: " + section)); }
             }
-            return ResponseEntity.ok(ApiResponse.ok("Deleted successfully"));
+            return ResponseEntity.ok(ApiResponse.ok("Cleared successfully"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Delete failed: " + e.getMessage()));
+                    .body(ApiResponse.error("Clear failed: " + e.getMessage()));
         }
     }
+
+    /** Null every Budget-section field on tbl_budget; keep the Significant
+     *  Achievement text. Delete the row only if that text is also empty. */
+    private void clearBudgetSection(String instId, String month, String year) {
+        budRepo.findByInstIdAndMonthsAndYears(instId, month, year).ifPresent(b -> {
+            if (isBlank(b.getSignificant())) { budRepo.delete(b); return; }
+            // Row must survive for the achievement text — blank the budget columns.
+            b.setCryFwdAmt(null);  b.setCryFwdUtilDm(null);  b.setCryFwdUtilCum(null);
+            b.setGiaAmt(null);     b.setGiaUtilDm(null);     b.setGiaUtilCum(null);     b.setGiaUtilBal(null);
+            b.setStfStSsA(null);   b.setStfStSsB(null);      b.setStfStSsC(null);       b.setStfStSsD(null);
+            b.setStfStPosA(null);  b.setStfStPosB(null);     b.setStfStPosC(null);      b.setStfStPosD(null);
+            b.setBudgetTotalAmt(null); b.setBudgetTotalUtilDm(null);
+            b.setBudgetTotalUtilCum(null); b.setBudgetTotalUtilBal(null);
+            b.setMachineDtm(null); b.setMachineCum(null);
+            b.setDetailsVisit(null); b.setShortsFall(null);
+            b.setCryFwdUtilBal(BigDecimal.ZERO);   // cry_fwd_util_bal is NOT NULL
+            budRepo.save(b);
+        });
+    }
+
+    /** Clear only the Significant Achievement text; keep any Budget-section
+     *  data. Delete the row only if no Budget data remains. */
+    private void clearAchievement(String instId, String month, String year) {
+        budRepo.findByInstIdAndMonthsAndYears(instId, month, year).ifPresent(b -> {
+            b.setSignificant(null);
+            boolean budgetData = b.getCryFwdAmt() != null || b.getGiaAmt() != null
+                    || !isBlank(b.getDetailsVisit()) || !isBlank(b.getShortsFall());
+            if (budgetData) budRepo.save(b);
+            else            budRepo.delete(b);
+        });
+    }
+
+    private static boolean isBlank(String s) { return s == null || s.isBlank(); }
 
     // ─────────────────────────────────────────────────────────────────────────
     // GET /api/admin/users  — list all users with institute mapping

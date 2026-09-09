@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Spin, Alert, message } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './BudgetPage.css';
@@ -63,6 +64,7 @@ export default function BudgetPage() {
   const [BE_BUDGET, setBeBudget]      = useState('0.00');
   const [loading, setLoading]         = useState(false);
   const [saving, setSaving]           = useState(false);
+  const [clearing, setClearing]       = useState(false);
   const [blocked, setBlocked]         = useState(false);
   const [hasData, setHasData]         = useState(false);
   const [loadErr, setLoadErr]         = useState('');
@@ -153,6 +155,28 @@ export default function BudgetPage() {
   const machineCum = PREV_MACHINE_CUM + n(form.machineDtm);
 
   const handleReset = () => setForm(INIT);
+
+  /* ── SU only: clear this month's submitted Budget figures so the institute can re-enter.
+        The month's Significant Achievement (shared row) is left untouched. ── */
+  const handleClear = () => {
+    if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
+    const when = `${selection.monthName || selection.month} ${selection.year}`;
+    if (!window.confirm(
+      `Clear the submitted Budget Section data for ${selection.instName || selection.instId} — ${when}?\n\n` +
+      `This deletes the month's budget entry (the Significant Achievement for the month is kept). ` +
+      `The institute will be able to fill it in again.`
+    )) return;
+    setClearing(true);
+    api.delete('/admin/data', {
+      params: { instId: selection.instId, year: selection.year, month: selection.month, section: '02' },
+    }).then(() => {
+      message.success('Budget Section data cleared — the institute can now re-enter it.');
+      setForm(INIT);
+      setHasData(false);
+      setBlocked(false);
+    }).catch(err => message.error(err.response?.data?.message || 'Clear failed'))
+      .finally(() => setClearing(false));
+  };
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
 
@@ -382,6 +406,9 @@ export default function BudgetPage() {
         <Button onClick={handleReset}>Reset</Button>
         <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked || hasData}>Add</Button>
         <Button onClick={handleSave} loading={saving} disabled={blocked || !hasData}>Update</Button>
+        {user?.role === 'SU' && hasData && (
+          <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
+        )}
         <Button onClick={() => window.print()}>Print</Button>
       </div>
 

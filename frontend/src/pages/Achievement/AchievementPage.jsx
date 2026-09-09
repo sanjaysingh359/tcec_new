@@ -110,6 +110,7 @@ export default function AchievementPage() {
   const [form, setForm]       = useState(INIT);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving]   = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [hasData, setHasData] = useState(false);
   const [loadErr, setLoadErr] = useState('');
@@ -169,6 +170,27 @@ export default function AchievementPage() {
   };
 
   const handleReset = () => { setForm(INIT); };
+
+  /* ── SU only: clear this month's Significant Achievement so the institute can re-enter.
+        Any Budget-section data for the same month (shared row) is left untouched. ── */
+  const handleClear = () => {
+    if (!selection?.instId) { message.error('No institute selected.'); return; }
+    const when = `${selection.monthName || selection.month} ${selection.year}`;
+    if (!window.confirm(
+      `Clear the submitted Significant Achievement for ${selection.instName || selection.instId} — ${when}?\n\n` +
+      `The Budget data for the month is kept. The institute will be able to enter it again.`
+    )) return;
+    setClearing(true);
+    api.delete('/admin/data', {
+      params: { instId: selection.instId, year: selection.year, month: selection.month, section: '05' },
+    }).then(() => {
+      message.success('Significant Achievement cleared — the institute can now re-enter it.');
+      setForm(INIT);
+      setHasData(false);
+      setBlocked(false);
+    }).catch(err => message.error(err.response?.data?.message || 'Clear failed'))
+      .finally(() => setClearing(false));
+  };
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
 
@@ -418,6 +440,9 @@ export default function AchievementPage() {
           <Button onClick={handleReset}>Reset</Button>
           <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked || hasData}>Add</Button>
           <Button onClick={handleSave} loading={saving} disabled={blocked || !hasData}>Update</Button>
+          {user?.role === 'SU' && hasData && (
+            <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
+          )}
           <Button icon={<PrinterOutlined />} onClick={() => window.print()}>Print</Button>
         </div>
 
