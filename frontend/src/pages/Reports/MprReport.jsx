@@ -102,6 +102,19 @@ export default function MprReport() {
       .finally(() => setLoading(false));
   }, [instId, month, year]);
 
+  /* ── Print: strip the app shell so only the report prints (button + Ctrl+P) ── */
+  useEffect(() => {
+    const on  = () => document.body.classList.add('mpr-printing');
+    const off = () => document.body.classList.remove('mpr-printing');
+    window.addEventListener('beforeprint', on);
+    window.addEventListener('afterprint', off);
+    return () => {
+      window.removeEventListener('beforeprint', on);
+      window.removeEventListener('afterprint', off);
+      off();
+    };
+  }, []);
+
   /* ── guard ─────────────────────────────────────── */
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading report…</div>;
   if (error)   return <div style={{ padding: 40, color: 'red' }}>{error}</div>;
@@ -847,7 +860,7 @@ export default function MprReport() {
         </div>
 
         {/* ── Print button ── */}
-        <div style={{ textAlign: 'center', padding: '14px 0' }}>
+        <div className="mpr-bottom-actions" style={{ textAlign: 'center', padding: '14px 0' }}>
           <button className="mpr-print-btn" onClick={() => window.print()}>Print</button>
         </div>
 

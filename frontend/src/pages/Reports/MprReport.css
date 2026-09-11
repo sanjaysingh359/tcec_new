@@ -296,12 +296,46 @@
 }
 
 /* ── Print ── */
+/* ═══════════════════════════════════════════════════════════════
+   PRINT — print only the report, no app shell.
+   `body.mpr-printing` is toggled by MprReport on beforeprint /
+   afterprint, so these rules never affect any other screen.
+   ═══════════════════════════════════════════════════════════════ */
 @media print {
-  .mpr-page { background: #fff; padding: 0; }
-  .mpr-actions { display: none !important; }
-  .mpr-doc { box-shadow: none; }
-  .mpr-tbl { font-size: 10px; }
-  .mpr-tbl td, .mpr-tbl th { padding: 2px 4px; }
-  .mpr-part { min-width: 150px; }
-  .mpr-tgt, .mpr-dtm, .mpr-cum, .mpr-pct, .mpr-dash { min-width: 60px; }
+  @page { size: A4 landscape; margin: 10mm; }
+
+  /* hide the app chrome + on-screen-only bits */
+  body.mpr-printing .ml-topbar,
+  body.mpr-printing .ml-sidebar,
+  body.mpr-printing .ml-footer,
+  body.mpr-printing .mpr-actions,
+  body.mpr-printing .mpr-bottom-actions { display: none !important; }
+
+  /* let the shell collapse so content flows across pages */
+  body.mpr-printing .ml-shell,
+  body.mpr-printing .ml-body,
+  body.mpr-printing .ml-main,
+  body.mpr-printing .ml-content-area {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  body.mpr-printing .mpr-page { background: #fff; padding: 0; }
+  body.mpr-printing .mpr-doc { box-shadow: none; max-width: none; }
+  body.mpr-printing .mpr-tbl-wrap { overflow: visible !important; }
+  body.mpr-printing .mpr-block { page-break-inside: avoid; }
+
+  body.mpr-printing .mpr-tbl,
+  body.mpr-printing .mpr-bifur-tbl,
+  body.mpr-printing .mpr-pla-tbl,
+  body.mpr-printing .mpr-import-tbl { font-size: 9.5px; }
+  body.mpr-printing .mpr-tbl td, body.mpr-printing .mpr-tbl th { padding: 2px 4px; }
+  body.mpr-printing .mpr-part { min-width: 130px; }
+  body.mpr-printing .mpr-tgt, body.mpr-printing .mpr-dtm,
+  body.mpr-printing .mpr-cum, body.mpr-printing .mpr-pct,
+  body.mpr-printing .mpr-dash { min-width: 55px; }
 }
