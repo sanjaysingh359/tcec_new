@@ -184,6 +184,17 @@ public class EntryController {
         e.setRevExpAccrualCum(       sumBD(prev, TblFinancial::getRevExpAccrualDtm).add(revExpAccrDtm));
 
         finRepo.save(e);
+
+        // Revenue Expenditure Target (Cash/Accrual) is editable right on this form;
+        // it lives on the annual target row, so keep that in sync here.
+        int revExpCashTarget    = intVal(body.get("revExpCashTarget"));
+        int revExpAccrualTarget = intVal(body.get("revExpAccrualTarget"));
+        TblTrngExpTarget tgt = targetRepo.findByInstIdAndYears(instId, year)
+                .orElseGet(() -> { TblTrngExpTarget t = new TblTrngExpTarget(); t.setInstId(instId); t.setYears(year); return t; });
+        tgt.setRevExpCash(revExpCashTarget);
+        tgt.setRevExpAcc(revExpAccrualTarget);
+        targetRepo.save(tgt);
+
         return ResponseEntity.ok(ApiResponse.ok("Saved successfully"));
     }
 

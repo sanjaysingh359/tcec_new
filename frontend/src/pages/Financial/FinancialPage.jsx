@@ -98,6 +98,23 @@ function UserCell({ value, onChange, bg = '#fff' }) {
   );
 }
 
+/* Editable Target cell — used only for Revenue Expenditure's Target column,
+   the rest of the Target column stays read-only (annual, set on /app/target).
+   Whole numbers only, matching tbl_trng_exp_target's Integer columns. */
+function TargetEditCell({ value, onChange, bg = '#fff' }) {
+  return (
+    <td className="fin-cell" style={{ background: bg }}>
+      <input
+        className="fin-input fin-editable"
+        type="number" min="0" step="1"
+        value={value}
+        onChange={onChange}
+        placeholder="0"
+      />
+    </td>
+  );
+}
+
 /* ═══════════════════════════════════════
    Main Component
    ═══════════════════════════════════════ */
@@ -137,6 +154,17 @@ export default function FinancialPage() {
       const val = e.target.value;
       if (val === '' || /^-?\d*\.?\d*$/.test(val))
         setDtm((prev) => ({ ...prev, [field]: val }));
+    },
+    []
+  );
+
+  /* Revenue Expenditure Target (Cash/Accrual) — the only two Target cells
+     editable from this page; everything else in that column is annual and
+     read-only here (set on /app/target). */
+  const handleTargetChange = useCallback(
+    (field) => (e) => {
+      const val = e.target.value;
+      setTargets((prev) => ({ ...prev, [field]: val }));
     },
     []
   );
@@ -183,6 +211,7 @@ export default function FinancialPage() {
       accrualMisc: dtm.accrualMisc, accrualTesting: dtm.accrualTesting,
       revExpCash: dtm.revExpCash, revExpAccrual: dtm.revExpAccrual,
       perRecCashAch: dtm.perRecCashAch, perRecAccrualAch: dtm.perRecAccrualAch,
+      revExpCashTarget: TARGETS.revExpCash, revExpAccrualTarget: TARGETS.revExpAccrual,
     }).then(() => message.success('Financial data saved successfully!'))
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
@@ -460,14 +489,14 @@ export default function FinancialPage() {
               <tr>
                 <td className="fin-cell fin-slabel" rowSpan={2}>Revenue<br />Expenditure</td>
                 <td className="fin-cell" colSpan={2} style={{ background: R1 }}>Cash basis</td>
-                <TargetCell value={TARGETS.revExpCash} bg={R1} />
+                <TargetEditCell value={TARGETS.revExpCash} onChange={handleTargetChange('revExpCash')} bg={R1} />
                 <UserCell   value={dtm.revExpCash}     onChange={handleChange('revExpCash')} bg={R1} />
                 <CalcCell   value={cum.revExpCash}     bg={R1} />
                 <PctCell    cumVal={cum.revExpCash}    target={TARGETS.revExpCash} bg={R1} />
               </tr>
               <tr>
                 <td className="fin-cell" colSpan={2} style={{ background: R2 }}>Accrual basis</td>
-                <TargetCell value={TARGETS.revExpAccrual} bg={R2} />
+                <TargetEditCell value={TARGETS.revExpAccrual} onChange={handleTargetChange('revExpAccrual')} bg={R2} />
                 <UserCell   value={dtm.revExpAccrual}     onChange={handleChange('revExpAccrual')} bg={R2} />
                 <CalcCell   value={cum.revExpAccrual}     bg={R2} />
                 <PctCell    cumVal={cum.revExpAccrual}    target={TARGETS.revExpAccrual} bg={R2} />
