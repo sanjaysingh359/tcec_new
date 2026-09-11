@@ -276,6 +276,7 @@ export default function MprReport() {
   const dTotDtm  = nsqfCDtm + nsqfEDtm + nonNDtm;
   const dTotCum  = nsqfCCum + nsqfECum + nonNCum;
 
+  /* NSQF category (section E's original single column) */
   const tCertDtm   = n(plaEx.trnCert);     const tCertCum   = n(plaPrev.trnCert)     + tCertDtm;
   const tPlcDtm    = n(plaEx.trnOptPlc);   const tPlcCum    = n(plaPrev.trnOptPlc)   + tPlcDtm;
   const tSmrkDtm   = n(plaEx.trnRegSmrk);  const tSmrkCum   = n(plaPrev.trnRegSmrk)  + tSmrkDtm;
@@ -284,6 +285,26 @@ export default function MprReport() {
   const cHstdDtm   = n(plaEx.cndOptHstd);  const cHstdCum   = n(plaPrev.cndOptHstd)  + cHstdDtm;
   const cSlfsDtm   = n(plaEx.cndOptSlfs);  const cSlfsCum   = n(plaPrev.cndOptSlfs)  + cSlfsDtm;
   const cTbpDtm    = n(plaEx.cndToBePlcd); const cTbpCum    = n(plaPrev.cndToBePlcd) + cTbpDtm;
+
+  /* NSQF-exempted category */
+  const tCertExDtm  = n(plaEx.trnCertEx);      const tCertExCum  = n(plaPrev.trnCertEx)      + tCertExDtm;
+  const tPlcExDtm   = n(plaEx.trnOptPlcEx);    const tPlcExCum   = n(plaPrev.trnOptPlcEx)    + tPlcExDtm;
+  const tSmrkExDtm  = n(plaEx.trnRegSmrkEx);   const tSmrkExCum  = n(plaPrev.trnRegSmrkEx)   + tSmrkExDtm;
+  const cPlcdExDtm  = n(plaEx.cndPlcdEx);      const cPlcdExCum  = n(plaPrev.cndPlcdEx)      + cPlcdExDtm;
+  const empTrnExDtm = n(plaEx.empTrnEx);       const empTrnExCum = n(plaPrev.empTrnEx)       + empTrnExDtm;
+  const cHstdExDtm  = n(plaEx.cndOptHstdEx);   const cHstdExCum  = n(plaPrev.cndOptHstdEx)   + cHstdExDtm;
+  const cSlfsExDtm  = n(plaEx.cndOptSlfsEx);   const cSlfsExCum  = n(plaPrev.cndOptSlfsEx)   + cSlfsExDtm;
+  const cTbpExDtm   = n(plaEx.cndToBePlcdEx);  const cTbpExCum   = n(plaPrev.cndToBePlcdEx)  + cTbpExDtm;
+
+  /* Non-NSQF category */
+  const tCertNonDtm  = n(plaEx.trnCertNon);     const tCertNonCum  = n(plaPrev.trnCertNon)     + tCertNonDtm;
+  const tPlcNonDtm   = n(plaEx.trnOptPlcNon);   const tPlcNonCum   = n(plaPrev.trnOptPlcNon)   + tPlcNonDtm;
+  const tSmrkNonDtm  = n(plaEx.trnRegSmrkNon);  const tSmrkNonCum  = n(plaPrev.trnRegSmrkNon)  + tSmrkNonDtm;
+  const cPlcdNonDtm  = n(plaEx.cndPlcdNon);     const cPlcdNonCum  = n(plaPrev.cndPlcdNon)     + cPlcdNonDtm;
+  const empTrnNonDtm = n(plaEx.empTrnNon);      const empTrnNonCum = n(plaPrev.empTrnNon)      + empTrnNonDtm;
+  const cHstdNonDtm  = n(plaEx.cndOptHstdNon);  const cHstdNonCum  = n(plaPrev.cndOptHstdNon)  + cHstdNonDtm;
+  const cSlfsNonDtm  = n(plaEx.cndOptSlfsNon);  const cSlfsNonCum  = n(plaPrev.cndOptSlfsNon)  + cSlfsNonDtm;
+  const cTbpNonDtm   = n(plaEx.cndToBePlcdNon); const cTbpNonCum   = n(plaPrev.cndToBePlcdNon) + cTbpNonDtm;
 
   /* ══════════════════════════════════════════════════
      Rendering
@@ -648,29 +669,48 @@ export default function MprReport() {
                 </td>
               </tr>
 
-              {/* P. Placement Section */}
+              {/* P. Placement Section — NSQF / NSQF exempted / Non NSQF (mirrors /app/placement Section E) */}
               <Sec>P. Placement Section</Sec>
               <tr>
-                <th className="mpr-col-hdr" colSpan={3}>Particulars</th>
-                <th className="mpr-col-hdr">During Month</th>
-                <th className="mpr-col-hdr">Cumulative</th>
+                <td className="mpr-text-cell" colSpan={5}>
+                  <table className="mpr-pla-tbl">
+                    <thead>
+                      <tr>
+                        <th rowSpan={2} style={{ width: 26 }}>P.</th>
+                        <th rowSpan={2}>Name</th>
+                        <th colSpan={2}>NSQF</th>
+                        <th colSpan={2}>NSQF exempted</th>
+                        <th colSpan={2}>Non NSQF</th>
+                      </tr>
+                      <tr>
+                        <th>During the month</th><th>Cumulative<br />(up to the month)</th>
+                        <th>During the month</th><th>Cumulative<br />(up to the month)</th>
+                        <th>During the month</th><th>Cumulative<br />(up to the month)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ['(i)',    'Trainees Certified',                                                           tCertDtm,   tCertCum,   tCertExDtm,  tCertExCum,  tCertNonDtm,  tCertNonCum],
+                        ['(ii)',   'Total trainees opted for placement',                                          tPlcDtm,    tPlcCum,    tPlcExDtm,   tPlcExCum,   tPlcNonDtm,   tPlcNonCum],
+                        ['(iii)',  'Trainees registered on Sampark Portal',                                      tSmrkDtm,   tSmrkCum,   tSmrkExDtm,  tSmrkExCum,  tSmrkNonDtm,  tSmrkNonCum],
+                        ['(iv)',   'Candidate got placement (through institute as well as after leaving the institution)', cPlcdDtm, cPlcdCum, cPlcdExDtm, cPlcdExCum, cPlcdNonDtm, cPlcdNonCum],
+                        ['(v)',    'Candidate who were already employed attend the training for re-skilling/up-skilling', empTrnDtm, empTrnCum, empTrnExDtm, empTrnExCum, empTrnNonDtm, empTrnNonCum],
+                        ['(vi)',   'Candidate who opted for higher studies (including candidate continuing their education)', cHstdDtm, cHstdCum, cHstdExDtm, cHstdExCum, cHstdNonDtm, cHstdNonCum],
+                        ['(vii)',  'Candidates opted for self-employment',                                        cSlfsDtm,   cSlfsCum,   cSlfsExDtm,  cSlfsExCum,  cSlfsNonDtm,  cSlfsNonCum],
+                        ['(viii)', 'Candidate who were yet to be placed',                                         cTbpDtm,    cTbpCum,    cTbpExDtm,   cTbpExCum,   cTbpNonDtm,   cTbpNonCum],
+                      ].map(([no, label, nDtm, nCum, eDtm, eCum, oDtm, oCum], i) => (
+                        <tr key={i} style={{ background: i % 2 === 0 ? '#F2F2F2' : '#FBF8EF' }}>
+                          {i === 0 && <td rowSpan={8} style={{ fontWeight: 700 }}>P.</td>}
+                          <td style={{ textAlign: 'left', minWidth: 220 }}>{no} {label}</td>
+                          <td>{f0(nDtm)}</td><td>{f0(nCum)}</td>
+                          <td>{f0(eDtm)}</td><td>{f0(eCum)}</td>
+                          <td>{f0(oDtm)}</td><td>{f0(oCum)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </td>
               </tr>
-              {[
-                ['(i)    Trainees Certified',                                                                tCertDtm,  tCertCum],
-                ['(ii)   Total Trainees opted for Placement',                                               tPlcDtm,   tPlcCum],
-                ['(iii)  Trainees Registered on Sampark Portal',                                            tSmrkDtm,  tSmrkCum],
-                ['(iv)   Candidates got Placement (through institute + after leaving)',                     cPlcdDtm,  cPlcdCum],
-                ['(v)    Already Employed — attending for Re-skilling / Up-skilling',                      empTrnDtm, empTrnCum],
-                ['(vi)   Opted for Higher Studies (incl. continuing education)',                            cHstdDtm,  cHstdCum],
-                ['(vii)  Opted for Self-Employment',                                                        cSlfsDtm,  cSlfsCum],
-                ['(viii) Yet to be Placed',                                                                  cTbpDtm,   cTbpCum],
-              ].map(([label, dtm, cum], i) => (
-                <tr key={i} style={{ background: i % 2 === 0 ? '#F2F2F2' : '#FBF8EF' }}>
-                  <td className="mpr-part" colSpan={3}>{label}</td>
-                  <td className="mpr-dtm">{f0(dtm)}</td>
-                  <td className="mpr-cum">{f0(cum)}</td>
-                </tr>
-              ))}
 
             </tbody>
           </table>

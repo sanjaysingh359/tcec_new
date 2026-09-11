@@ -255,6 +255,15 @@
 .mpr-d-tbl th { background: #2a5d8a; color: #fff; font-size: 11px; font-weight: 600; }
 .mpr-d-tbl td:first-child { text-align: left; }
 
+/* ── Placement table (P) — NSQF / NSQF exempted / Non NSQF ── */
+.mpr-pla-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+.mpr-pla-tbl td, .mpr-pla-tbl th {
+  border: 1px solid #bbb;
+  padding: 3px 6px;
+  text-align: center;
+}
+.mpr-pla-tbl th { background: #2a5d8a; color: #fff; font-weight: 600; }
+
 /* ── Print ── */
 @media print {
   .mpr-page { background: #fff; padding: 0; }
