@@ -100,7 +100,10 @@ export default function AnalysisReport() {
               {rows.map((r, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{idx + 1}</td>
-                  <td className="rpt-td">{r.userId}</td>
+                  <td className="rpt-td">
+                    {r.noData && <span style={{ color:'red', marginRight:2 }}>*</span>}
+                    {r.userId}
+                  </td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.revT}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.revA}</td>
                   <td className="rpt-td" style={{ textAlign:'center' }}>{r.expT}</td>
@@ -130,6 +133,12 @@ export default function AnalysisReport() {
               </tr>
             </tfoot>
           </table>
+          {rows.some(r => r.noData) && (
+            <div style={{ fontSize:11, fontFamily:'Verdana,sans-serif', fontWeight:'bold', color:'red', padding:'4px 8px' }}>
+              <span style={{ color:'red', marginRight:4 }}>*</span>
+              :- No record is found for this technology centre.
+            </div>
+          )}
         </div>
       )}
     </div>

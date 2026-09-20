@@ -725,7 +725,7 @@ public class ReportController {
             int    trainT = tgt != null && tgt.getTaTarget()    != null ? tgt.getTaTarget()     : 0;
             int    unitT  = tgt != null && tgt.getNjuTarget()   != null ? tgt.getNjuTarget()    : 0;
 
-            // Actuals from tbl_financial (cum up to month)
+            // Actuals from tbl_financial (cash cumulative — data is stored in cash fields)
             double revA  = f != null ? nvlBD(f.getRevEarCashTotalCum()) : 0;
             double expA  = f != null ? nvlBD(f.getRevExpCashCum())      : 0;
 
@@ -738,11 +738,14 @@ public class ReportController {
                     + nvl(p.getMsmeNosOtherjobCumuMon()) + nvl(p.getOtherNosOtherjobCumuMon())
                     : 0;
 
+            // Round financial values to nearest integer (matches JSP Math.round() behaviour)
+            long revTL = Math.round(revT), revAL = Math.round(revA);
+            long expTL = Math.round(expT), expAL = Math.round(expA);
             result.add(new AnalysisReportRow(
                     instName,
-                    revT,  revA,
-                    expT,  expA,
-                    revT - expT, revA - expA,
+                    revTL,  revAL,
+                    expTL,  expAL,
+                    revTL - expTL, revAL - expAL,
                     trainT, trainA,
                     unitT,  unitA,
                     noData
