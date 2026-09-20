@@ -79,6 +79,15 @@ function SuRoute({ children }) {
   return children;
 }
 
+// SU or RU — full report access, but not entry-only admin pages
+function SuOrRuRoute({ children }) {
+  const { user, selection } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!selection) return <Navigate to="/dashboard" replace />;
+  if (user.role !== 'SU' && user.role !== 'RU') return <Navigate to="/app/home" replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <ConfigProvider theme={antTheme}>
@@ -102,25 +111,26 @@ export default function App() {
               <Route path="reports/graphical/chart" element={<GraphicalReportChart />} />
               <Route path="reports/mpr" element={<MprReportPage />} />
               <Route path="reports/mpr/report" element={<MprReport />} />
-              {/* Reports — SU only */}
-              <Route path="reports/trainees/category" element={<SuRoute><CategoryWisePage /></SuRoute>} />
-              <Route path="reports/trainees/category/report" element={<SuRoute><CategoryWiseReport /></SuRoute>} />
-              <Route path="reports/trainees/gender" element={<SuRoute><GenderWisePage /></SuRoute>} />
-              <Route path="reports/trainees/gender/report" element={<SuRoute><GenderWiseReport /></SuRoute>} />
-              <Route path="reports/trainees/qualification" element={<SuRoute><QualificationWisePage /></SuRoute>} />
-              <Route path="reports/trainees/qualification/report" element={<SuRoute><QualificationWiseReport /></SuRoute>} />
-              <Route path="reports/trainees/age" element={<SuRoute><AgeWisePage /></SuRoute>} />
-              <Route path="reports/trainees/age/report" element={<SuRoute><AgeWiseReport /></SuRoute>} />
-              <Route path="reports/budget" element={<SuRoute><BudgetReportPage /></SuRoute>} />
-              <Route path="reports/budget/report" element={<SuRoute><BudgetReport /></SuRoute>} />
-              <Route path="reports/target" element={<SuRoute><div style={{ padding: 24, color: '#073354', fontWeight: 'bold' }}>Target Report — Coming Soon</div></SuRoute>} />
-              <Route path="reports/analysis" element={<SuRoute><AnalysisReportPage /></SuRoute>} />
-              <Route path="reports/analysis/report" element={<SuRoute><AnalysisReport /></SuRoute>} />
-              <Route path="reports/rfd" element={<SuRoute><RfdReportPage /></SuRoute>} />
-              <Route path="reports/rfd/report" element={<SuRoute><RfdReport /></SuRoute>} />
-              <Route path="reports/achievement" element={<SuRoute><AchievementReportPage /></SuRoute>} />
-              <Route path="reports/achievement/report" element={<SuRoute><AchievementReport /></SuRoute>} />
-              <Route path="reports/achievement/status" element={<SuRoute><AchievementStatusPage /></SuRoute>} />
+              {/* Reports — SU or RU */}
+              <Route path="reports/trainees/category" element={<SuOrRuRoute><CategoryWisePage /></SuOrRuRoute>} />
+              <Route path="reports/trainees/category/report" element={<SuOrRuRoute><CategoryWiseReport /></SuOrRuRoute>} />
+              <Route path="reports/trainees/gender" element={<SuOrRuRoute><GenderWisePage /></SuOrRuRoute>} />
+              <Route path="reports/trainees/gender/report" element={<SuOrRuRoute><GenderWiseReport /></SuOrRuRoute>} />
+              <Route path="reports/trainees/qualification" element={<SuOrRuRoute><QualificationWisePage /></SuOrRuRoute>} />
+              <Route path="reports/trainees/qualification/report" element={<SuOrRuRoute><QualificationWiseReport /></SuOrRuRoute>} />
+              <Route path="reports/trainees/age" element={<SuOrRuRoute><AgeWisePage /></SuOrRuRoute>} />
+              <Route path="reports/trainees/age/report" element={<SuOrRuRoute><AgeWiseReport /></SuOrRuRoute>} />
+              <Route path="reports/budget" element={<SuOrRuRoute><BudgetReportPage /></SuOrRuRoute>} />
+              <Route path="reports/budget/report" element={<SuOrRuRoute><BudgetReport /></SuOrRuRoute>} />
+              <Route path="reports/target" element={<SuOrRuRoute><div style={{ padding: 24, color: '#073354', fontWeight: 'bold' }}>Target Report — Coming Soon</div></SuOrRuRoute>} />
+              <Route path="reports/analysis" element={<SuOrRuRoute><AnalysisReportPage /></SuOrRuRoute>} />
+              <Route path="reports/analysis/report" element={<SuOrRuRoute><AnalysisReport /></SuOrRuRoute>} />
+              <Route path="reports/rfd" element={<SuOrRuRoute><RfdReportPage /></SuOrRuRoute>} />
+              <Route path="reports/rfd/report" element={<SuOrRuRoute><RfdReport /></SuOrRuRoute>} />
+              <Route path="reports/achievement" element={<SuOrRuRoute><AchievementReportPage /></SuOrRuRoute>} />
+              <Route path="reports/achievement/report" element={<SuOrRuRoute><AchievementReport /></SuOrRuRoute>} />
+              <Route path="reports/achievement/status" element={<SuOrRuRoute><AchievementStatusPage /></SuOrRuRoute>} />
+              {/* SU only — admin actions */}
               <Route path="modify-data" element={<SuRoute><ModifyDataPage /></SuRoute>} />
               <Route path="users" element={<SuRoute><UserManagementPage /></SuRoute>} />
               {/* Annual Target — SU only */}

@@ -270,6 +270,7 @@ public class AdminController {
             mapping.setInstId(instId);
             mappingRepo.save(mapping);
         }
+        // RU and SU: no institute mapping needed
 
         return ResponseEntity.ok(ApiResponse.ok("User created successfully", null));
     }
@@ -307,7 +308,7 @@ public class AdminController {
             });
             mapping.setInstId(instId);
             mappingRepo.save(mapping);
-        } else if ("SU".equals(role)) {
+        } else if ("SU".equals(role) || "RU".equals(role)) {
             existingMapping.ifPresent(mappingRepo::delete);
         }
 

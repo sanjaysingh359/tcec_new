@@ -38,8 +38,9 @@ export default function DashboardPage() {
   const { fiscalMonth, year: defaultYear } = getDefaults();
 
   const isSU = user?.role === 'SU';
+  const isRU = user?.role === 'RU';
 
-  const [section,    setSection]    = useState('1');
+  const [section,    setSection]    = useState(isRU ? '2' : '1');
   const [month,      setMonth]      = useState(fiscalMonth);
   const [year,       setYear]       = useState(defaultYear);
   const [institutes, setInstitutes] = useState([]);      // SU: all institutes
@@ -61,8 +62,8 @@ export default function DashboardPage() {
       setLoading(true);
       setError('');
       try {
-        if (isSU) {
-          // SU: load active institutes (those with real IU user mappings)
+        if (isSU || isRU) {
+          // SU/RU: load active institutes (those with real IU user mappings)
           const { data } = await api.get('/institutes/active');
           if (data.success && data.data?.length) {
             setInstitutes(data.data);
@@ -97,7 +98,7 @@ export default function DashboardPage() {
     }
 
     loadInstitute();
-  }, [user, isSU]);
+  }, [user, isSU, isRU]);
 
   // When SU changes selected institute, update name
   function handleInstChange(instId) {
@@ -160,7 +161,8 @@ export default function DashboardPage() {
         <div className="db-user-bar">
           <span>Welcome, <strong>{username}</strong>
             {isSU && <span className="db-role-badge db-role-su"> (Super User)</span>}
-            {!isSU && <span className="db-role-badge db-role-iu"> (Institute User)</span>}
+            {isRU && <span className="db-role-badge db-role-su" style={{ background: '#e65c00' }}> (Report User)</span>}
+            {!isSU && !isRU && <span className="db-role-badge db-role-iu"> (Institute User)</span>}
           </span>
           <button className="db-logout-btn" onClick={handleLogout}>&#x2715; Logout</button>
         </div>
@@ -184,7 +186,7 @@ export default function DashboardPage() {
                     <td className="lp-inp">
                       {loading ? (
                         <span className="db-loading-text">Loading…</span>
-                      ) : isSU ? (
+                      ) : (isSU || isRU) ? (
                         <select
                           value={selInstId}
                           onChange={e => handleInstChange(e.target.value)}
@@ -212,10 +214,14 @@ export default function DashboardPage() {
                   <tr>
                     <td className="lp-lbl"><span className="lp-req">*</span> Section:</td>
                     <td className="lp-inp">
-                      <select value={section} onChange={e => setSection(e.target.value)} className="lp-field db-select">
-                        <option value="1">Entry Form Section</option>
-                        <option value="2">Report Section</option>
-                      </select>
+                      {isRU ? (
+                        <input type="text" readOnly value="Report Section" className="lp-field db-inst-readonly" />
+                      ) : (
+                        <select value={section} onChange={e => setSection(e.target.value)} className="lp-field db-select">
+                          <option value="1">Entry Form Section</option>
+                          <option value="2">Report Section</option>
+                        </select>
+                      )}
                     </td>
                   </tr>
 

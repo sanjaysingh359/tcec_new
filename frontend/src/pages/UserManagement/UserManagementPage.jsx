@@ -106,16 +106,20 @@ export default function UserManagementPage() {
       ),
     },
     {
-      title: 'Role', dataIndex: 'role', key: 'role', width: 120,
+      title: 'Role', dataIndex: 'role', key: 'role', width: 130,
       render: v => v === 'SU'
         ? <Tag color="#073354" style={{ fontWeight: 'bold' }}>Super User</Tag>
-        : <Tag color="green"  style={{ fontWeight: 'bold' }}>IU User</Tag>,
+        : v === 'RU'
+          ? <Tag color="orange" style={{ fontWeight: 'bold' }}>Report User</Tag>
+          : <Tag color="green"  style={{ fontWeight: 'bold' }}>IU User</Tag>,
     },
     {
       title: 'Assigned Institute', dataIndex: 'instName', key: 'instName',
       render: (name, row) => name
         ? <span><Badge status="success" />{name} <span style={{ color: '#999', fontSize: 11 }}>({row.instId})</span></span>
-        : <span style={{ color: '#bbb', fontStyle: 'italic' }}>— (Super User)</span>,
+        : <span style={{ color: '#bbb', fontStyle: 'italic' }}>
+            {row.role === 'RU' ? '— (Report User)' : '— (Super User)'}
+          </span>,
     },
     {
       title: 'Actions', key: 'actions', width: 140, align: 'center',
@@ -137,6 +141,7 @@ export default function UserManagementPage() {
 
   const suCount = users.filter(u => u.role === 'SU').length;
   const iuCount = users.filter(u => u.role === 'IU').length;
+  const ruCount = users.filter(u => u.role === 'RU').length;
 
   return (
     <div style={{ padding: '0 0 32px', fontFamily: 'Arial, Helvetica, sans-serif', background: '#f4f6f9', minHeight: '100%' }}>
@@ -168,9 +173,10 @@ export default function UserManagementPage() {
       {/* Stats strip */}
       <div style={{ display: 'flex', gap: 12, margin: '0 16px 14px' }}>
         {[
-          { label: 'Total Users',         val: users.length, color: '#073354' },
-          { label: 'Super Users (SU)',     val: suCount,      color: '#0a4a78' },
+          { label: 'Total Users',          val: users.length, color: '#073354' },
+          { label: 'Super Users (SU)',      val: suCount,      color: '#0a4a78' },
           { label: 'Institute Users (IU)', val: iuCount,      color: '#2e7d32' },
+          { label: 'Report Users (RU)',    val: ruCount,      color: '#e65c00' },
         ].map(({ label, val, color }) => (
           <div key={label} style={{
             flex: 1, background: '#fff', borderRadius: 8, padding: '12px 16px',
@@ -216,6 +222,7 @@ export default function UserManagementPage() {
           >
             <Option value="SU"><Tag color="#073354">Super User</Tag></Option>
             <Option value="IU"><Tag color="green">IU User</Tag></Option>
+            <Option value="RU"><Tag color="orange">Report User</Tag></Option>
           </Select>
 
           {/* Filter by Institute */}
@@ -295,6 +302,9 @@ export default function UserManagementPage() {
               </Option>
               <Option value="IU">
                 <Tag color="green">Institute User (IU)</Tag> — Access limited to one institute
+              </Option>
+              <Option value="RU">
+                <Tag color="orange">Report User (RU)</Tag> — Full report access, no data entry
               </Option>
             </Select>
           </Form.Item>
