@@ -55,6 +55,18 @@ function LabelCell({ children, colSpan = 1, rowSpan = 1, align = 'left', bg }) {
    ═══════════════════════════════════════════════════════ */
 const n = (v) => parseFloat(v) || 0;
 
+/* The `significant` column is shared with the Significant Achievement page, which stores JSON.
+   Returns that page's Technical & Production text (HTML stripped), or null for legacy plain text. */
+function achievementText(raw) {
+  if (!raw || !raw.trim().startsWith('{')) return null;
+  try {
+    const p = JSON.parse(raw);
+    const div = document.createElement('div');
+    div.innerHTML = (p.technical || '').replace(/<(br|\/p|\/div|\/li)\b[^>]*>/gi, '\n$&');
+    return (div.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  } catch { return null; }
+}
+
 export default function BudgetPage() {
   const { selection, user } = useAuth();
 
@@ -68,6 +80,7 @@ export default function BudgetPage() {
   const [blocked, setBlocked]         = useState(false);
   const [hasData, setHasData]         = useState(false);
   const [loadErr, setLoadErr]         = useState('');
+  const [sigFromAch, setSigFromAch]   = useState(null);   // G owned by Achievement page → read-only
 
   const YEAR_LABEL = selection
     ? `${parseInt(selection.year) || 'YYYY'}-${(parseInt(selection.year) + 1) || 'YYYY'}`
@@ -89,6 +102,7 @@ export default function BudgetPage() {
     detailVisit: '',
     sigAchiev:   '',
     shortFalls:  '',
+    promoActiv:  '',
   };
 
   const [form, setForm] = useState(INIT);
@@ -96,7 +110,7 @@ export default function BudgetPage() {
 
   useEffect(() => {
     if (!selection?.instId || !selection?.month || !selection?.year) return;
-    setLoading(true); setBlocked(false); setHasData(false); setLoadErr('');
+    setLoading(true); setBlocked(false); setHasData(false); setLoadErr(''); setSigFromAch(null);
     api.get('/entry/budget/load', {
       params: { instId: selection.instId, month: selection.month, year: selection.year }
     }).then(r => {
@@ -108,6 +122,8 @@ export default function BudgetPage() {
       setPrevMac(parseFloat(pc.machineCum) || 0);
       if (data.targets?.beBudget != null)
         setBeBudget(parseFloat(data.targets.beBudget).toFixed(2));
+      const achText = achievementText(data.existing?.sigAchiev);
+      setSigFromAch(achText);
       if (data.hasData) {
         setHasData(true);
         const ex = data.existing || {};
@@ -122,8 +138,9 @@ export default function BudgetPage() {
           posA: ex.posA?.toString() || '', posB: ex.posB?.toString() || '',
           posC: ex.posC?.toString() || '', posD: ex.posD?.toString() || '',
           machineDtm: ex.machineDtm?.toString() || '',
-          detailVisit: ex.detailVisit || '', sigAchiev: ex.sigAchiev || '',
+          detailVisit: ex.detailVisit || '', sigAchiev: achText === null ? (ex.sigAchiev || '') : '',
           shortFalls: ex.shortFalls || '',
+          promoActiv: ex.promoActiv || '',
         }));
         if (user?.role !== 'SU') setBlocked(true);
       }
@@ -136,6 +153,8 @@ export default function BudgetPage() {
     setSaving(true);
     api.post('/entry/budget/save', {
       instId: selection.instId, month: selection.month, year: selection.year, ...form,
+      // never overwrite the Achievement page's JSON with the Budget textarea
+      sigAchiev: sigFromAch === null ? form.sigAchiev : '',
     }).then(() => message.success('Budget data saved successfully!'))
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
@@ -192,7 +211,7 @@ export default function BudgetPage() {
       {/* ── Title Bar ── */}
       <div className="bud-titlebar">
         <div className="bud-titlebar-left">
-          <span className="bud-page-label">Monthly Progress Report — Sections C–H</span>
+          <span className="bud-page-label">Monthly Progress Report — Sections C–I</span>
           <span className="bud-institute">{selection?.instName || 'Budget Section'}</span>
         </div>
         <div className="bud-titlebar-right">
@@ -339,17 +358,34 @@ export default function BudgetPage() {
                   Significant Achievements, if any, including new initiatives taken like NMCP etc.
                 </LabelCell>
                 <td className="bud-cell" colSpan={5} style={{ padding: 8 }}>
-                  <textarea
-                    className="bud-textarea"
-                    rows={4}
-                    maxLength={MAX_CHARS}
-                    value={form.sigAchiev}
-                    onChange={set('sigAchiev')}
-                    placeholder="Enter significant achievements… (max 400 characters)"
-                  />
-                  <div className="bud-char-count">
-                    {MAX_CHARS - form.sigAchiev.length} characters remaining
-                  </div>
+                  {sigFromAch !== null ? (
+                    <>
+                      <textarea
+                        className="bud-textarea"
+                        rows={4}
+                        value={sigFromAch}
+                        readOnly
+                        style={{ background: '#f1f4f8' }}
+                      />
+                      <div className="bud-char-count">
+                        Entered on the Significant Achievement page — edit it there.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <textarea
+                        className="bud-textarea"
+                        rows={4}
+                        maxLength={MAX_CHARS}
+                        value={form.sigAchiev}
+                        onChange={set('sigAchiev')}
+                        placeholder="Enter significant achievements… (max 400 characters)"
+                      />
+                      <div className="bud-char-count">
+                        {MAX_CHARS - form.sigAchiev.length} characters remaining
+                      </div>
+                    </>
+                  )}
                 </td>
               </tr>
 
@@ -370,6 +406,27 @@ export default function BudgetPage() {
                   />
                   <div className="bud-char-count">
                     {MAX_CHARS - form.shortFalls.length} characters remaining
+                  </div>
+                </td>
+              </tr>
+
+              {/* ─── I. PROMOTIONAL ACTIVITIES ───────────────── */}
+              <tr>
+                <td className="bud-cell bud-letter"><b>I.</b></td>
+                <LabelCell bg="#eef3f8">
+                  Promotional Activities
+                </LabelCell>
+                <td className="bud-cell" colSpan={5} style={{ padding: 8 }}>
+                  <textarea
+                    className="bud-textarea"
+                    rows={4}
+                    maxLength={MAX_CHARS}
+                    value={form.promoActiv}
+                    onChange={set('promoActiv')}
+                    placeholder="Enter promotional activities… (max 400 characters)"
+                  />
+                  <div className="bud-char-count">
+                    {MAX_CHARS - form.promoActiv.length} characters remaining
                   </div>
                 </td>
               </tr>

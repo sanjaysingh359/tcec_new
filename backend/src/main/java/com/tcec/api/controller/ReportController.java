@@ -697,63 +697,84 @@ public class ReportController {
                         p -> p.getInstId() == null ? "" : p.getInstId().trim(),
                         p -> p, (a, b) -> a));
 
+        // Budget row for the month per instId
+        Set<String> budInsts = budRepo.findByYears(year).stream()
+                .filter(b -> month.equals(b.getMonths() == null ? "" : b.getMonths().trim()))
+                .map(b -> b.getInstId() == null ? "" : b.getInstId().trim())
+                .collect(Collectors.toSet());
+
         // Annual targets per instId
         Map<String, com.tcec.api.entity.TblTrngExpTarget> targetByInst =
                 targetRepo.findByYears(year).stream().collect(Collectors.toMap(
                         t -> t.getInstId() == null ? "" : t.getInstId().trim(),
                         t -> t, (a, b) -> a));
 
-        List<AnalysisReportRow> result = new ArrayList<>();
+        // Same logic as the legacy RptPerAnalysis.jsp / v_analysis procedure:
+        // an institute is reported only when financial, physical, budget AND target rows all
+        // exist for the month (inner join); otherwise it is listed with '*' and all zeros.
+        List<AnalysisReportRow> withData = new ArrayList<>();
+        List<AnalysisReportRow> noData   = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
 
         for (UserIdMapping m : mappings) {
-            String instId = m.getInstId();
-            if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
-            seen.add(instId);
+            String instId = m.getInstId() == null ? "" : m.getInstId().trim();
+            if (instId.isBlank() || !seen.add(instId)) continue;
 
             String instName = instRepo.findByInstId(instId)
                     .map(TlInstitute::getInstName).orElse(instId);
 
-            TblFinancial f  = finByInst.get(instId);
-            TblPhysical  p  = phyByInst.get(instId);
+            TblFinancial f = finByInst.get(instId);
+            TblPhysical  p = phyByInst.get(instId);
             var tgt = targetByInst.get(instId);
-            boolean noData  = (f == null && p == null);
+            if (f == null || p == null || tgt == null || !budInsts.contains(instId)) {
+                noData.add(new AnalysisReportRow(instName, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true));
+                continue;
+            }
 
-            // Targets from tbl_trng_exp_target (annual)
-            double revT   = tgt != null && tgt.getRevEarnCash() != null ? tgt.getRevEarnCash() : 0;
-            double expT   = tgt != null && tgt.getRevExpCash()  != null ? tgt.getRevExpCash()  : 0;
-            int    trainT = tgt != null && tgt.getTaTarget()    != null ? tgt.getTaTarget()     : 0;
-            int    unitT  = tgt != null && tgt.getNjuTarget()   != null ? tgt.getNjuTarget()    : 0;
+            // T: revenue (cash) and rec. expenditure (accrual) targets — the annual target row is
+            // the one edited in this app; legacy rows also carry a copy on tbl_financial.
+            int revT = tgt.getRevEarnCash() != null ? tgt.getRevEarnCash() : nvl(f.getRevEarCashTotalTarget());
+            int expT = tgt.getRevExpAcc()   != null ? tgt.getRevExpAcc()   : nvl(f.getRevExpAccrualTarget());
 
-            // Actuals from tbl_financial (cash cumulative — data is stored in cash fields)
-            double revA  = f != null ? nvlBD(f.getRevEarCashTotalCum()) : 0;
-            double expA  = f != null ? nvlBD(f.getRevExpCashCum())      : 0;
+            // A: REV_EAR_ACCRUAL_TOTAL_CUM / REV_EXP_ACCRUAL_CUM, rounded like JSP Math.round()
+            long revA = Math.round(accrualTotalCum(f));
+            long expA = Math.round(nvlBD(f.getRevExpAccrualCum()));
 
-            // Trainees actual from tbl_physical
-            int trainA = p != null ? nvl(p.getTringTotalNotCum()) : 0;
+            // TOTAL_NO_TRANEE_CUM = LTC + STC/NTT + Others
+            int trainA = nvl(p.getTaLtcCum()) + nvl(p.getTaStcNttCum()) + nvl(p.getTaOthersCum());
 
-            // Units assisted (tooling + other job) cumulative
-            int unitA  = p != null
-                    ? nvl(p.getMsmeNosToolingCumuMon())  + nvl(p.getOtherNosToolingCumuMon())
-                    + nvl(p.getMsmeNosOtherjobCumuMon()) + nvl(p.getOtherNosOtherjobCumuMon())
-                    : 0;
+            // TOTAL_CAL_NOS_CUM_NEW = tooling + other job + any other + consultancy (MSME + other)
+            int unitA = nvl(p.getMsmeNosToolingCumuMon())  + nvl(p.getOtherNosToolingCumuMon())
+                      + nvl(p.getMsmeNosOtherjobCumuMon()) + nvl(p.getOtherNosOtherjobCumuMon())
+                      + nvl(p.getAnyOtherCum())
+                      + nvl(p.getConsltMsmeCum())          + nvl(p.getConsltOtherCum());
 
-            // Round financial values to nearest integer (matches JSP Math.round() behaviour)
-            long revTL = Math.round(revT), revAL = Math.round(revA);
-            long expTL = Math.round(expT), expAL = Math.round(expA);
-            result.add(new AnalysisReportRow(
+            withData.add(new AnalysisReportRow(
                     instName,
-                    revTL,  revAL,
-                    expTL,  expAL,
-                    revTL - expTL, revAL - expAL,
-                    trainT, trainA,
-                    unitT,  unitA,
-                    noData
+                    revT, revA,
+                    expT, expA,
+                    revT - expT, revA - expA,
+                    nvl(tgt.getTaTarget()),  trainA,
+                    nvl(tgt.getNjuTarget()), unitA,
+                    false
             ));
         }
 
-        result.sort(Comparator.comparing(AnalysisReportRow::userId, String.CASE_INSENSITIVE_ORDER));
-        return ResponseEntity.ok(ApiResponse.ok(result));
+        // Institutes with data first, then the '*' (no record) ones — each group by name
+        withData.sort(Comparator.comparing(AnalysisReportRow::userId, String.CASE_INSENSITIVE_ORDER));
+        noData.sort(Comparator.comparing(AnalysisReportRow::userId, String.CASE_INSENSITIVE_ORDER));
+        withData.addAll(noData);
+        return ResponseEntity.ok(ApiResponse.ok(withData));
+    }
+
+    /** REV_EAR_ACCRUAL_TOTAL_CUM; rows saved without the stored total fall back to summing its parts. */
+    private static double accrualTotalCum(TblFinancial f) {
+        if (f.getRevEarAccrualTotalCum() != null) return f.getRevEarAccrualTotalCum().doubleValue();
+        return nvlBD(f.getRevEarAccrualTrngCum())
+             + nvlBD(f.getRevEarAccrualPrdtnToolingCum()) + nvlBD(f.getRevEarAccrualPrdtnOtherjobCum())
+             + nvlBD(f.getRevEarAcclBasConsultCum())
+             + nvlBD(f.getRevEarAccrualMiscCum())
+             + nvlBD(f.getTestCalServicesAccMon());
     }
 
     // ─────────────────────────────────────────────────────────────────────────

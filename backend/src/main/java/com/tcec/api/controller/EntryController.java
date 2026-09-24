@@ -183,6 +183,18 @@ public class EntryController {
         e.setRevExpCashCum(          sumBD(prev, TblFinancial::getRevExpCashDtm).add(revExpCashDtm));
         e.setRevExpAccrualCum(       sumBD(prev, TblFinancial::getRevExpAccrualDtm).add(revExpAccrDtm));
 
+        // Revenue totals (read by the Performance Analysis report, as in the legacy app)
+        e.setRevEarCashTotalDtm(cashTrngDtm.add(cashToolDtm).add(cashJobDtm)
+                .add(cashConsDtm).add(cashMiscDtm).add(cashTestDtm));
+        e.setRevEarCashTotalCum(e.getRevEarCashTrngCum().add(e.getRevEarCashPrdtnToolingCum())
+                .add(e.getRevEarCashPrdtnOtherjobCum()).add(e.getRevEarCshBasConsultCum())
+                .add(e.getRevEarCashMiscCum()).add(e.getTestCalServicesMon()));
+        e.setRevEarAccrualTotalDtm(accrTrngDtm.add(accrToolDtm).add(accrJobDtm)
+                .add(accrConsDtm).add(accrMiscDtm).add(accrTestDtm));
+        e.setRevEarAccrualTotalCum(e.getRevEarAccrualTrngCum().add(e.getRevEarAccrualPrdtnToolingCum())
+                .add(e.getRevEarAccrualPrdtnOtherjobCum()).add(e.getRevEarAcclBasConsultCum())
+                .add(e.getRevEarAccrualMiscCum()).add(e.getTestCalServicesAccMon()));
+
         finRepo.save(e);
 
         // Revenue Expenditure Target (Cash/Accrual) is editable right on this form;
@@ -524,6 +536,7 @@ public class EntryController {
             existing.put("detailVisit",b.getDetailsVisit() != null ? b.getDetailsVisit() : "");
             existing.put("sigAchiev",  b.getSignificant()  != null ? b.getSignificant()  : "");
             existing.put("shortFalls", b.getShortsFall()   != null ? b.getShortsFall()   : "");
+            existing.put("promoActiv", b.getNewtext()      != null ? b.getNewtext()      : "");
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -577,9 +590,12 @@ public class EntryController {
         b.setStfStPosC(intVal(body.get("posC"))); b.setStfStPosD(intVal(body.get("posD")));
         b.setDetailsVisit((String) body.get("detailVisit"));
         b.setShortsFall((String) body.get("shortFalls"));
+        b.setNewtext((String) body.get("promoActiv"));   // I. Promotional Activities
         // Only overwrite significant if budget form sends non-empty value (achievement page owns this field)
         String sigAchiev = (String) body.get("sigAchiev");
-        if (sigAchiev != null && !sigAchiev.isBlank()) {
+        // ...and never replace the Achievement page's JSON with plain text from the budget form
+        boolean achOwned = b.getSignificant() != null && b.getSignificant().trim().startsWith("{");
+        if (sigAchiev != null && !sigAchiev.isBlank() && !achOwned) {
             b.setSignificant(sigAchiev);
         }
 

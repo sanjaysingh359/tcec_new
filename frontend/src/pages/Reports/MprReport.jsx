@@ -253,6 +253,7 @@ export default function MprReport() {
   const achData     = parseAch(budEx.sigAchiev);
   const detailVisit = budEx.detailVisit || '';
   const shortFalls  = budEx.shortFalls  || '';
+  const promoActiv  = budEx.promoActiv  || '';
 
   /* ══════════════════════════════════════════════════
      PLACEMENT computed values
@@ -791,7 +792,7 @@ export default function MprReport() {
               <tr style={{ background: '#FBF8EF' }}>
                 <td className="mpr-letter-cell">N.</td>
                 <td className="mpr-part">Promotional Activites</td>
-                <td className="mpr-text-cell">{achData.note || <span className="mpr-nodata">(no data entered)</span>}</td>
+                <td className="mpr-text-cell">{promoActiv || <span className="mpr-nodata">(no data entered)</span>}</td>
               </tr>
             </tbody>
           </table>
