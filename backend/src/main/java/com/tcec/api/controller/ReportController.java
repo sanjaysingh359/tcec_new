@@ -501,6 +501,58 @@ public class ReportController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // GET /api/reports/target?year=Y
+    // Annual targets of every institute for the financial year — same data as the
+    // legacy TargetReport.jsp (procedure v_rpt_target → view rpt_target over
+    // tbl_trng_exp_target). Institutes without a target row are flagged noData.
+    // ─────────────────────────────────────────────────────────────────────────
+    @GetMapping("/target")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> target(
+            @RequestParam String year,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        String token = AuthService.extractToken(authHeader);
+        if (token == null || authService.getUserByToken(token).isEmpty())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Authentication required"));
+
+        Map<String, com.tcec.api.entity.TblTrngExpTarget> byInst =
+                targetRepo.findByYears(year).stream().collect(Collectors.toMap(
+                        t -> t.getInstId() == null ? "" : t.getInstId().trim(), t -> t, (a, b) -> a));
+
+        List<Map<String, Object>> withData = new ArrayList<>();
+        List<Map<String, Object>> noData   = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (UserIdMapping m : mappingRepo.findRealInstituteUsers()) {
+            String instId = m.getInstId() == null ? "" : m.getInstId().trim();
+            if (instId.isBlank() || !seen.add(instId)) continue;
+            String instName = instRepo.findByInstId(instId).map(TlInstitute::getInstName).orElse(instId);
+            var t = byInst.get(instId);
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("instName", instName);
+            row.put("noData", t == null);
+            row.put("revEarnCash", t == null ? 0 : nvl(t.getRevEarnCash()));
+            row.put("revEarnAcc",  t == null ? 0 : nvl(t.getRevEarnAcc()));
+            row.put("revExpCash",  t == null ? 0 : nvl(t.getRevExpCash()));
+            row.put("revExpAcc",   t == null ? 0 : nvl(t.getRevExpAcc()));
+            row.put("incExpCash",  t == null ? 0 : nvl(t.getIncExpCash()));
+            row.put("incExpAcc",   t == null ? 0 : nvl(t.getIncExpAcc()));
+            row.put("perRecCash",  t == null ? 0 : nvl(t.getPerRecCash()));
+            row.put("perRecAcc",   t == null ? 0 : nvl(t.getPerRecAcc()));
+            row.put("njuTarget",   t == null ? 0 : nvl(t.getNjuTarget()));
+            row.put("taTarget",    t == null ? 0 : nvl(t.getTaTarget()));
+            row.put("beBudget",    t == null ? 0 : nvl(t.getBeBudget()));
+            (t == null ? noData : withData).add(row);
+        }
+        Comparator<Map<String, Object>> byName =
+                Comparator.comparing(r -> ((String) r.get("instName")), String.CASE_INSENSITIVE_ORDER);
+        withData.sort(byName);
+        noData.sort(byName);
+        withData.addAll(noData);   // legacy lists the '*' (no record) institutes after the rest
+        return ResponseEntity.ok(ApiResponse.ok(withData));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // GET /api/reports/mpr?year=Y
     // For each active institute, shows OK/NOT for each of the 12 fiscal months.
     // ─────────────────────────────────────────────────────────────────────────

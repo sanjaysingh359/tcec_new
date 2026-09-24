@@ -4,11 +4,13 @@ import com.tcec.api.dto.ApiResponse;
 import com.tcec.api.dto.LoginRequest;
 import com.tcec.api.dto.LoginResponse;
 import com.tcec.api.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -42,6 +44,24 @@ public class AuthController {
         String token = AuthService.extractToken(authHeader);
         if (token != null) authService.logout(token);
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    /** POST /api/auth/change-password  — body: { currentPassword, newPassword } */
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @RequestBody Map<String, String> body,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            HttpServletRequest request) {
+
+        String token = AuthService.extractToken(authHeader);
+        if (token == null || authService.getUserByToken(token).isEmpty())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Not authenticated"));
+
+        String error = authService.changePassword(token,
+                body.get("currentPassword"), body.get("newPassword"), request.getRemoteAddr());
+        if (error != null)
+            return ResponseEntity.badRequest().body(ApiResponse.error(error));
+        return ResponseEntity.ok(ApiResponse.ok("Password changed successfully", null));
     }
 
     /** GET /api/auth/me  — check who is logged in */

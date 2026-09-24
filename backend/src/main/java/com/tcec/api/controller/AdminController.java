@@ -15,6 +15,7 @@ import com.tcec.api.repository.TlInstituteRepository;
 import com.tcec.api.repository.UserIdMappingRepository;
 import com.tcec.api.service.AuthService;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,6 +44,7 @@ public class AdminController {
     private final UserIdMappingRepository mappingRepo;
     private final MsmeUserRepository      userRepo;
     private final AuthService             authService;
+    private final JdbcTemplate            jdbc;
 
     public AdminController(FinancialRepository  finRepo,
                            PhysicalRepository   phyRepo,
@@ -51,7 +53,8 @@ public class AdminController {
                            TlInstituteRepository   instRepo,
                            UserIdMappingRepository mappingRepo,
                            MsmeUserRepository      userRepo,
-                           AuthService             authService) {
+                           AuthService             authService,
+                           JdbcTemplate            jdbc) {
         this.finRepo     = finRepo;
         this.phyRepo     = phyRepo;
         this.budRepo     = budRepo;
@@ -60,6 +63,7 @@ public class AdminController {
         this.mappingRepo = mappingRepo;
         this.userRepo    = userRepo;
         this.authService = authService;
+        this.jdbc        = jdbc;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -159,7 +163,12 @@ public class AdminController {
             switch (section) {
                 case "01" -> finRepo.deleteRecord(instId, month, year);
                 case "02" -> clearBudgetSection(instId, month, year);
-                case "03" -> phyRepo.deleteRecord(instId, month, year);
+                case "03" -> {
+                    phyRepo.deleteRecord(instId, month, year);
+                    // long-term course rows for the month (Physical page, legacy tbl_course_txn)
+                    jdbc.update("DELETE FROM tbl_course_txn WHERE inst_id = ? AND months = ? AND years = ?",
+                            instId, month, year);
+                }
                 case "04" -> plaRepo.deleteRecord(instId, month, year);
                 case "05" -> clearAchievement(instId, month, year);
                 default   -> { return ResponseEntity.badRequest()
