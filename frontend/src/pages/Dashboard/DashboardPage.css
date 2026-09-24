@@ -1,0 +1,134 @@
+/* ── Dashboard (institute / section / month selection) ── */
+
+.db2-welcome {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 22px;
+  border-radius: 12px;
+  background: #f4f8fc;
+  border: 1px solid #e3eaf2;
+}
+.db2-avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 17px; color: #fff;
+  background: linear-gradient(135deg, #8B0000, #cc0000);
+}
+.db2-welcome-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.db2-hello { font-size: 12.5px; color: #6b7c8e; }
+.db2-welcome-text b { font-size: 15px; color: #0f2440; }
+.db2-role { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; }
+.db2-role-su { background: #e8f0fb; color: #073354; }
+.db2-role-ru { background: #fff1e0; color: #b35300; }
+.db2-role-iu { background: #e6f4ea; color: #1e6b37; }
+.db2-logout {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid #f1c9c9; border-radius: 9px;
+  background: #fff; color: #b01818;
+  font-family: var(--font-ui); font-size: 12.5px; font-weight: 700;
+  cursor: pointer;
+}
+.db2-logout:hover { background: #b01818; color: #fff; border-color: #b01818; }
+
+.db2-head { margin-bottom: 18px; }
+
+/* Institute */
+.db2-select { width: 100%; }
+.db2-select .ant-select-selector { border-radius: 11px !important; height: 46px !important; align-items: center; background: #fbfcfe !important; }
+.db2-select .ant-select-selection-item,
+.db2-select .ant-select-selection-search-input { font-family: var(--font-ui); font-size: 14.5px; }
+.db2-inst-fixed {
+  display: flex; align-items: center; gap: 10px;
+  height: 46px; padding: 0 14px;
+  border-radius: 11px;
+  background: #f4f8fc; border: 1px solid #e3eaf2;
+  font-weight: 700; color: #0f2440;
+}
+.db2-inst-fixed .anticon { color: #0d4f82; }
+.db2-skeleton {
+  height: 46px; border-radius: 11px;
+  background: linear-gradient(90deg, #eef2f7 25%, #f7f9fc 50%, #eef2f7 75%);
+  background-size: 200% 100%;
+  animation: db2-shimmer 1.2s infinite;
+}
+@keyframes db2-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Section cards */
+.db2-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.db2-section {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px;
+  border: 1.5px solid #dbe4ee;
+  border-radius: 12px;
+  background: #fff;
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.db2-section:hover:not(:disabled) { border-color: #8fb0d2; }
+.db2-section.is-on { border-color: #0d4f82; background: #f2f8fe; box-shadow: 0 0 0 3px rgba(13,79,130,0.12); }
+.db2-section:disabled { opacity: 0.55; cursor: not-allowed; background: #f7f9fb; }
+.db2-section-icon {
+  width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 18px; color: #073354; background: #e8f0fb;
+}
+.db2-section.is-on .db2-section-icon { background: #FFD700; }
+.db2-section-text { display: flex; flex-direction: column; min-width: 0; }
+.db2-section-text b { font-size: 14px; color: #0f2440; }
+.db2-section-text small { font-size: 11.5px; color: #8a99aa; }
+.db2-section-mark { position: absolute; top: 10px; right: 10px; color: #0d4f82; font-size: 16px; }
+
+/* Month / year */
+.db2-my-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.db2-year {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: #6b7c8e;
+}
+.db2-year .anticon { color: #0d4f82; }
+.db2-year select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #cdd8e4; border-radius: 8px;
+  background: #fff;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700; color: #073354;
+  cursor: pointer;
+}
+.db2-months { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.db2-month {
+  position: relative;
+  height: 40px;
+  border: 1.5px solid #dbe4ee;
+  border-radius: 10px;
+  background: #fff;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700; color: #3d5a78;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.db2-month:hover { border-color: #8fb0d2; color: #073354; }
+.db2-month.is-now::after {
+  content: '';
+  position: absolute; top: 5px; right: 6px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #e0a800;
+}
+.db2-month.is-on { background: #073354; border-color: #073354; color: #FFD700; }
+
+.db2-summary {
+  margin: 4px 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff8db;
+  border: 1px solid #f3dc85;
+  font-size: 13px; color: #5c4a00;
+}
+.db2-summary b { color: #3d2f00; }
+
+@media (max-width: 600px) {
+  .db2-sections { grid-template-columns: 1fr; }
+  .db2-months { grid-template-columns: repeat(4, 1fr); }
+  .db2-my-head { flex-direction: column; align-items: flex-start; }
+}

@@ -30,6 +30,8 @@ import BudgetPage from './pages/Budget/BudgetPage';
 import PlacementPage from './pages/Placement/PlacementPage';
 import ModifyDataPage from './pages/ModifyData/ModifyDataPage';
 import ContactUsPage from './pages/ContactUs/ContactUsPage';
+import TargetReport from './pages/Reports/TargetReport';
+import ChangePasswordPage from './pages/ChangePassword/ChangePasswordPage';
 import TargetPage from './pages/Target/TargetPage';
 import UserManagementPage from './pages/UserManagement/UserManagementPage';
 import AchievementPage from './pages/Achievement/AchievementPage';
@@ -41,7 +43,7 @@ const antTheme = {
   token: {
     colorPrimary: '#073354',
     colorLink: '#073354',
-    fontFamily: 'Arial, Helvetica, sans-serif',
+    fontFamily: "'Inter Variable', 'Segoe UI', Roboto, Arial, sans-serif",
     fontSize: 13,
     borderRadius: 4,
   },
@@ -122,7 +124,7 @@ export default function App() {
               <Route path="reports/trainees/age/report" element={<SuOrRuRoute><AgeWiseReport /></SuOrRuRoute>} />
               <Route path="reports/budget" element={<SuOrRuRoute><BudgetReportPage /></SuOrRuRoute>} />
               <Route path="reports/budget/report" element={<SuOrRuRoute><BudgetReport /></SuOrRuRoute>} />
-              <Route path="reports/target" element={<SuOrRuRoute><div style={{ padding: 24, color: '#073354', fontWeight: 'bold' }}>Target Report — Coming Soon</div></SuOrRuRoute>} />
+              <Route path="reports/target" element={<SuOrRuRoute><TargetReport /></SuOrRuRoute>} />
               <Route path="reports/analysis" element={<SuOrRuRoute><AnalysisReportPage /></SuOrRuRoute>} />
               <Route path="reports/analysis/report" element={<SuOrRuRoute><AnalysisReport /></SuOrRuRoute>} />
               <Route path="reports/rfd" element={<SuOrRuRoute><RfdReportPage /></SuOrRuRoute>} />
@@ -137,6 +139,8 @@ export default function App() {
               <Route path="target" element={<SuRoute><TargetPage /></SuRoute>} />
               {/* Contact Us */}
               <Route path="contact" element={<ContactUsPage />} />
+              {/* Change password — every signed-in user */}
+              <Route path="change-password" element={<ChangePasswordPage />} />
               {/* Significant Achievement — both roles */}
               <Route path="achievement" element={<AchievementPage />} />
               {/* Entry forms — both roles */}

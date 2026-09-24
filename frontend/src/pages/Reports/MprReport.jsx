@@ -22,15 +22,44 @@ function parseAch(raw) {
   catch { return { ...INIT_ACH, technical: raw }; }
 }
 
+/* Rich text from the Achievement editor → safe HTML: keep only basic formatting tags,
+   drop every attribute and anything else (scripts, links, styles, event handlers). */
+const SAFE_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'UL', 'OL', 'LI', 'BR', 'P', 'DIV', 'SPAN']);
+function safeHtml(html) {
+  const doc = new DOMParser().parseFromString(`<div>${html || ''}</div>`, 'text/html');
+  const clean = node => {
+    [...node.childNodes].forEach(ch => {
+      if (ch.nodeType === Node.TEXT_NODE) return;
+      if (ch.nodeType !== Node.ELEMENT_NODE) { ch.remove(); return; }
+      if (!SAFE_TAGS.has(ch.tagName)) {
+        if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT'].includes(ch.tagName)) ch.remove();
+        else { clean(ch); ch.replaceWith(...ch.childNodes); }   // unwrap, keep cleaned content
+        return;
+      }
+      [...ch.attributes].forEach(a => ch.removeAttribute(a.name));
+      clean(ch);
+    });
+  };
+  const root = doc.body.firstChild;
+  clean(root);
+  return root.innerHTML;
+}
+
 /* ─── JSX helpers — one lettered section = one independent table ─── */
 
 /* Section wrapper: letter + title bar, then whatever table the caller supplies */
-function Block({ letter, title, children }) {
+function Block({ letter, title, note, children }) {
   return (
-    <div className="mpr-block">
-      {title && <div className="mpr-sec-hdr">{letter ? `${letter}. ` : ''}{title}</div>}
+    <section className="mpr-block">
+      {title && (
+        <div className="mpr-sec-hdr">
+          {letter && <span className="mpr-sec-letter">{letter}</span>}
+          <span className="mpr-sec-title">{title}</span>
+          {note && <span className="mpr-sec-note">{note}</span>}
+        </div>
+      )}
       {children}
-    </div>
+    </section>
   );
 }
 
@@ -52,21 +81,32 @@ function StatHead({ labelCols = 1, labelText = 'Particulars' }) {
   );
 }
 
-/* Bifurcation row: one outer label (During-the-month / Cumulative) + an inline
-   mini table of category columns. Used for sections C, D, E, F. */
-function BifurRow({ label, cols, alt }) {
+/* Bifurcation section (C, D, E, F, G): categories as columns, During / Cumulative as rows.
+   cols = [{ label, dtm, cum }] */
+function BifurTable({ cols, total = true }) {
+  const sum = key => cols.reduce((s, c) => s + n(c[key]), 0);
   return (
-    <tr style={{ background: alt ? '#FBF8EF' : '#fff' }}>
-      <td className="mpr-part" style={{ minWidth: 200 }}>{label}</td>
-      <td style={{ padding: 0 }}>
-        <table className="mpr-bifur-tbl">
-          <thead><tr>{cols.map(c => <th key={c.label}>{c.label}</th>)}<th>Total</th></tr></thead>
-          <tbody>
-            <tr>{cols.map(c => <td key={c.label}>{f0(c.value)}</td>)}<td className="mpr-total-cell">{f0(cols.reduce((s, c) => s + n(c.value), 0))}</td></tr>
-          </tbody>
-        </table>
-      </td>
-    </tr>
+    <table className={`mpr-tbl mpr-bifur${cols.length === 1 ? ' mpr-bifur-narrow' : ''}`}>
+      <thead>
+        <tr>
+          <th className="mpr-col-hdr mpr-bifur-lbl">Trainees trained</th>
+          {cols.map(c => <th key={c.label} className="mpr-col-hdr mpr-bifur-th">{c.label}</th>)}
+          {total && <th className="mpr-col-hdr mpr-bifur-th">Total</th>}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td className="mpr-part">During the month</td>
+          {cols.map(c => <td key={c.label} className="mpr-dtm mpr-num-c">{f0(c.dtm)}</td>)}
+          {total && <td className="mpr-num-c mpr-total-cell">{f0(sum('dtm'))}</td>}
+        </tr>
+        <tr className="mpr-row-alt">
+          <td className="mpr-part">Cumulative (up to the month)</td>
+          {cols.map(c => <td key={c.label} className="mpr-cum mpr-num-c">{f0(c.cum)}</td>)}
+          {total && <td className="mpr-num-c mpr-total-cell">{f0(sum('cum'))}</td>}
+        </tr>
+      </tbody>
+    </table>
   );
 }
 
@@ -190,12 +230,15 @@ export default function MprReport() {
   const phyValToTCum = twMsmeValCum + twOthValCum + ojwMsmeValCum + ojwOthValCum;
 
   /* Training */
-  const ltcTotDtm   = n(phyEx.ltcTotal);      const ltcTotCum   = n(phyPrev.ltcTotal)    + ltcTotDtm;
+  const ltcCourses  = Array.isArray(phyEx.ltcCourses) ? phyEx.ltcCourses : [];
+  // LTC cumulative is the institute-entered course cumulative (legacy form), not a sum of months
+  const ltcTotDtm   = n(phyEx.ltcTotal);
+  const ltcTotCum   = phyEx.ltcCumTotal != null ? n(phyEx.ltcCumTotal) : n(phyPrev.ltcTotal) + ltcTotDtm;
   const stmNocDtm   = n(phyEx.stmNocComp);    const stmNocCum   = n(phyPrev.stmNocComp)  + stmNocDtm;
   const stmNottDtm  = n(phyEx.stmNottComp);   const stmNottCum  = n(phyPrev.stmNottComp) + stmNottDtm;
   const trngOthDtm  = n(phyEx.trngOther);      const trngOthCum  = n(phyPrev.trngOther)   + trngOthDtm;
   const trngNocDtm  = n(phyEx.trngTotalNoc);  const trngNocCum  = n(phyPrev.trngTotalNoc) + trngNocDtm;
-  const trngNotDtm  = n(phyEx.trngTotalNot);  const trngNotCum  = n(phyPrev.trngTotalNot) + trngNotDtm;
+  const trngNotDtm  = n(phyEx.trngTotalNot);  const trngNotCum  = ltcTotCum + stmNottCum + trngOthCum;
   const semNosDtm   = n(phyEx.seminarsNos);    const semNosCum   = n(phyPrev.seminarsNos)  + semNosDtm;
   const semPtsDtm   = n(phyEx.seminarsPts);    const semPtsCum   = n(phyPrev.seminarsPts)  + semPtsDtm;
   const trngNotTgt  = n(phyTgt.trngTotalNot);
@@ -308,14 +351,14 @@ export default function MprReport() {
       <>
         <tr style={{ background: alt ? '#FBF8EF' : '#fff' }}>
           <td className="mpr-part-ind" rowSpan={2}>{no}</td>
-          <td className="mpr-part-ind2">Nos.</td>
+          <td className="mpr-part-ind2" colSpan={2}>Nos.</td>
           <td className="mpr-tgt">-</td>
           <td className="mpr-dtm">{f0(nosDtm)}</td>
           <td className="mpr-cum">{f0(nosCum)}</td>
           <td className="mpr-pct">-</td>
         </tr>
         <tr style={{ background: alt ? '#FBF8EF' : '#fff' }}>
-          <td className="mpr-part-ind2">Values (Rs. In Lakh)</td>
+          <td className="mpr-part-ind2" colSpan={2}>Values (Rs. In Lakh)</td>
           <td className="mpr-tgt">-</td>
           <td className="mpr-dtm">{f2(valDtm)}</td>
           <td className="mpr-cum">{f2(valCum)}</td>
@@ -537,17 +580,17 @@ export default function MprReport() {
 
                 <tr><td className="mpr-sub-hdr2" colSpan={7}>(c)Consultancies</td></tr>
                 <tr>
-                  <td className="mpr-part-ind" colSpan={2}>(i)MSMEs</td>
+                  <td className="mpr-part-ind" colSpan={3}>(i)MSMEs</td>
                   <td className="mpr-dash">-</td><td className="mpr-dtm">{f0(msmeConsDtm)}</td><td className="mpr-cum">{f0(msmeConsCum)}</td><td className="mpr-dash">-</td>
                 </tr>
                 <tr style={{ background: '#FBF8EF' }}>
-                  <td className="mpr-part-ind" colSpan={2}>(ii)Others</td>
+                  <td className="mpr-part-ind" colSpan={3}>(ii)Others</td>
                   <td className="mpr-dash">-</td><td className="mpr-dtm">{f0(othConsDtm)}</td><td className="mpr-cum">{f0(othConsCum)}</td><td className="mpr-dash">-</td>
                 </tr>
 
                 <tr><td className="mpr-sub-hdr2" colSpan={7}>(d)Any others</td></tr>
                 <tr>
-                  <td className="mpr-part-ind" colSpan={2}>Any Others</td>
+                  <td className="mpr-part-ind" colSpan={3}>Any Others</td>
                   <td className="mpr-dash">-</td><td className="mpr-dtm">{f0(anyOthDtm)}</td><td className="mpr-cum">{f0(anyOthCum)}</td><td className="mpr-dash">-</td>
                 </tr>
 
@@ -569,63 +612,73 @@ export default function MprReport() {
               </tbody>
             </table>
 
-            <div className="mpr-sub-hdr2" style={{ marginTop: 6 }}>Training activities</div>
-            <div className="mpr-sub-hdr2">(a)Long term courses (course-wise details of trainees)</div>
-            <table className="mpr-import-tbl" style={{ marginBottom: 6 }}>
+            <div className="mpr-sub-sec">Training activities</div>
+            <div className="mpr-sub-hdr2">(a) Long term courses (course-wise details of trainees)</div>
+            <table className="mpr-tbl">
               <thead>
                 <tr>
-                  <th style={{ width: 40 }}>S.No</th><th>Name of the program</th><th style={{ width: 80 }}>Target</th>
-                  <th style={{ width: 100 }}>Trainees trained<br />During the Month</th>
-                  <th style={{ width: 110 }}>Trainees trained up to<br />the month</th>
-                  <th style={{ width: 90 }}>%age<br />w.r.t Annual target</th>
+                  <th className="mpr-col-hdr" style={{ width: 44 }}>S.No</th>
+                  <th className="mpr-col-hdr">Name of the program</th>
+                  <th className="mpr-col-hdr" style={{ width: 80 }}>Target</th>
+                  <th className="mpr-col-hdr" style={{ width: 95 }}>Trainees trained<br />during the month</th>
+                  <th className="mpr-col-hdr" style={{ width: 100 }}>Trainees trained<br />up to the month</th>
+                  <th className="mpr-col-hdr" style={{ width: 95 }}>%age w.r.t.<br />annual target</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td>1</td><td style={{ textAlign: 'left' }}>(course-wise entries — see Physical Section)</td><td>-</td><td>{f0(ltcTotDtm)}</td><td>{f0(ltcTotCum)}</td><td>-</td></tr>
-                <tr style={{ background: '#dce8f5', fontWeight: 700 }}><td colSpan={3}>Total</td><td>{f0(ltcTotDtm)}</td><td>{f0(ltcTotCum)}</td><td>-</td></tr>
+                {ltcCourses.length === 0 ? (
+                  <tr><td colSpan={6} className="mpr-empty-row">No long term course entered for this month</td></tr>
+                ) : ltcCourses.map((c, i) => (
+                  <tr key={i} className={i % 2 ? 'mpr-row-alt' : undefined}>
+                    <td className="mpr-num-c">{i + 1}</td>
+                    <td className="mpr-part">{c.name || '-'}</td>
+                    <td className="mpr-dash">-</td>
+                    <td className="mpr-dtm">{f0(c.dtm)}</td>
+                    <td className="mpr-cum">{f0(c.cumMon)}</td>
+                    <td className="mpr-dash">-</td>
+                  </tr>
+                ))}
+                <tr className="mpr-total">
+                  <td colSpan={3} className="mpr-part">Total</td>
+                  <td className="mpr-dtm">{f0(ltcTotDtm)}</td>
+                  <td className="mpr-cum">{f0(ltcTotCum)}</td>
+                  <td className="mpr-dash">-</td>
+                </tr>
               </tbody>
             </table>
 
             <table className="mpr-tbl">
+              <StatHead labelCols={2} />
               <tbody>
                 <tr>
-                  <td className="mpr-part-ind" colSpan={2}>(b)Short term</td>
-                  <td className="mpr-part-ind2">(i)Number of courses completed</td>
+                  <td className="mpr-part mpr-grp" rowSpan={2}>(b) Short term</td>
+                  <td className="mpr-part-ind">(i) Number of courses completed</td>
                   <td className="mpr-dash">-</td><td className="mpr-dtm">{f0(stmNocDtm)}</td><td className="mpr-cum">{f0(stmNocCum)}</td><td className="mpr-dash">-</td>
                 </tr>
-                <tr style={{ background: '#FBF8EF' }}>
-                  <td colSpan={2}></td>
-                  <td className="mpr-part-ind2">(ii)Number of Trainees Trained(completed)</td>
+                <tr className="mpr-row-alt">
+                  <td className="mpr-part-ind">(ii) Number of trainees trained (completed)</td>
                   <td className="mpr-dash">-</td><td className="mpr-dtm">{f0(stmNottDtm)}</td><td className="mpr-cum">{f0(stmNottCum)}</td><td className="mpr-dash">-</td>
                 </tr>
                 <tr>
-                  <td className="mpr-part-ind" colSpan={2}>(c)Others</td>
-                  <td></td>
+                  <td className="mpr-part mpr-grp" colSpan={2}>(c) Others</td>
                   <td className="mpr-dash">-</td><td className="mpr-dtm">{f0(trngOthDtm)}</td><td className="mpr-cum">{f0(trngOthCum)}</td><td className="mpr-dash">-</td>
                 </tr>
-                <tr style={{ background: '#FBF8EF' }}>
-                  <td className="mpr-part" colSpan={2} rowSpan={2}>Total(a+b+c)</td>
-                  <td className="mpr-part-ind2">No. of courses</td>
+                <tr className="mpr-total">
+                  <td className="mpr-part" rowSpan={2}>Total (a+b+c)</td>
+                  <td className="mpr-part-ind">No. of courses</td>
                   <td className="mpr-dash">-</td><td className="mpr-dtm">{f0(trngNocDtm)}</td><td className="mpr-cum">{f0(trngNocCum)}</td><td className="mpr-dash">-</td>
                 </tr>
-                <tr>
-                  <td className="mpr-part-ind2">No. of trainees</td>
+                <tr className="mpr-total">
+                  <td className="mpr-part-ind">No. of trainees</td>
                   <td className="mpr-tgt">{f0(trngNotTgt)}</td><td className="mpr-dtm">{f0(trngNotDtm)}</td><td className="mpr-cum">{f0(trngNotCum)}</td><td className="mpr-pct">{pct(trngNotCum, trngNotTgt)}</td>
                 </tr>
-                <tr style={{ background: '#FBF8EF' }}>
-                  <td className="mpr-part" colSpan={3}>Seminars/Workshops</td>
-                  <td className="mpr-part-ind2">No.</td>
-                </tr>
                 <tr>
-                  <td colSpan={3}></td>
+                  <td className="mpr-part mpr-grp" rowSpan={2}>Seminars / Workshops</td>
+                  <td className="mpr-part-ind">No.</td>
                   <td className="mpr-dash">-</td><td className="mpr-dtm">{f0(semNosDtm)}</td><td className="mpr-cum">{f0(semNosCum)}</td><td className="mpr-dash">-</td>
                 </tr>
-                <tr style={{ background: '#FBF8EF' }}>
-                  <td colSpan={3}></td>
-                  <td className="mpr-part-ind2">Participants</td>
-                </tr>
-                <tr>
-                  <td colSpan={3}></td>
+                <tr className="mpr-row-alt">
+                  <td className="mpr-part-ind">Participants</td>
                   <td className="mpr-dash">-</td><td className="mpr-dtm">{f0(semPtsDtm)}</td><td className="mpr-cum">{f0(semPtsCum)}</td><td className="mpr-dash">-</td>
                 </tr>
               </tbody>
@@ -633,230 +686,200 @@ export default function MprReport() {
           </Block>
 
           {/* ════════════════════════════════════════
-              C / D / E / F — bifurcation tables (transposed: categories as columns)
+              C – G. Trainees trained — bifurcation
               ════════════════════════════════════════ */}
-          <table className="mpr-tbl">
-            <tbody>
-              <tr>
-                <td className="mpr-letter-cell" rowSpan={2}>C.</td>
-                <BifurRow label="Trainees trained(bifurcation)(During the month)"
-                  cols={[{ label: 'GEN', value: genDtm }, { label: 'SC', value: scDtm }, { label: 'ST', value: stDtm }, { label: 'OBC', value: obcDtm }, { label: 'MINORITY', value: minDtm }]} />
-              </tr>
-              <tr>
-                <BifurRow label="(b)Trainees trained(bifurcation)(Cumulative)"
-                  cols={[{ label: 'GEN', value: genCum }, { label: 'SC', value: scCum }, { label: 'ST', value: stCum }, { label: 'OBC', value: obcCum }, { label: 'MINORITY', value: minCum }]} alt />
-              </tr>
+          <Block letter="C" title="Trainees trained (bifurcation) — Category">
+            <BifurTable cols={[
+              { label: 'GEN', dtm: genDtm, cum: genCum }, { label: 'SC', dtm: scDtm, cum: scCum },
+              { label: 'ST', dtm: stDtm, cum: stCum }, { label: 'OBC', dtm: obcDtm, cum: obcCum },
+              { label: 'Minority', dtm: minDtm, cum: minCum },
+            ]} />
+          </Block>
 
-              <tr>
-                <td className="mpr-letter-cell" rowSpan={2}>D.</td>
-                <BifurRow label="Trainees trained(bifurcation)(During the month)"
-                  cols={[{ label: 'MEN', value: menDtm }, { label: 'WOMEN', value: wmnDtm }, { label: 'TRANSGENDER', value: transDtm }]} />
-              </tr>
-              <tr>
-                <BifurRow label="(b)Trainees trained(bifurcation)(Cumulative)"
-                  cols={[{ label: 'MEN', value: menCum }, { label: 'WOMEN', value: wmnCum }, { label: 'TRANSGENDER', value: transCum }]} alt />
-              </tr>
+          <Block letter="D" title="Trainees trained (bifurcation) — Gender">
+            <BifurTable cols={[
+              { label: 'Men', dtm: menDtm, cum: menCum }, { label: 'Women', dtm: wmnDtm, cum: wmnCum },
+              { label: 'Transgender', dtm: transDtm, cum: transCum },
+            ]} />
+          </Block>
 
-              <tr>
-                <td className="mpr-letter-cell" rowSpan={2}>E.</td>
-                <BifurRow label="Trainees trained(bifurcation)(During the month)"
-                  cols={[
-                    { label: 'HSC(10th) Dropout& Below 10th', value: thFaDtm }, { label: 'HSC(10th) Pass', value: thPaDtm },
-                    { label: 'Intermediate(12th)Pass', value: twlDtm }, { label: 'ITI & Persuing', value: itiDtm },
-                    { label: 'Diploma & Persuing', value: dipDtm }, { label: 'Graduate(Tech)& Persuing', value: gtDtm },
-                    { label: 'Graduate(Non-Tech)& Persuing', value: gntDtm }, { label: 'Post Graduate(Tech)& Persuing', value: pgtDtm },
-                    { label: 'Post Graduate(Non-Tech)& Persuing', value: pgntDtm }, { label: 'Phd./Mhil', value: phdDtm },
-                  ]} />
-              </tr>
-              <tr>
-                <BifurRow label="(b)Trainees trained(bifurcation)(Cumulative)"
-                  cols={[
-                    { label: 'HSC(10th) Dropout& Below 10th', value: thFaCum }, { label: 'HSC(10th) Pass', value: thPaCum },
-                    { label: 'Intermediate(12th)Pass', value: twlCum }, { label: 'ITI & Persuing', value: itiCum },
-                    { label: 'Diploma & Persuing', value: dipCum }, { label: 'Graduate(Tech)& Persuing', value: gtCum },
-                    { label: 'Graduate(Non-Tech)& Persuing', value: gntCum }, { label: 'Post Graduate(Tech)& Persuing', value: pgtCum },
-                    { label: 'Post Graduate(Non-Tech)& Persuing', value: pgntCum }, { label: 'Phd./Mhil', value: phdCum },
-                  ]} alt />
-              </tr>
+          <Block letter="E" title="Trainees trained (bifurcation) — Qualification">
+            <BifurTable cols={[
+              { label: 'HSC (10th) dropout & below 10th', dtm: thFaDtm, cum: thFaCum },
+              { label: 'HSC (10th) pass',                 dtm: thPaDtm, cum: thPaCum },
+              { label: 'Intermediate (12th) pass',        dtm: twlDtm,  cum: twlCum },
+              { label: 'ITI & pursuing',                  dtm: itiDtm,  cum: itiCum },
+              { label: 'Diploma & pursuing',              dtm: dipDtm,  cum: dipCum },
+              { label: 'Graduate (Tech) & pursuing',      dtm: gtDtm,   cum: gtCum },
+              { label: 'Graduate (Non-Tech) & pursuing',  dtm: gntDtm,  cum: gntCum },
+              { label: 'PG (Tech) & pursuing',            dtm: pgtDtm,  cum: pgtCum },
+              { label: 'PG (Non-Tech) & pursuing',        dtm: pgntDtm, cum: pgntCum },
+              { label: 'Ph.D. / M.Phil',                  dtm: phdDtm,  cum: phdCum },
+            ]} />
+          </Block>
 
-              <tr>
-                <td className="mpr-letter-cell" rowSpan={2}>F.</td>
-                <BifurRow label="Trainees trained(bifurcation)(During the month)"
-                  cols={[{ label: 'Age(15-20)', value: a15Dtm }, { label: 'Age(21-25)', value: a21Dtm }, { label: 'Age(26-30)', value: a26Dtm }, { label: 'Age(31-40)', value: a31Dtm }, { label: 'Above 40', value: abvDtm }]} />
-              </tr>
-              <tr>
-                <BifurRow label="(b)Trainees trained(bifurcation)(Cumulative)"
-                  cols={[{ label: 'Age(15-20)', value: a15Cum }, { label: 'Age(21-25)', value: a21Cum }, { label: 'Age(26-30)', value: a26Cum }, { label: 'Age(31-40)', value: a31Cum }, { label: 'Above 40', value: abvCum }]} alt />
-              </tr>
+          <Block letter="F" title="Trainees trained (bifurcation) — Age group">
+            <BifurTable cols={[
+              { label: '15 – 20', dtm: a15Dtm, cum: a15Cum }, { label: '21 – 25', dtm: a21Dtm, cum: a21Cum },
+              { label: '26 – 30', dtm: a26Dtm, cum: a26Cum }, { label: '31 – 40', dtm: a31Dtm, cum: a31Cum },
+              { label: 'Above 40', dtm: abvDtm, cum: abvCum },
+            ]} />
+          </Block>
 
-              <tr>
-                <td className="mpr-letter-cell" rowSpan={2}>G.</td>
-                <td className="mpr-part" rowSpan={2}>&nbsp;</td>
-                <td className="mpr-part-ind2">PH</td><td className="mpr-dtm">{f0(phTrDtm)}</td>
-              </tr>
-              <tr>
-                <td className="mpr-part-ind2">PH</td><td className="mpr-cum">{f0(phTrCum)}</td>
-              </tr>
-            </tbody>
-          </table>
+          <Block letter="G" title="Trainees trained — Persons with disability">
+            <BifurTable total={false} cols={[{ label: 'PH', dtm: phTrDtm, cum: phTrCum }]} />
+          </Block>
 
           {/* ════════════════════════════════════════
               H. Budget
               ════════════════════════════════════════ */}
-          <div className="mpr-sub-hdr2">Budget B E (Rs. Lakh) -{f0(finTgt.beBudget) || 0},</div>
-          <table className="mpr-tbl">
-            <thead>
-              <tr>
-                <td className="mpr-letter-cell" rowSpan={4}>H.</td>
-                <th className="mpr-col-hdr" colSpan={2}></th>
-                <th className="mpr-col-hdr">Amount<br />in (Rs. Lakh.)</th>
-                <th className="mpr-col-hdr">Utilization<br />(During month)</th>
-                <th className="mpr-col-hdr">Utilization<br />(Cummulative)</th>
-                <th className="mpr-col-hdr">Balance<br />in (Rs. Lakh.)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="mpr-part" colSpan={2}>(a)Carry forward from previous year</td>
-                <td className="mpr-dtm">{f2(cfAmt)}</td><td className="mpr-dtm">{f2(cfDtm)}</td><td className="mpr-cum">{f2(cfCum)}</td><td className="mpr-cum">{f2(cfBal)}</td>
-              </tr>
-              <tr style={{ background: '#FBF8EF' }}>
-                <td className="mpr-part" colSpan={2}>(b)GIA Released during the year(Till Date)</td>
-                <td className="mpr-dtm">{f2(giaAmt)}</td><td className="mpr-dtm">{f2(giaDtm)}</td><td className="mpr-cum">{f2(giaCum)}</td><td className="mpr-cum">{f2(giaBal)}</td>
-              </tr>
-              <tr className="mpr-total">
-                <td className="mpr-part" colSpan={2}>Total</td>
-                <td className="mpr-dtm">{f2(budTotAmt)}</td><td className="mpr-dtm">{f2(budTotDtm)}</td><td className="mpr-cum">{f2(budTotCum)}</td><td className="mpr-cum">{f2(budTotBal)}</td>
-              </tr>
-            </tbody>
-          </table>
+          <Block letter="H" title="Budget" note={`B.E. (Rs. Lakh): ${f2(finTgt.beBudget)}`}>
+            <table className="mpr-tbl">
+              <thead>
+                <tr>
+                  <th className="mpr-col-hdr" style={{ minWidth: 220 }}>Particulars</th>
+                  <th className="mpr-col-hdr">Amount<br />(Rs. Lakh)</th>
+                  <th className="mpr-col-hdr">Utilization<br />(during the month)</th>
+                  <th className="mpr-col-hdr">Utilization<br />(cumulative)</th>
+                  <th className="mpr-col-hdr">Balance<br />(Rs. Lakh)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="mpr-part">(a) Carry forward from previous year</td>
+                  <td className="mpr-tgt">{f2(cfAmt)}</td><td className="mpr-dtm">{f2(cfDtm)}</td><td className="mpr-cum">{f2(cfCum)}</td><td className="mpr-pct">{f2(cfBal)}</td>
+                </tr>
+                <tr className="mpr-row-alt">
+                  <td className="mpr-part">(b) GIA released during the year (till date)</td>
+                  <td className="mpr-tgt">{f2(giaAmt)}</td><td className="mpr-dtm">{f2(giaDtm)}</td><td className="mpr-cum">{f2(giaCum)}</td><td className="mpr-pct">{f2(giaBal)}</td>
+                </tr>
+                <tr className="mpr-total">
+                  <td className="mpr-part">Total</td>
+                  <td className="mpr-tgt">{f2(budTotAmt)}</td><td className="mpr-dtm">{f2(budTotDtm)}</td><td className="mpr-cum">{f2(budTotCum)}</td><td className="mpr-pct">{f2(budTotBal)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </Block>
 
-          {/* ════════════════════════════════════════
-              I. Staff strength
-              ════════════════════════════════════════ */}
-          <table className="mpr-tbl">
-            <thead>
-              <tr>
-                <th className="mpr-letter-cell" rowSpan={3}>I.</th>
-                <th className="mpr-col-hdr" rowSpan={3}>Staff strength</th>
-                <th className="mpr-col-hdr"></th>
-                <th className="mpr-staff-col">A</th><th className="mpr-staff-col">B</th><th className="mpr-staff-col">C</th><th className="mpr-staff-col">D</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="mpr-part-ind2">Sanctioned</td>
-                <td className="mpr-dtm">{ssA}</td><td className="mpr-dtm">{ssB}</td><td className="mpr-dtm">{ssC}</td><td className="mpr-dtm">{ssD}</td>
-              </tr>
-              <tr style={{ background: '#FBF8EF' }}>
-                <td className="mpr-part-ind2">In postion</td>
-                <td className="mpr-dtm">{posA}</td><td className="mpr-dtm">{posB}</td><td className="mpr-dtm">{posC}</td><td className="mpr-dtm">{posD}</td>
-              </tr>
-            </tbody>
-          </table>
+          {/* I. Staff strength  +  J. Machine procured — side by side */}
+          <div className="mpr-pair">
+            <Block letter="I" title="Staff strength">
+              <table className="mpr-tbl">
+                <thead>
+                  <tr>
+                    <th className="mpr-col-hdr" style={{ minWidth: 120 }}></th>
+                    <th className="mpr-col-hdr mpr-staff-th">A</th><th className="mpr-col-hdr mpr-staff-th">B</th>
+                    <th className="mpr-col-hdr mpr-staff-th">C</th><th className="mpr-col-hdr mpr-staff-th">D</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="mpr-part">Sanctioned</td>
+                    <td className="mpr-num-c">{ssA}</td><td className="mpr-num-c">{ssB}</td><td className="mpr-num-c">{ssC}</td><td className="mpr-num-c">{ssD}</td>
+                  </tr>
+                  <tr className="mpr-row-alt">
+                    <td className="mpr-part">In position</td>
+                    <td className="mpr-num-c">{posA}</td><td className="mpr-num-c">{posB}</td><td className="mpr-num-c">{posC}</td><td className="mpr-num-c">{posD}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </Block>
 
-          {/* ════════════════════════════════════════
-              J. Machine procured
-              ════════════════════════════════════════ */}
-          <table className="mpr-tbl">
-            <tbody>
-              <tr>
-                <td className="mpr-letter-cell">J.</td>
-                <td className="mpr-part" colSpan={2}>Machine procured</td>
-                <td className="mpr-part-ind2">During the month</td>
-                <td className="mpr-dtm">{f2(machDtm)}</td>
-                <td className="mpr-part-ind2">Cumulative</td>
-                <td className="mpr-cum">{f2(machCum)}</td>
-              </tr>
-            </tbody>
-          </table>
+            <Block letter="J" title="Machine procured">
+              <table className="mpr-tbl">
+                <thead>
+                  <tr>
+                    <th className="mpr-col-hdr">During the month</th>
+                    <th className="mpr-col-hdr">Cumulative (up to the month)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="mpr-dtm mpr-num-c">{f2(machDtm)}</td>
+                    <td className="mpr-cum mpr-num-c">{f2(machCum)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </Block>
+          </div>
 
-          {/* K / L / M / N — free text */}
-          <table className="mpr-tbl">
-            <tbody>
-              <tr>
-                <td className="mpr-letter-cell">K.</td>
-                <td className="mpr-part" style={{ width: 260 }}>Details of visits of MSME/Industrial/Assco/Institutions</td>
-                <td className="mpr-text-cell">{detailVisit || <span className="mpr-nodata">(no data entered)</span>}</td>
-              </tr>
-              <tr style={{ background: '#FBF8EF' }}>
-                <td className="mpr-letter-cell">L.</td>
-                <td className="mpr-part">Significant achievements, if any, including new initiatives taken like NMCP etc.</td>
-                <td className="mpr-text-cell">{achData.technical || <span className="mpr-nodata">(no data entered)</span>}</td>
-              </tr>
-              <tr>
-                <td className="mpr-letter-cell">M.</td>
-                <td className="mpr-part">Short falls if any (with reasons)</td>
-                <td className="mpr-text-cell">{shortFalls || <span className="mpr-nodata">(no data entered)</span>}</td>
-              </tr>
-              <tr style={{ background: '#FBF8EF' }}>
-                <td className="mpr-letter-cell">N.</td>
-                <td className="mpr-part">Promotional Activites</td>
-                <td className="mpr-text-cell">{promoActiv || <span className="mpr-nodata">(no data entered)</span>}</td>
-              </tr>
-            </tbody>
-          </table>
+          {/* K – N. Narrative sections */}
+          {[
+            ['K', 'Details of visits of MSME / Industrial / Assco / Institutions', detailVisit, false],
+            ['L', 'Significant achievements, if any, including new initiatives taken like NMCP etc.', achData.technical, true],
+            ['M', 'Short falls, if any (with reasons)', shortFalls, false],
+            ['N', 'Promotional activities', promoActiv, false],
+          ].map(([letter, title, text, html]) => (
+            <Block key={letter} letter={letter} title={title}>
+              <div className="mpr-text-box">
+                {!text ? <span className="mpr-nodata">(no data entered)</span>
+                  : html ? <div dangerouslySetInnerHTML={{ __html: safeHtml(text) }} />
+                  : <div style={{ whiteSpace: 'pre-wrap' }}>{text}</div>}
+              </div>
+            </Block>
+          ))}
 
           {/* ════════════════════════════════════════
               O. Trainees trained under (NSQF/Non-NSQF/Exempted)
               ════════════════════════════════════════ */}
-          <table className="mpr-tbl">
-            <thead>
-              <tr>
-                <td className="mpr-letter-cell" rowSpan={4}>O.</td>
-                <th className="mpr-col-hdr">Sno</th>
-                <th className="mpr-col-hdr">Trainees trained under</th>
-                <th className="mpr-col-hdr">During the month</th>
-                <th className="mpr-col-hdr">Cumulative (up to the month)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>(i)</td><td style={{ textAlign: 'left' }}>NSQF (NSQF Compliance,AICTE/NCVT/SCVTC Cources)</td><td>{f0(nsqfCDtm)}</td><td>{f0(nsqfCCum)}</td></tr>
-              <tr style={{ background: '#FBF8EF' }}><td>(ii)</td><td style={{ textAlign: 'left' }}>NSQF exempted -26 cources</td><td>{f0(nsqfEDtm)}</td><td>{f0(nsqfECum)}</td></tr>
-              <tr><td>(iii)</td><td style={{ textAlign: 'left' }}>Non NSQF ( all other short term/tailor made cources)</td><td>{f0(nonNDtm)}</td><td>{f0(nonNCum)}</td></tr>
-              <tr className="mpr-total"><td colSpan={2}>Total</td><td>{f0(dTotDtm)}</td><td>{f0(dTotCum)}</td></tr>
-            </tbody>
-          </table>
+          <Block letter="O" title="Trainees trained under NSQF / NSQF exempted / Non-NSQF">
+            <table className="mpr-tbl">
+              <thead>
+                <tr>
+                  <th className="mpr-col-hdr" style={{ width: 50 }}>S.No</th>
+                  <th className="mpr-col-hdr">Trainees trained under</th>
+                  <th className="mpr-col-hdr" style={{ width: 130 }}>During the month</th>
+                  <th className="mpr-col-hdr" style={{ width: 150 }}>Cumulative (up to the month)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="mpr-num-c">(i)</td><td className="mpr-part">NSQF (NSQF compliance, AICTE / NCVT / SCVT courses)</td><td className="mpr-dtm">{f0(nsqfCDtm)}</td><td className="mpr-cum">{f0(nsqfCCum)}</td></tr>
+                <tr className="mpr-row-alt"><td className="mpr-num-c">(ii)</td><td className="mpr-part">NSQF exempted – 26 courses</td><td className="mpr-dtm">{f0(nsqfEDtm)}</td><td className="mpr-cum">{f0(nsqfECum)}</td></tr>
+                <tr><td className="mpr-num-c">(iii)</td><td className="mpr-part">Non-NSQF (all other short term / tailor made courses)</td><td className="mpr-dtm">{f0(nonNDtm)}</td><td className="mpr-cum">{f0(nonNCum)}</td></tr>
+                <tr className="mpr-total"><td colSpan={2} className="mpr-part">Total</td><td className="mpr-dtm">{f0(dTotDtm)}</td><td className="mpr-cum">{f0(dTotCum)}</td></tr>
+              </tbody>
+            </table>
+          </Block>
 
           {/* ════════════════════════════════════════
               P. Placement Section — NSQF / NSQF exempted / Non NSQF
               ════════════════════════════════════════ */}
-          <table className="mpr-pla-tbl">
-            <thead>
-              <tr>
-                <th rowSpan={2} style={{ width: 26 }}>P.</th>
-                <th rowSpan={2}>Name</th>
-                <th colSpan={2}>NSQF</th>
-                <th colSpan={2}>NSQF exempted</th>
-                <th colSpan={2}>Non NSQF</th>
-              </tr>
-              <tr>
-                <th>During the month</th><th>Cumulative<br />(up to the month)</th>
-                <th>During the month</th><th>Cumulative<br />(up to the month)</th>
-                <th>During the month</th><th>Cumulative<br />(up to the month)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ['(i)',    'Trainees Certified',                                                           tCertDtm,   tCertCum,   tCertExDtm,  tCertExCum,  tCertNonDtm,  tCertNonCum],
-                ['(ii)',   'Total trainees opted for placement',                                          tPlcDtm,    tPlcCum,    tPlcExDtm,   tPlcExCum,   tPlcNonDtm,   tPlcNonCum],
-                ['(iii)',  'Trainees registered on Sampark Portal',                                      tSmrkDtm,   tSmrkCum,   tSmrkExDtm,  tSmrkExCum,  tSmrkNonDtm,  tSmrkNonCum],
-                ['(iv)',   'Candidate got placement (through institute as well as after leaving the institution)', cPlcdDtm, cPlcdCum, cPlcdExDtm, cPlcdExCum, cPlcdNonDtm, cPlcdNonCum],
-                ['(v)',    'Candidate who were already employed attend the training for re-skilling/up-skilling', empTrnDtm, empTrnCum, empTrnExDtm, empTrnExCum, empTrnNonDtm, empTrnNonCum],
-                ['(vi)',   'Candidate who opted for higher studies (including candidate continuing their education)', cHstdDtm, cHstdCum, cHstdExDtm, cHstdExCum, cHstdNonDtm, cHstdNonCum],
-                ['(vii)',  'Candidates opted for self-employment',                                        cSlfsDtm,   cSlfsCum,   cSlfsExDtm,  cSlfsExCum,  cSlfsNonDtm,  cSlfsNonCum],
-                ['(viii)', 'Candidate who were yet to be placed',                                         cTbpDtm,    cTbpCum,    cTbpExDtm,   cTbpExCum,   cTbpNonDtm,   cTbpNonCum],
-              ].map(([no, label, nDtm, nCum, eDtm, eCum, oDtm, oCum], i) => (
-                <tr key={i} style={{ background: i % 2 === 0 ? '#F2F2F2' : '#FBF8EF' }}>
-                  {i === 0 && <td rowSpan={8} style={{ fontWeight: 700 }}>P.</td>}
-                  <td style={{ textAlign: 'left', minWidth: 220 }}>{no} {label}</td>
-                  <td>{f0(nDtm)}</td><td>{f0(nCum)}</td>
-                  <td>{f0(eDtm)}</td><td>{f0(eCum)}</td>
-                  <td>{f0(oDtm)}</td><td>{f0(oCum)}</td>
+          <Block letter="P" title="Placement">
+            <table className="mpr-tbl">
+              <thead>
+                <tr>
+                  <th className="mpr-col-hdr" rowSpan={2} style={{ minWidth: 260 }}>Particulars</th>
+                  <th className="mpr-col-hdr" colSpan={2}>NSQF</th>
+                  <th className="mpr-col-hdr" colSpan={2}>NSQF exempted</th>
+                  <th className="mpr-col-hdr" colSpan={2}>Non-NSQF</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+                <tr>
+                  <th className="mpr-col-hdr">During<br />the month</th><th className="mpr-col-hdr">Cumulative<br />(up to the month)</th>
+                  <th className="mpr-col-hdr">During<br />the month</th><th className="mpr-col-hdr">Cumulative<br />(up to the month)</th>
+                  <th className="mpr-col-hdr">During<br />the month</th><th className="mpr-col-hdr">Cumulative<br />(up to the month)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['(i)',    'Trainees certified',                                                        tCertDtm,   tCertCum,   tCertExDtm,  tCertExCum,  tCertNonDtm,  tCertNonCum],
+                  ['(ii)',   'Total trainees opted for placement',                                       tPlcDtm,    tPlcCum,    tPlcExDtm,   tPlcExCum,   tPlcNonDtm,   tPlcNonCum],
+                  ['(iii)',  'Trainees registered on Sampark portal',                                    tSmrkDtm,   tSmrkCum,   tSmrkExDtm,  tSmrkExCum,  tSmrkNonDtm,  tSmrkNonCum],
+                  ['(iv)',   'Candidates who got placement (through the institute or after leaving it)', cPlcdDtm,   cPlcdCum,   cPlcdExDtm,  cPlcdExCum,  cPlcdNonDtm,  cPlcdNonCum],
+                  ['(v)',    'Candidates already employed who attended re-skilling / up-skilling',       empTrnDtm,  empTrnCum,  empTrnExDtm, empTrnExCum, empTrnNonDtm, empTrnNonCum],
+                  ['(vi)',   'Candidates who opted for higher studies (incl. continuing education)',     cHstdDtm,   cHstdCum,   cHstdExDtm,  cHstdExCum,  cHstdNonDtm,  cHstdNonCum],
+                  ['(vii)',  'Candidates who opted for self-employment',                                 cSlfsDtm,   cSlfsCum,   cSlfsExDtm,  cSlfsExCum,  cSlfsNonDtm,  cSlfsNonCum],
+                  ['(viii)', 'Candidates yet to be placed',                                              cTbpDtm,    cTbpCum,    cTbpExDtm,   cTbpExCum,   cTbpNonDtm,   cTbpNonCum],
+                ].map(([no, label, nDtm, nCum, eDtm, eCum, oDtm, oCum], i) => (
+                  <tr key={i} className={i % 2 ? 'mpr-row-alt' : undefined}>
+                    <td className="mpr-part"><span className="mpr-rowno">{no}</span>{label}</td>
+                    <td className="mpr-dtm">{f0(nDtm)}</td><td className="mpr-cum">{f0(nCum)}</td>
+                    <td className="mpr-dtm">{f0(eDtm)}</td><td className="mpr-cum">{f0(eCum)}</td>
+                    <td className="mpr-dtm">{f0(oDtm)}</td><td className="mpr-cum">{f0(oCum)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Block>
 
         </div>
 

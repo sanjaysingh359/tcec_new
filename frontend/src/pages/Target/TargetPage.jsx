@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Button, Spin, Alert, message } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined, ReloadOutlined, SaveOutlined, CheckCircleOutlined, ClockCircleOutlined,
+  InfoCircleOutlined, ToolOutlined, TeamOutlined, BankOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './TargetPage.css';
@@ -13,26 +16,13 @@ const INIT = {
   taTarget:    '', njuTarget:  '', beBudget: '',
 };
 
-function EditCell({ value, onChange }) {
+function NumInput({ value, onChange, big = false }) {
   return (
-    <td className="tgt-cell tgt-center">
-      <input
-        className="tgt-input tgt-editable"
-        type="number" min="0" step="1"
-        value={value} onChange={onChange} placeholder="0"
-      />
-    </td>
-  );
-}
-
-function CalcCell({ value, highlight = false }) {
-  return (
-    <td className="tgt-cell tgt-center">
-      <input
-        className={`tgt-input ${highlight ? 'tgt-calc' : 'tgt-ro'}`}
-        value={value} readOnly
-      />
-    </td>
+    <input
+      className={`tgt-input${big ? ' tgt-input-big' : ''}`}
+      type="number" min="0" step="1" inputMode="numeric"
+      value={value} onChange={onChange} placeholder="0"
+    />
   );
 }
 
@@ -79,7 +69,10 @@ export default function TargetPage() {
       instId: selection.instId,
       year:   selection.year,
       ...Object.fromEntries(Object.entries(form).map(([k, v]) => [k, n(v)])),
-    }).then(() => message.success('Annual targets saved successfully!'))
+    }).then(() => {
+      message.success('Annual targets saved successfully!');
+      setHasData(true);   // enables Clear Data straight away
+    })
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
   };
@@ -107,221 +100,139 @@ export default function TargetPage() {
   /* ── auto-calculated fields ── */
   const incExpCash = n(form.revEarnCash) - n(form.revExpCash);
   const incExpAcc  = n(form.revEarnAcc)  - n(form.revExpAcc);
-  const perRecCash = n(form.revExpCash) > 0
-    ? ((n(form.revEarnCash) / n(form.revExpCash)) * 100).toFixed(1)
-    : '0.0';
-  const perRecAcc  = n(form.revExpAcc) > 0
-    ? ((n(form.revEarnAcc)  / n(form.revExpAcc))  * 100).toFixed(1)
-    : '0.0';
+  const perRec = (earn, exp) => (n(exp) > 0 ? (n(earn) / n(exp)) * 100 : null);
+  const perRecCash = perRec(form.revEarnCash, form.revExpCash);
+  const perRecAcc  = perRec(form.revEarnAcc,  form.revExpAcc);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
 
+  const RecCell = ({ v }) => (
+    <td className="tgt-cell tgt-calc">
+      {v === null ? <span className="tgt-muted">—</span> : (
+        <>
+          <span className={v < 100 ? 'tgt-neg' : 'tgt-pos'}>{v.toFixed(1)}%</span>
+          <div className="tgt-bar"><span style={{ width: `${Math.min(v, 100)}%` }} className={v < 100 ? 'tgt-bar-low' : ''} /></div>
+        </>
+      )}
+    </td>
+  );
+
+  const physical = [
+    { key: 'njuTarget', icon: <ToolOutlined />, cls: 'tgt-k-navy', title: 'Units to be assisted',
+      unit: 'No. of units (NJU)', help: 'Used for % achievement of “Number of units benefited” on the Physical page.' },
+    { key: 'taTarget',  icon: <TeamOutlined />, cls: 'tgt-k-teal', title: 'Trainees to be trained',
+      unit: 'No. of trainees', help: 'Used for % achievement of “Total trainees (a+b+c)” on the Physical page.' },
+    { key: 'beBudget',  icon: <BankOutlined />, cls: 'tgt-k-gold', title: 'Budget estimate (B.E.)',
+      unit: 'Rs. Lakh', help: 'Shown as the B.E. on the Budget page and in reports.' },
+  ];
+
   return (
     <div className="tgt-page">
-      {loadErr && <Alert type="warning" message={loadErr} style={{ margin: '8px 16px' }} />}
 
-      {/* ── Title Bar ── */}
-      <div className="tgt-titlebar">
-        <div className="tgt-titlebar-left">
-          <span className="tgt-page-label">Annual Target Entry</span>
-          <span className="tgt-institute">{selection?.instName || 'Institute'}</span>
+      {/* ── Hero ── */}
+      <header className="tgt-hero">
+        <div className="tgt-hero-main">
+          <span className="tgt-hero-kicker">Annual target entry · Financial year {selection?.year || ''}</span>
+          <h1 className="tgt-hero-title">Annual Targets</h1>
+          <span className="tgt-hero-inst">{selection?.instName || '—'}</span>
         </div>
-        <div className="tgt-titlebar-right">
-          {selection?.year && (
-            <span className="tgt-meta-chip">Year: {selection.year}</span>
-          )}
-          <span className="tgt-note">Set targets for the financial year</span>
+        <div className="tgt-hero-side">
+          {selection?.year && <span className="tgt-hero-chip">FY {selection.year}</span>}
+          {hasData
+            ? <span className="tgt-status tgt-status-saved"><CheckCircleOutlined /> Targets set</span>
+            : <span className="tgt-status tgt-status-new"><ClockCircleOutlined /> Not set yet</span>}
         </div>
-      </div>
+      </header>
 
-      {/* ── Main Card ── */}
-      <div className="tgt-card">
-        <div className="tgt-card-title">Annual Target — Financial, Physical &amp; Budget</div>
+      {loadErr && <Alert type="warning" showIcon message={loadErr} className="tgt-alert" />}
+
+      {/* ═══════════ Financial targets ═══════════ */}
+      <section className="tgt-card">
+        <div className="tgt-card-head">
+          <span className="tgt-badge">₹</span>
+          <div>
+            <h2>Financial targets</h2>
+            <p>Annual targets in Rs. Lakh. Income over expenditure and % recovery are calculated.</p>
+          </div>
+          <div className="tgt-legend"><span className="tgt-cash">Cash basis</span><span className="tgt-accr">Accrual basis</span></div>
+        </div>
         <div className="tgt-table-wrap">
           <table className="tgt-table">
-            <colgroup>
-              <col style={{ width: 36 }} />
-              <col style={{ width: 50 }} />
-              <col />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-            </colgroup>
+            <colgroup><col /><col style={{ width: 210 }} /><col style={{ width: 210 }} /></colgroup>
             <thead>
               <tr>
-                <th className="tgt-th" colSpan={3}></th>
-                <th className="tgt-th">Cash (₹ Lakhs)</th>
-                <th className="tgt-th">Accrual (₹ Lakhs)</th>
+                <th className="tgt-th tgt-th-left">Target</th>
+                <th className="tgt-th tgt-th-cash">Cash basis</th>
+                <th className="tgt-th tgt-th-accr">Accrual basis</th>
               </tr>
             </thead>
             <tbody>
-
-              {/* ── A. Revenue Earning ── */}
               <tr>
-                <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>A.</td>
-                <td className="tgt-cell tgt-section-hdr" colSpan={4}>
-                  <b style={{ color: '#811700' }}>Revenue Earning Target</b>
-                </td>
+                <td className="tgt-cell tgt-label"><span className="tgt-rowno">A</span>Annual revenue earning target</td>
+                <td className="tgt-cell tgt-in-cell"><NumInput value={form.revEarnCash} onChange={set('revEarnCash')} /></td>
+                <td className="tgt-cell tgt-in-cell"><NumInput value={form.revEarnAcc}  onChange={set('revEarnAcc')} /></td>
               </tr>
               <tr>
-                <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(i)</td>
-                <td className="tgt-cell tgt-label" style={{ background: '#F2F2F2' }}>Annual Revenue Earning Target</td>
-                <EditCell value={form.revEarnCash} onChange={set('revEarnCash')} />
-                <EditCell value={form.revEarnAcc}  onChange={set('revEarnAcc')} />
+                <td className="tgt-cell tgt-label"><span className="tgt-rowno">B</span>Annual revenue expenditure target</td>
+                <td className="tgt-cell tgt-in-cell"><NumInput value={form.revExpCash} onChange={set('revExpCash')} /></td>
+                <td className="tgt-cell tgt-in-cell"><NumInput value={form.revExpAcc}  onChange={set('revExpAcc')} /></td>
               </tr>
-
-              {/* ── B. Revenue Expenditure ── */}
-              <tr>
-                <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>B.</td>
-                <td className="tgt-cell tgt-section-hdr" colSpan={4}>
-                  <b style={{ color: '#811700' }}>Revenue Expenditure Target</b>
-                </td>
+              <tr className="tgt-calc-row">
+                <td className="tgt-cell tgt-label"><span className="tgt-rowno">C</span>Income over expenditure <small>A − B</small></td>
+                <td className={`tgt-cell tgt-calc ${incExpCash < 0 ? 'tgt-neg' : ''}`}>{incExpCash}</td>
+                <td className={`tgt-cell tgt-calc ${incExpAcc  < 0 ? 'tgt-neg' : ''}`}>{incExpAcc}</td>
               </tr>
-              <tr>
-                <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(i)</td>
-                <td className="tgt-cell tgt-label" style={{ background: '#FBF8EF' }}>Annual Revenue Expenditure Target</td>
-                <EditCell value={form.revExpCash} onChange={set('revExpCash')} />
-                <EditCell value={form.revExpAcc}  onChange={set('revExpAcc')} />
+              <tr className="tgt-calc-row">
+                <td className="tgt-cell tgt-label"><span className="tgt-rowno">D</span>Percentage recovery <small>A ÷ B × 100</small></td>
+                <RecCell v={perRecCash} />
+                <RecCell v={perRecAcc} />
               </tr>
-
-              {/* ── C. Income over Expenditure (auto) ── */}
-              <tr>
-                <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>C.</td>
-                <td className="tgt-cell tgt-section-hdr" colSpan={4}>
-                  <b style={{ color: '#811700' }}>Income over Expenditure</b>
-                  <span style={{ fontWeight: 'normal', fontSize: 11, marginLeft: 8, color: '#555' }}>(Auto: A − B)</span>
-                </td>
-              </tr>
-              <tr>
-                <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(i)</td>
-                <td className="tgt-cell tgt-label" style={{ background: '#F2F2F2' }}>Income over Expenditure</td>
-                <CalcCell value={incExpCash} highlight={true} />
-                <CalcCell value={incExpAcc}  highlight={true} />
-              </tr>
-
-              {/* ── D. Percentage Recovery (auto) ── */}
-              <tr>
-                <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>D.</td>
-                <td className="tgt-cell tgt-section-hdr" colSpan={4}>
-                  <b style={{ color: '#811700' }}>Percentage Recovery</b>
-                  <span style={{ fontWeight: 'normal', fontSize: 11, marginLeft: 8, color: '#555' }}>(Auto: A/B × 100)</span>
-                </td>
-              </tr>
-              <tr>
-                <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(i)</td>
-                <td className="tgt-cell tgt-label" style={{ background: '#FBF8EF' }}>Percentage Recovery (%)</td>
-                <CalcCell value={perRecCash} highlight={true} />
-                <CalcCell value={perRecAcc}  highlight={true} />
-              </tr>
-
-              {/* ── Divider ── */}
-              <tr>
-                <td className="tgt-cell tgt-divider" colSpan={5} style={{ padding: '5px 10px', fontWeight: 'bold', color: '#073354', fontSize: 13 }}>
-                  Physical &amp; Budget Targets
-                </td>
-              </tr>
-
-              {/* ── E. Number of Unit Benefited ── */}
-              <tr>
-                <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>E.</td>
-                <td className="tgt-cell tgt-section-hdr" colSpan={4}>
-                  <b style={{ color: '#811700' }}>Number of Unit Benefited</b>
-                </td>
-              </tr>
-              <tr>
-                <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(i)</td>
-                <td className="tgt-cell tgt-label" style={{ background: '#F2F2F2' }}>Annual NJU Target (No. of Units Assisted)</td>
-                <td className="tgt-cell tgt-center" colSpan={2}>
-                  <input
-                    className="tgt-input tgt-editable"
-                    type="number" min="0" step="1"
-                    value={form.njuTarget} onChange={set('njuTarget')} placeholder="0"
-                    style={{ width: 160 }}
-                  />
-                </td>
-              </tr>
-
-              {/* ── F. Training Activities ── */}
-              <tr>
-                <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>F.</td>
-                <td className="tgt-cell tgt-section-hdr" colSpan={4}>
-                  <b style={{ color: '#811700' }}>Training Activities</b>
-                </td>
-              </tr>
-              <tr>
-                <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(i)</td>
-                <td className="tgt-cell tgt-label" style={{ background: '#FBF8EF' }}>Annual Training Target (No. of Trainees)</td>
-                <td className="tgt-cell tgt-center" colSpan={2}>
-                  <input
-                    className="tgt-input tgt-editable"
-                    type="number" min="0" step="1"
-                    value={form.taTarget} onChange={set('taTarget')} placeholder="0"
-                    style={{ width: 160 }}
-                  />
-                </td>
-              </tr>
-
-              {/* ── G. Budget Estimate ── */}
-              <tr>
-                <td className="tgt-cell" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 14, background: '#eaf0f8', color: '#073354', verticalAlign: 'middle' }} rowSpan={2}>G.</td>
-                <td className="tgt-cell tgt-section-hdr" colSpan={4}>
-                  <b style={{ color: '#811700' }}>Budget Estimate</b>
-                </td>
-              </tr>
-              <tr>
-                <td className="tgt-cell tgt-center" style={{ color: '#555', fontSize: 11 }}>(i)</td>
-                <td className="tgt-cell tgt-label" style={{ background: '#F2F2F2' }}>Budget Estimate (BE) for the Year (₹ Lakhs)</td>
-                <td className="tgt-cell tgt-center" colSpan={2}>
-                  <input
-                    className="tgt-input tgt-editable"
-                    type="number" min="0" step="1"
-                    value={form.beBudget} onChange={set('beBudget')} placeholder="0"
-                    style={{ width: 160 }}
-                  />
-                </td>
-              </tr>
-
             </tbody>
           </table>
         </div>
+      </section>
 
-        {/* ── Summary strip ── */}
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: 8,
-          padding: '10px 16px',
-          background: 'linear-gradient(135deg, #eef3f8 0%, #dce8f4 100%)',
-          borderTop: '2px solid #b8cfe8',
-        }}>
-          {[
-            { label: 'Revenue Earning (Cash)', val: n(form.revEarnCash) },
-            { label: 'Revenue Earning (Accrual)', val: n(form.revEarnAcc) },
-            { label: 'Training Target', val: n(form.taTarget) },
-            { label: 'NJU Target', val: n(form.njuTarget) },
-            { label: 'Budget Estimate', val: n(form.beBudget) },
-          ].map(({ label, val }) => (
-            <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 130, flex: 1 }}>
-              <span style={{ fontSize: 10, color: '#556', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</span>
-              <span style={{ fontSize: 15, fontWeight: 'bold', color: '#073354' }}>{val}</span>
-            </div>
+      {/* ═══════════ Physical & budget targets ═══════════ */}
+      <section className="tgt-card">
+        <div className="tgt-card-head">
+          <span className="tgt-badge">#</span>
+          <div>
+            <h2>Physical &amp; budget targets</h2>
+            <p>Annual figures for the year.</p>
+          </div>
+        </div>
+        <div className="tgt-tiles">
+          {physical.map(t => (
+            <label key={t.key} className={`tgt-tile ${t.cls}`}>
+              <div className="tgt-tile-top">
+                <span className="tgt-tile-icon">{t.icon}</span>
+                <div>
+                  <div className="tgt-tile-title">{t.title}</div>
+                  <div className="tgt-tile-unit">{t.unit}</div>
+                </div>
+              </div>
+              <NumInput big value={form[t.key]} onChange={set(t.key)} />
+              <div className="tgt-tile-help">{t.help}</div>
+            </label>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* ── Legend ── */}
-      <div style={{ margin: '10px 16px 0', fontSize: 11, color: '#666', display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-        <span><b style={{ color: '#073354' }}>C</b> : Auto Calculated</span>
-        <span><b style={{ color: '#073354' }}>A–D</b> : Financial Targets (₹ Lakhs)</span>
-        <span><b style={{ color: '#073354' }}>E</b> : Number of Unit Benefited (Numbers)</span>
-        <span><b style={{ color: '#073354' }}>F</b> : Training Activities (Numbers)</span>
-        <span><b style={{ color: '#073354' }}>G</b> : Budget Estimate (₹ Lakhs)</span>
-      </div>
-
-      {/* ── Action bar ── */}
+      {/* ── Sticky action bar ── */}
       <div className="tgt-actions">
-        <Button onClick={handleReset}>Reset</Button>
-        <Button type="primary" onClick={handleSave} loading={saving}>Save Targets</Button>
-        {user?.role === 'SU' && hasData && (
-          <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
-        )}
+        <div className="tgt-actions-hint">
+          <InfoCircleOutlined />
+          <span>These targets drive the <b>Target</b> and <b>% achievement</b> columns on the Financial, Physical and Budget pages.</span>
+        </div>
+        <div className="tgt-actions-btns">
+          <Button icon={<ReloadOutlined />} onClick={handleReset}>Reset</Button>
+          {user?.role === 'SU' && hasData && (
+            <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
+          )}
+          <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
+            {hasData ? 'Update Targets' : 'Save Targets'}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -3,11 +3,12 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import {
   HomeOutlined, DollarOutlined, BarChartOutlined, PieChartOutlined,
-  TeamOutlined, AimOutlined, UserSwitchOutlined,
+  AimOutlined, UserSwitchOutlined,
   FileTextOutlined, EditOutlined, LockOutlined, LogoutOutlined,
   LineChartOutlined, FundOutlined, PhoneOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, DownOutlined,
   UsergroupAddOutlined, TrophyOutlined,
+  TagsOutlined, ManOutlined, ReadOutlined, CalendarOutlined, FileDoneOutlined, CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -40,18 +41,18 @@ function buildNav(role, section) {
     { key: '/dashboard',                          icon: <HomeOutlined />,      label: 'Application Home Page' },
     { key: '/app/reports/graphical',              icon: <LineChartOutlined />, label: 'Graphical Representation' },
     { divider: 'Trainees Trained' },
-    { key: '/app/reports/trainees/category',      icon: <TeamOutlined />,      label: 'Category wise' },
-    { key: '/app/reports/trainees/gender',        icon: <TeamOutlined />,      label: 'Gender wise' },
-    { key: '/app/reports/trainees/qualification', icon: <TeamOutlined />,      label: 'Qualification wise' },
-    { key: '/app/reports/trainees/age',           icon: <TeamOutlined />,      label: 'Age wise' },
+    { key: '/app/reports/trainees/category',      icon: <TagsOutlined />,      label: 'Category wise' },
+    { key: '/app/reports/trainees/gender',        icon: <ManOutlined />,      label: 'Gender wise' },
+    { key: '/app/reports/trainees/qualification', icon: <ReadOutlined />,      label: 'Qualification wise' },
+    { key: '/app/reports/trainees/age',           icon: <CalendarOutlined />,      label: 'Age wise' },
     { divider: 'Reports' },
     { key: '/app/reports/budget',                 icon: <FundOutlined />,      label: 'Budget Report' },
     { key: '/app/reports/target',                 icon: <AimOutlined />,       label: 'Target Report' },
     { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: 'MPR-AB Report' },
     { key: '/app/reports/analysis',               icon: <PieChartOutlined />,  label: 'Analysis Report' },
-    { key: '/app/reports/rfd',                    icon: <BarChartOutlined />,  label: 'Report for RFD' },
+    { key: '/app/reports/rfd',                    icon: <FileDoneOutlined />,  label: 'Report for RFD' },
     { key: '/app/reports/achievement',            icon: <TrophyOutlined />,    label: 'Significant Achievement Report' },
-    { key: '/app/reports/achievement/status',     icon: <TrophyOutlined />,    label: 'Achievement Status' },
+    { key: '/app/reports/achievement/status',     icon: <CheckCircleOutlined />,    label: 'Achievement Status' },
     { key: '/app/modify-data',                    icon: <EditOutlined />,      label: 'Update / Delete' },
     { divider: 'Account' },
     { key: '/app/users',                          icon: <UsergroupAddOutlined />, label: 'User Management' },
@@ -65,18 +66,18 @@ function buildNav(role, section) {
     { key: '/dashboard',                          icon: <HomeOutlined />,      label: 'Application Home Page' },
     { key: '/app/reports/graphical',              icon: <LineChartOutlined />, label: 'Graphical Representation' },
     { divider: 'Trainees Trained' },
-    { key: '/app/reports/trainees/category',      icon: <TeamOutlined />,      label: 'Category wise' },
-    { key: '/app/reports/trainees/gender',        icon: <TeamOutlined />,      label: 'Gender wise' },
-    { key: '/app/reports/trainees/qualification', icon: <TeamOutlined />,      label: 'Qualification wise' },
-    { key: '/app/reports/trainees/age',           icon: <TeamOutlined />,      label: 'Age wise' },
+    { key: '/app/reports/trainees/category',      icon: <TagsOutlined />,      label: 'Category wise' },
+    { key: '/app/reports/trainees/gender',        icon: <ManOutlined />,      label: 'Gender wise' },
+    { key: '/app/reports/trainees/qualification', icon: <ReadOutlined />,      label: 'Qualification wise' },
+    { key: '/app/reports/trainees/age',           icon: <CalendarOutlined />,      label: 'Age wise' },
     { divider: 'Reports' },
     { key: '/app/reports/budget',                 icon: <FundOutlined />,      label: 'Budget Report' },
     { key: '/app/reports/target',                 icon: <AimOutlined />,       label: 'Target Report' },
     { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: 'MPR-AB Report' },
     { key: '/app/reports/analysis',               icon: <PieChartOutlined />,  label: 'Analysis Report' },
-    { key: '/app/reports/rfd',                    icon: <BarChartOutlined />,  label: 'Report for RFD' },
+    { key: '/app/reports/rfd',                    icon: <FileDoneOutlined />,  label: 'Report for RFD' },
     { key: '/app/reports/achievement',            icon: <TrophyOutlined />,    label: 'Significant Achievement Report' },
-    { key: '/app/reports/achievement/status',     icon: <TrophyOutlined />,    label: 'Achievement Status' },
+    { key: '/app/reports/achievement/status',     icon: <CheckCircleOutlined />,    label: 'Achievement Status' },
     { divider: 'Account' },
     { key: '/app/contact',                        icon: <PhoneOutlined />,     label: 'Contact Us' },
     { key: '__logout__',                          icon: <LogoutOutlined />,    label: 'Logout' },
@@ -105,10 +106,10 @@ function NavDivider({ label, collapsed }) {
   return <div className="sn-divider"><span>{label}</span></div>;
 }
 
-function NavItem({ icon, label, active, onClick, collapsed, sub }) {
+function NavItem({ icon, label, active, onClick, collapsed, sub, logout }) {
   return (
     <div
-      className={`sn-item${active ? ' sn-active' : ''}${sub ? ' sn-sub' : ''}`}
+      className={`sn-item${active ? ' sn-active' : ''}${sub ? ' sn-sub' : ''}${logout ? ' sn-logout' : ''}`}
       onClick={onClick}
       title={collapsed ? label : undefined}
     >
@@ -171,7 +172,12 @@ export default function MainLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   const nav = buildNav(user?.role, selection?.section);
-  const currentKey = location.pathname;
+  // Highlight the menu item whose path is the longest prefix of the current URL, so sub-pages
+  // (e.g. /app/reports/trainees/category/report) keep their parent item (…/category) active.
+  const currentKey = nav
+    .map(i => i.key)
+    .filter(k => k && k.startsWith('/') && (location.pathname === k || location.pathname.startsWith(k + '/')))
+    .sort((a, b) => b.length - a.length)[0] || location.pathname;
   const username = user?.userId || user?.uid || user?.userName || 'User';
   const isEntry  = selection?.section === '1';
 
@@ -263,10 +269,12 @@ export default function MainLayout() {
                   active={item.key !== '__logout__' && currentKey === item.key}
                   onClick={() => item.key === '__logout__' ? handleLogout() : navigate(item.key)}
                   collapsed={collapsed}
+                  logout={item.key === '__logout__'}
                 />
               );
             })}
           </nav>
+          {!collapsed && <div className="sn-bottom">O/O DC-MSME · MPR-AB</div>}
         </aside>
 
         {/* ── CONTENT ── */}

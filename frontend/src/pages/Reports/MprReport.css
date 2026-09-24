@@ -7,8 +7,8 @@
 }
 
 .mpr-doc {
-  max-width: 1120px;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   background: #fff;
   box-shadow: 0 2px 16px rgba(0,0,0,0.12);
   border-radius: 4px;
@@ -109,7 +109,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 11.5px;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
 }
 .mpr-tbl td, .mpr-tbl th {
   border: 1px solid #bbb;
@@ -265,8 +265,88 @@
 .mpr-pla-tbl th { background: #2a5d8a; color: #fff; font-weight: 600; }
 
 /* ── Section blocks (each lettered section is its own stacked table) ── */
-.mpr-block { margin-bottom: 4px; }
-.mpr-block .mpr-tbl { margin-top: 4px; }
+.mpr-tbl-wrap { padding: 14px 18px 4px; }
+.mpr-block { margin-bottom: 16px; }
+.mpr-block .mpr-tbl { margin-top: 0; }
+.mpr-block > .mpr-tbl + .mpr-tbl { margin-top: 8px; }
+
+/* Section heading: letter badge + title (+ optional right-aligned note) */
+.mpr-sec-hdr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 4px 4px 0 0;
+}
+.mpr-sec-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #FFD700;
+  color: #073354;
+  font-size: 12px;
+  font-weight: 800;
+}
+.mpr-sec-title { flex: 1; }
+.mpr-sec-note {
+  font-weight: 600;
+  font-size: 11.5px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+/* Sub-section heading inside a block (e.g. "Training activities") */
+.mpr-sub-sec {
+  margin-top: 12px;
+  background: #c7d9ef;
+  color: #073354;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-left: 4px solid #073354;
+}
+
+/* Common cell helpers */
+.mpr-tbl td, .mpr-tbl th { border-color: #cfd8e3; }
+.mpr-tbl tbody tr:hover td { filter: brightness(0.98); }
+.mpr-row-alt td { background-color: #FBF8EF; }
+.mpr-row-alt td.mpr-dtm { background-color: #fbf7e6; }
+.mpr-row-alt td.mpr-cum { background-color: #eef9f1; }
+.mpr-num-c { text-align: center !important; }
+.mpr-grp { font-weight: 600; color: #1a4070; background: #f4f8fc; }
+.mpr-empty-row { text-align: center; color: #999; font-style: italic; padding: 8px !important; }
+.mpr-rowno { display: inline-block; min-width: 38px; color: #1a4070; font-weight: 600; }
+
+/* Bifurcation tables (C–G) */
+.mpr-bifur { table-layout: fixed; }
+.mpr-bifur .mpr-bifur-lbl { width: 200px; text-align: left; padding-left: 10px; }
+.mpr-bifur .mpr-bifur-th { white-space: normal; line-height: 1.25; font-size: 10.5px; }
+.mpr-bifur td.mpr-part { font-weight: 600; color: #1a4070; }
+.mpr-bifur-narrow { width: auto; min-width: 420px; }
+.mpr-bifur-narrow .mpr-bifur-th { width: 140px; }
+.mpr-staff-th { width: 16%; }
+
+/* I + J side by side */
+.mpr-pair { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; }
+.mpr-pair .mpr-block { margin-bottom: 16px; }
+@media (max-width: 760px) { .mpr-pair { grid-template-columns: 1fr; } }
+
+/* Narrative sections (K–N) */
+.mpr-text-box {
+  border: 1px solid #cfd8e3;
+  border-top: none;
+  background: #fffef8;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.65;
+  min-height: 38px;
+}
+.mpr-text-box ol, .mpr-text-box ul { margin: 4px 0; padding-left: 22px; }
 
 /* Left-most single-letter column reused outside of Block (C/D/E/F/G, H, I, J, K-N, O) */
 .mpr-letter-cell {
@@ -326,8 +406,11 @@
 
   body.mpr-printing .mpr-page { background: #fff; padding: 0; }
   body.mpr-printing .mpr-doc { box-shadow: none; max-width: none; }
-  body.mpr-printing .mpr-tbl-wrap { overflow: visible !important; }
-  body.mpr-printing .mpr-block { page-break-inside: avoid; }
+  body.mpr-printing .mpr-tbl-wrap { overflow: visible !important; padding: 0; }
+  body.mpr-printing .mpr-block { page-break-inside: avoid; margin-bottom: 8px; }
+  body.mpr-printing .mpr-pair { gap: 10px; }
+  body.mpr-printing .mpr-tbl tbody tr:hover td { filter: none; }
+  body.mpr-printing * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
   body.mpr-printing .mpr-tbl,
   body.mpr-printing .mpr-bifur-tbl,

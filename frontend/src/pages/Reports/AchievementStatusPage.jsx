@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { exportToExcel } from '../../utils/reportUtils';
+import { exportToExcel, usePrintOnlyReport } from '../../utils/reportUtils';
 
 const MONTH_COLS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
 const MONTH_KEYS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
@@ -16,13 +16,15 @@ export default function AchievementStatusPage() {
   const [rows, setRows]     = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+  const [shownYear, setShownYear] = useState('');
+  usePrintOnlyReport();
   const tableId = 'ach-status-tbl';
 
   function handleGenerate(e) {
     e.preventDefault();
     setLoading(true); setFetched(false);
     api.get('/reports/achievement/status', { params: { year } })
-      .then(r => { setRows(r.data?.data || []); setFetched(true); })
+      .then(r => { setRows(r.data?.data || []); setFetched(true); setShownYear(year); })
       .catch(() => { setRows([]); setFetched(true); })
       .finally(() => setLoading(false));
   }
@@ -30,7 +32,7 @@ export default function AchievementStatusPage() {
   return (
     <div className="rpt-page">
       <div className="rpt-header">
-        <div className="rpt-header-title">Significant Achievement Status</div>
+        <div className="rpt-header-title">Significant Achievement Status{fetched && shownYear ? ` — ${shownYear}` : ''}</div>
         {fetched && (
           <div className="rpt-header-actions">
             <button className="rpt-action-btn rpt-btn-print" onClick={() => window.print()}>🖨 Print</button>
@@ -39,8 +41,8 @@ export default function AchievementStatusPage() {
         )}
       </div>
 
-      {/* Year selector form */}
-      <div style={{ padding: '0 0 14px' }}>
+      {/* Year selector form (not printed) */}
+      <div className="rpt-no-print" style={{ padding: '0 0 14px' }}>
         <form onSubmit={handleGenerate} autoComplete="off">
           <table className="gr-form-tbl" cellPadding="0" cellSpacing="0">
             <tbody>

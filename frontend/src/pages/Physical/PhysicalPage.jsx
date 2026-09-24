@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Button, Spin, Alert, message } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined, PrinterOutlined, ReloadOutlined, SaveOutlined, EditOutlined, PlusOutlined, CloseOutlined,
+  ToolOutlined, FundOutlined, TeamOutlined, SoundOutlined,
+  CheckCircleOutlined, LockOutlined, ClockCircleOutlined, InfoCircleOutlined, WarningOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './PhysicalPage.css';
@@ -9,79 +13,111 @@ import './PhysicalPage.css';
    Cell helpers — defined OUTSIDE component to avoid remount
    ═══════════════════════════════════════════════════════ */
 
-function DashCell({ bg = '#f1f4f8' }) {
-  return (
-    <td className="phy-cell" style={{ background: bg, textAlign: 'center' }}>
-      <input className="phy-input phy-ro" value="-" readOnly style={{ width: 70 }} />
-    </td>
-  );
-}
+const fmt = v => {
+  const x = typeof v === 'number' ? v : (parseFloat(v) || 0);
+  return Number.isInteger(x) ? x : x.toFixed(2);
+};
 
-function TgtCell({ value = 0, bg = '#f1f4f8' }) {
+function EditCell({ value, onChange, disabled, decimal = false }) {
   return (
-    <td className="phy-cell" style={{ background: bg, textAlign: 'center' }}>
-      <input className="phy-input phy-ro" value={value != null ? value : '-'} readOnly style={{ width: 70 }} />
-    </td>
-  );
-}
-
-function CalcCell({ value, bg = '#f1f4f8', total = false }) {
-  const display = typeof value === 'number'
-    ? (Number.isInteger(value) ? value : value.toFixed(2))
-    : (value ?? 0);
-  return (
-    <td className="phy-cell" style={{ background: bg, textAlign: 'center' }}>
+    <td className="phy-cell phy-in-cell">
       <input
-        className={`phy-input phy-ro${total ? ' phy-total-input' : ''}`}
-        value={display}
-        readOnly
-        style={{ width: 70 }}
-      />
-    </td>
-  );
-}
-
-function PctCell({ cum, target, bg = '#f1f4f8' }) {
-  const val = target > 0 ? ((cum / target) * 100).toFixed(2) : '-';
-  return (
-    <td className="phy-cell" style={{ background: bg, textAlign: 'center' }}>
-      <input className="phy-input phy-ro" value={val} readOnly style={{ width: 70 }} />
-    </td>
-  );
-}
-
-function EditCell({ value, onChange, bg = '#fffef0' }) {
-  return (
-    <td className="phy-cell" style={{ background: bg, textAlign: 'center' }}>
-      <input
-        className="phy-input phy-editable"
+        className="phy-input"
+        inputMode={decimal ? 'decimal' : 'numeric'}
         value={value}
         onChange={onChange}
-        style={{ width: 70 }}
+        disabled={disabled}
+        placeholder="0"
       />
     </td>
   );
 }
 
-/* small input for bifurcation cells */
-function SmEditCell({ value, onChange, bg = '#fffef0' }) {
+function CalcCell({ value, total = false }) {
+  return <td className={`phy-cell phy-calc${total ? ' phy-calc-total' : ''}`}>{fmt(value)}</td>;
+}
+
+function DashCell() {
+  return <td className="phy-cell phy-dash">—</td>;
+}
+
+function TgtCell({ value }) {
+  return <td className="phy-cell phy-tgt">{value ? fmt(value) : '—'}</td>;
+}
+
+function PctCell({ cum, target }) {
+  if (!(target > 0)) return <td className="phy-cell phy-dash">—</td>;
+  const p = (cum / target) * 100;
   return (
-    <td className="phy-cell" style={{ background: bg, textAlign: 'center' }}>
-      <input
-        className="phy-input phy-editable"
-        value={value}
-        onChange={onChange}
-        style={{ width: 55 }}
-      />
+    <td className="phy-cell phy-pct">
+      <div className="phy-pct-val">{p.toFixed(1)}%</div>
+      <div className="phy-pct-bar"><span style={{ width: `${Math.min(p, 100)}%` }} /></div>
     </td>
   );
 }
 
-function SmCalcCell({ value, bg = '#f1f4f8' }) {
+/* Standard Target / During / Cumulative / % head */
+function StatHead({ first = 'Particulars' }) {
   return (
-    <td className="phy-cell" style={{ background: bg, textAlign: 'center' }}>
-      <input className="phy-input phy-ro" value={value ?? 0} readOnly style={{ width: 55 }} />
-    </td>
+    <thead>
+      <tr>
+        <th className="phy-th phy-th-left" colSpan={2}>{first}</th>
+        <th className="phy-th">Target</th>
+        <th className="phy-th">During<span>the month</span></th>
+        <th className="phy-th">Cumulative<span>up to the month</span></th>
+        <th className="phy-th">Achievement<span>w.r.t. annual target</span></th>
+      </tr>
+    </thead>
+  );
+}
+
+function GroupRow({ children }) {
+  return <tr className="phy-group-row"><td colSpan={6}>{children}</td></tr>;
+}
+
+/* Bifurcation card (C – H): categories as columns; During (inputs) / Cumulative (calc) as rows */
+function BifurCard({ letter, title, cols, dtm, set, cum, disabled, expected, total = true }) {
+  const dSum = cols.reduce((s, c) => s + (parseFloat(dtm[c.key]) || 0), 0);
+  const cSum = cols.reduce((s, c) => s + cum[c.key], 0);
+  const check = expected > 0 && total;
+  const ok = dSum === expected;
+  return (
+    <section className="phy-card">
+      <div className="phy-card-head">
+        <span className="phy-badge">{letter}</span>
+        <div><h2>{title}</h2><p>Trainees trained — bifurcation</p></div>
+        {check && (
+          <span className={`phy-check ${ok ? 'phy-check-ok' : 'phy-check-warn'}`}
+            title="Compared with Total (a+b+c) — No. of trainees during the month">
+            {ok ? <CheckCircleOutlined /> : <WarningOutlined />}
+            {ok ? `Matches ${expected} trainees` : `Total ${dSum} ≠ ${expected} trainees this month`}
+          </span>
+        )}
+      </div>
+      <div className="phy-table-wrap">
+        <table className="phy-table phy-bifur">
+          <thead>
+            <tr>
+              <th className="phy-th phy-th-left phy-bifur-lbl"></th>
+              {cols.map(c => <th key={c.key} className="phy-th phy-bifur-th">{c.label}</th>)}
+              {total && <th className="phy-th phy-bifur-th phy-th-total">Total</th>}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="phy-cell phy-label">During the month</td>
+              {cols.map(c => <EditCell key={c.key} value={dtm[c.key]} onChange={set(c.key)} disabled={disabled} />)}
+              {total && <CalcCell value={dSum} total />}
+            </tr>
+            <tr>
+              <td className="phy-cell phy-label">Cumulative</td>
+              {cols.map(c => <CalcCell key={c.key} value={cum[c.key]} />)}
+              {total && <CalcCell value={cSum} total />}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -90,8 +126,6 @@ function SmCalcCell({ value, bg = '#f1f4f8' }) {
    ═══════════════════════════════════════════════════════ */
 const n = (v) => parseFloat(v) || 0;
 
-const BG1 = '#F2F2F2';
-const BG2 = '#FBF8EF';
 
 const ZERO_PREV = {
   twMsmeNos: 0, twMsmeValues: 0, twOtherNos: 0, twOtherValues: 0,
@@ -177,6 +211,19 @@ export default function PhysicalPage() {
       .finally(() => setLoading(false));
   }, [selection?.instId, selection?.month, selection?.year]);
 
+  /* ── Print: strip the app shell so only the form prints (button + Ctrl+P) ── */
+  useEffect(() => {
+    const on  = () => document.body.classList.add('phy-printing');
+    const off = () => document.body.classList.remove('phy-printing');
+    window.addEventListener('beforeprint', on);
+    window.addEventListener('afterprint', off);
+    return () => {
+      window.removeEventListener('beforeprint', on);
+      window.removeEventListener('afterprint', off);
+      off();
+    };
+  }, []);
+
   const handleSave = () => {
     if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
     setSaving(true);
@@ -184,7 +231,12 @@ export default function PhysicalPage() {
       instId: selection.instId, month: selection.month, year: selection.year,
       ...dtm,
       ltcCourses,
-    }).then(() => message.success('Physical data saved successfully!'))
+    }).then(() => {
+      message.success('Physical data saved successfully!');
+      // saved → switch to "existing data" mode: enables Update / Clear Data (SU), locks the form for others
+      setHasData(true);
+      if (user?.role !== 'SU') setBlocked(true);
+    })
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
   };
@@ -312,626 +364,297 @@ export default function PhysicalPage() {
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
 
+  const isSU = user?.role === 'SU';
+  const cumOf = Object.fromEntries(Object.keys(ZERO_PREV).map(k => [k, (PREV[k] || 0) + n(dtm[k])]));
+  const traineesThisMonth = n(dtm.trngTotalNot);
+
+  const status = blocked
+    ? { cls: 'phy-status-locked', icon: <LockOutlined />, text: 'Submitted — locked' }
+    : hasData
+      ? { cls: 'phy-status-saved', icon: <CheckCircleOutlined />, text: isSU ? 'Submitted — editable (SU)' : 'Submitted' }
+      : { cls: 'phy-status-new', icon: <ClockCircleOutlined />, text: 'Not yet submitted' };
+
+  const pctTxt = (c, t) => (t > 0 ? `${((c / t) * 100).toFixed(1)}% of target ${t}` : 'no annual target set');
+  const kpis = [
+    { label: 'Units benefited',       icon: <ToolOutlined />,  cls: 'phy-k-navy',  value: fmt(phyTotalNosCum),    sub: pctTxt(phyTotalNosCum, FIX_VAL1) },
+    { label: 'Value of work (Rs. L)', icon: <FundOutlined />,  cls: 'phy-k-gold',  value: fmt(phyTotalValuesCum), sub: <>cumulative · <b>{fmt(phyTotalValuesDtm)}</b> this month</> },
+    { label: 'Trainees trained',      icon: <TeamOutlined />,  cls: 'phy-k-teal',  value: fmt(trngTotalNotCum),   sub: pctTxt(trngTotalNotCum, FIX_VAL2) },
+    { label: 'Seminar participants',  icon: <SoundOutlined />, cls: 'phy-k-purple', value: fmt(seminarsPtsCum),  sub: <>in <b>{fmt(seminarsNosCum)}</b> seminars / workshops</> },
+  ];
+
+  /* one "Nos. + Values" pair for tooling / other-job work */
+  const workPair = (label, nosKey, valKey, nosCum, valCum) => ([
+    <tr key={nosKey}>
+      <td className="phy-cell phy-label phy-sub" rowSpan={2}>{label}</td>
+      <td className="phy-cell phy-unit">Nos.</td>
+      <DashCell />
+      <EditCell value={dtm[nosKey]} onChange={set(nosKey)} disabled={blocked} />
+      <CalcCell value={nosCum} />
+      <DashCell />
+    </tr>,
+    <tr key={valKey}>
+      <td className="phy-cell phy-unit">Value (Rs. Lakh)</td>
+      <DashCell />
+      <EditCell value={dtm[valKey]} onChange={set(valKey)} disabled={blocked} decimal />
+      <CalcCell value={valCum} />
+      <DashCell />
+    </tr>,
+  ]);
+
   /* ── Render ── */
   return (
     <div className="phy-page">
-      {loadErr && <Alert type="warning" message={loadErr} style={{ margin: '8px 0' }} />}
-      {blocked && <Alert type="error" message="Data already submitted for this month. Contact SU to modify." style={{ margin: '8px 0' }} />}
-
-      {/* ── Title Bar ── */}
-      <div className="phy-titlebar">
-        <div className="phy-titlebar-left">
-          <span className="phy-page-label">Monthly Progress Report — Section B</span>
-          <span className="phy-institute">{selection?.instName || 'Physical Section'}</span>
-        </div>
-        <div className="phy-titlebar-right">
-          {selection?.monthName && (
-            <span className="phy-meta-chip">
-              {selection.monthName} {selection.year}
-            </span>
-          )}
-          <span className="phy-note">* All Nos. fields are integer | Values in Rs. Lakh</span>
+      {/* print-only header */}
+      <div className="phy-print-header">
+        <div className="phy-print-title">Monthly Progress Report — Section B (Physical) &amp; Bifurcation C – H</div>
+        <div className="phy-print-sub">
+          {selection?.instName || ''}
+          {selection?.monthName ? ` — ${selection.monthName} ${selection.year}` : ''}
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          CARD 1 — SECTION B: Physical + Training
-          ══════════════════════════════════════════════════ */}
-      <div className="phy-card">
+      {/* ── Hero ── */}
+      <header className="phy-hero">
+        <div className="phy-hero-main">
+          <span className="phy-hero-kicker">Monthly Progress Report · Section B &amp; C – H</span>
+          <h1 className="phy-hero-title">Physical Section</h1>
+          <span className="phy-hero-inst">{selection?.instName || '—'}</span>
+        </div>
+        <div className="phy-hero-side">
+          {selection?.monthName && <span className="phy-hero-chip">{selection.monthName} {selection.year}</span>}
+          <span className={`phy-status ${status.cls}`}>{status.icon}{status.text}</span>
+        </div>
+      </header>
+
+      {loadErr && <Alert type="warning" showIcon message={loadErr} className="phy-alert" />}
+      {blocked && (
+        <Alert type="info" showIcon icon={<LockOutlined />} className="phy-alert"
+          message="This month's physical data has been submitted."
+          description="The form is read-only. Contact the SU (Senet Division) if a correction is needed." />
+      )}
+
+      {/* ── KPI tiles ── */}
+      <div className="phy-kpis">
+        {kpis.map(k => (
+          <div key={k.label} className={`phy-kpi ${k.cls}`}>
+            <span className="phy-kpi-icon">{k.icon}</span>
+            <div>
+              <div className="phy-kpi-label">{k.label}</div>
+              <div className="phy-kpi-value">{k.value}</div>
+              <div className="phy-kpi-sub">{k.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ═══════════ B. Units benefited ═══════════ */}
+      <section className="phy-card">
+        <div className="phy-card-head">
+          <span className="phy-badge">B</span>
+          <div><h2>Number of units benefited</h2><p>Enter this month's figures — cumulative values and totals are calculated.</p></div>
+        </div>
         <div className="phy-table-wrap">
-          <table className="phy-table">
-            <thead>
+          <table className="phy-table phy-stat">
+            <colgroup>
+              <col style={{ width: 230 }} /><col style={{ width: 150 }} />
+              <col style={{ width: 100 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 170 }} />
+            </colgroup>
+            <StatHead />
+            <tbody>
+              <GroupRow>(a) Tooling work</GroupRow>
+              {workPair('(i) MSMEs',  'twMsmeNos',  'twMsmeValues',  twMsmeNosCum, twMsmeValuesCum)}
+              {workPair('(ii) Others', 'twOtherNos', 'twOtherValues', twOtherNosCum, twOtherValuesCum)}
+
+              <GroupRow>(b) Other job work</GroupRow>
+              {workPair('(i) MSMEs',  'ojwMsmeNos',  'ojwMsmeValues',  ojwMsmeNosCum, ojwMsmeValuesCum)}
+              {workPair('(ii) Others', 'ojwOtherNos', 'ojwOtherValues', ojwOtherNosCum, ojwOtherValuesCum)}
+
+              <GroupRow>(c) Consultancies</GroupRow>
               <tr>
-                <th className="phy-th" colSpan={4} rowSpan={2}>Physical Part</th>
-                <th className="phy-th" rowSpan={2}>Target</th>
-                <th className="phy-th" colSpan={3}>Achievement</th>
+                <td className="phy-cell phy-label phy-sub" colSpan={2}>(i) MSMEs</td>
+                <DashCell /><EditCell value={dtm.msmeCons} onChange={set('msmeCons')} disabled={blocked} /><CalcCell value={msmeConsCum} /><DashCell />
               </tr>
               <tr>
-                <th className="phy-th">Trainees trained<br />During the month</th>
-                <th className="phy-th">Cumulative<br />upto the month</th>
-                <th className="phy-th">Cumulative %age<br />w.r.t Annual Target</th>
+                <td className="phy-cell phy-label phy-sub" colSpan={2}>(ii) Others</td>
+                <DashCell /><EditCell value={dtm.otherCons} onChange={set('otherCons')} disabled={blocked} /><CalcCell value={otherConsCum} /><DashCell />
+              </tr>
+
+              <GroupRow>(d) Any others</GroupRow>
+              <tr>
+                <td className="phy-cell phy-label phy-sub" colSpan={2}>Any others</td>
+                <DashCell /><EditCell value={dtm.anyOther} onChange={set('anyOther')} disabled={blocked} /><CalcCell value={anyOtherCum} /><DashCell />
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr className="phy-total-row">
+                <td className="phy-cell phy-total-label" rowSpan={2}>Total (a+b+c+d)</td>
+                <td className="phy-cell phy-unit">Nos.</td>
+                <TgtCell value={FIX_VAL1} />
+                <CalcCell value={phyTotalNosDtm} total />
+                <CalcCell value={phyTotalNosCum} total />
+                <PctCell cum={phyTotalNosCum} target={FIX_VAL1} />
+              </tr>
+              <tr className="phy-total-row">
+                <td className="phy-cell phy-unit">Value (Rs. Lakh)</td>
+                <DashCell />
+                <CalcCell value={phyTotalValuesDtm} total />
+                <CalcCell value={phyTotalValuesCum} total />
+                <DashCell />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      {/* ═══════════ Training activities ═══════════ */}
+      <section className="phy-card">
+        <div className="phy-card-head">
+          <span className="phy-badge phy-badge-alt"><TeamOutlined /></span>
+          <div><h2>Training activities</h2><p>Long term courses are entered course-wise; their cumulative is the figure up to this month as per course records.</p></div>
+        </div>
+
+        <div className="phy-subhead">(a) Long term courses <span>— course-wise details of trainees</span></div>
+        <div className="phy-table-wrap">
+          <table className="phy-table phy-ltc">
+            <thead>
+              <tr>
+                <th className="phy-th" style={{ width: 56 }}>S.No</th>
+                <th className="phy-th phy-th-left">Name of the programme</th>
+                <th className="phy-th" style={{ width: 150 }}>Trainees trained<span>during the month</span></th>
+                <th className="phy-th" style={{ width: 150 }}>Trainees trained<span>up to the month</span></th>
+                {!blocked && <th className="phy-th" style={{ width: 56 }}></th>}
               </tr>
             </thead>
             <tbody>
-
-              {/* ─ B. PHYSICAL header ─ */}
-              <tr>
-                <td className="phy-cell phy-letter" rowSpan={18}><b>B.</b></td>
-                <td className="phy-cell phy-section-hdr" colSpan={7}><b>PHYSICAL</b></td>
-              </tr>
-              <tr>
-                <td className="phy-cell phy-sub-hdr" colSpan={7}><b>Number of unit benefited</b></td>
-              </tr>
-
-              {/* (a) Tooling Work */}
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={7}>(a) <b>Number of Tooling Work</b></td>
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" rowSpan={2}>(i) MSMEs</td>
-                <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Nos.</td>
-                <DashCell bg={BG1} />
-                <EditCell value={dtm.twMsmeNos}    onChange={set('twMsmeNos')}    bg={BG1} />
-                <CalcCell value={twMsmeNosCum}     bg={BG1} />
-                <DashCell bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Values (Rs. In Lakh)</td>
-                <DashCell bg={BG2} />
-                <EditCell value={dtm.twMsmeValues} onChange={set('twMsmeValues')} bg={BG2} />
-                <CalcCell value={twMsmeValuesCum}  bg={BG2} />
-                <DashCell bg={BG2} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" rowSpan={2}>(ii) Others</td>
-                <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Nos.</td>
-                <DashCell bg={BG1} />
-                <EditCell value={dtm.twOtherNos}    onChange={set('twOtherNos')}    bg={BG1} />
-                <CalcCell value={twOtherNosCum}     bg={BG1} />
-                <DashCell bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Values (Rs. In Lakh)</td>
-                <DashCell bg={BG2} />
-                <EditCell value={dtm.twOtherValues} onChange={set('twOtherValues')} bg={BG2} />
-                <CalcCell value={twOtherValuesCum}  bg={BG2} />
-                <DashCell bg={BG2} />
-              </tr>
-
-              {/* (b) Other Job Work */}
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={7}>(b) <b>Number of Other Job Work</b></td>
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" rowSpan={2}>(i) MSMEs</td>
-                <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Nos.</td>
-                <DashCell bg={BG1} />
-                <EditCell value={dtm.ojwMsmeNos}    onChange={set('ojwMsmeNos')}    bg={BG1} />
-                <CalcCell value={ojwMsmeNosCum}     bg={BG1} />
-                <DashCell bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Values (Rs. In Lakh)</td>
-                <DashCell bg={BG2} />
-                <EditCell value={dtm.ojwMsmeValues} onChange={set('ojwMsmeValues')} bg={BG2} />
-                <CalcCell value={ojwMsmeValuesCum}  bg={BG2} />
-                <DashCell bg={BG2} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" rowSpan={2}>(ii) Others</td>
-                <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Nos.</td>
-                <DashCell bg={BG1} />
-                <EditCell value={dtm.ojwOtherNos}    onChange={set('ojwOtherNos')}    bg={BG1} />
-                <CalcCell value={ojwOtherNosCum}     bg={BG1} />
-                <DashCell bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Values (Rs. In Lakh)</td>
-                <DashCell bg={BG2} />
-                <EditCell value={dtm.ojwOtherValues} onChange={set('ojwOtherValues')} bg={BG2} />
-                <CalcCell value={ojwOtherValuesCum}  bg={BG2} />
-                <DashCell bg={BG2} />
-              </tr>
-
-              {/* (c) Consultancies */}
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={7}>(c) <b>Consultancies</b></td>
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={3}>(i) MSMEs</td>
-                <DashCell bg={BG1} />
-                <EditCell value={dtm.msmeCons}  onChange={set('msmeCons')}  bg={BG1} />
-                <CalcCell value={msmeConsCum}   bg={BG1} />
-                <DashCell bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={3}>(ii) Others</td>
-                <DashCell bg={BG2} />
-                <EditCell value={dtm.otherCons} onChange={set('otherCons')} bg={BG2} />
-                <CalcCell value={otherConsCum}  bg={BG2} />
-                <DashCell bg={BG2} />
-              </tr>
-
-              {/* (d) Any Others */}
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={3}>(d) <b>Any Others</b></td>
-                <DashCell bg={BG1} />
-                <EditCell value={dtm.anyOther}  onChange={set('anyOther')}  bg={BG1} />
-                <CalcCell value={anyOtherCum}   bg={BG1} />
-                <DashCell bg={BG1} />
-              </tr>
-
-              {/* Total (a+b+c+d) */}
-              <tr>
-                <td className="phy-cell phy-slabel" rowSpan={2}><b>Total<br />(a+b+c+d)</b></td>
-                <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>Nos.</td>
-                <TgtCell value={FIX_VAL1} bg={BG2} />
-                <CalcCell value={phyTotalNosDtm}  bg={BG2} total />
-                <CalcCell value={phyTotalNosCum}  bg={BG2} total />
-                <PctCell  cum={phyTotalNosCum} target={FIX_VAL1} bg={BG2} />
-              </tr>
-              <tr>
-                <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Values (Rs. In Lakh)</td>
-                <DashCell bg={BG1} />
-                <CalcCell value={phyTotalValuesDtm} bg={BG1} total />
-                <CalcCell value={phyTotalValuesCum}  bg={BG1} total />
-                <DashCell bg={BG1} />
-              </tr>
-
-              {/* ─ Training Activities ─ */}
-              <tr>
-                <td className="phy-cell" rowSpan={11}></td>
-                <td className="phy-cell phy-section-hdr" colSpan={7}><b>Training activities</b></td>
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={7}>
-                  (a) <b>Long term courses</b> (course-wise details of trainees)
-                </td>
-              </tr>
-
-              {/* LTC sub-table */}
-              <tr>
-                <td className="phy-cell" colSpan={7} style={{ padding: 8 }}>
-                  <div className="phy-ltc-scroll">
-                    <table className="phy-ltc-table">
-                      <thead>
-                        <tr>
-                          <th className="phy-ltc-th" style={{ width: 36 }}>S.No</th>
-                          <th className="phy-ltc-th" style={{ width: 240 }}>Name of the program</th>
-                          <th className="phy-ltc-th" style={{ width: 70 }}>Target</th>
-                          <th className="phy-ltc-th" style={{ width: 90 }}>During the Month</th>
-                          <th className="phy-ltc-th" style={{ width: 90 }}>Cumulative upto the month</th>
-                          <th className="phy-ltc-th" style={{ width: 90 }}>Cumulative %age</th>
-                          {!blocked && <th className="phy-ltc-th" style={{ width: 36 }}></th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ltcCourses.map((row, i) => (
-                          <tr key={i} className={i % 2 === 0 ? 'phy-ltc-row1' : 'phy-ltc-row2'}>
-                            <td className="phy-ltc-cell" style={{ textAlign: 'center', color: '#555' }}>{i + 1}</td>
-                            <td className="phy-ltc-cell">
-                              <input
-                                className="phy-ltc-name-input phy-editable"
-                                value={row.name}
-                                onChange={setLtc(i, 'name')}
-                                disabled={blocked}
-                                style={{ width: '98%' }}
-                              />
-                            </td>
-                            <td className="phy-ltc-cell" style={{ textAlign: 'center', background: '#f1f4f8' }}>
-                              <input className="phy-input phy-ro" value="-" readOnly style={{ width: 60 }} />
-                            </td>
-                            <td className="phy-ltc-cell" style={{ textAlign: 'center' }}>
-                              <input
-                                className="phy-input phy-editable"
-                                value={row.dtm}
-                                onChange={setLtc(i, 'dtm')}
-                                disabled={blocked}
-                                style={{ width: 72 }}
-                              />
-                            </td>
-                            <td className="phy-ltc-cell" style={{ textAlign: 'center' }}>
-                              <input
-                                className="phy-input phy-editable"
-                                value={row.cumMon}
-                                onChange={setLtc(i, 'cumMon')}
-                                disabled={blocked}
-                                style={{ width: 72 }}
-                              />
-                            </td>
-                            <td className="phy-ltc-cell" style={{ textAlign: 'center', background: '#f1f4f8' }}>
-                              <input className="phy-input phy-ro" value="-" readOnly style={{ width: 60 }} />
-                            </td>
-                            {!blocked && (
-                              <td className="phy-ltc-cell" style={{ textAlign: 'center' }}>
-                                <button
-                                  onClick={() => removeLtcRow(i)}
-                                  disabled={ltcCourses.length <= 1}
-                                  title="Remove row"
-                                  style={{
-                                    background: ltcCourses.length <= 1 ? '#ccc' : '#aa0000',
-                                    color: '#fff', border: 'none', borderRadius: 3,
-                                    width: 22, height: 22, cursor: ltcCourses.length <= 1 ? 'default' : 'pointer',
-                                    fontSize: 14, lineHeight: '20px', padding: 0,
-                                  }}
-                                >×</button>
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                        {/* Total row */}
-                        <tr style={{ background: '#e8f0fa' }}>
-                          <td className="phy-ltc-cell" colSpan={2} style={{ fontWeight: 'bold', color: '#073354', paddingLeft: 8 }}>Total</td>
-                          <td className="phy-ltc-cell" style={{ textAlign: 'center', background: '#f1f4f8' }}>
-                            <input className="phy-input phy-ro" value="-" readOnly style={{ width: 60 }} />
-                          </td>
-                          <td className="phy-ltc-cell" style={{ textAlign: 'center' }}>
-                            <input className="phy-input phy-ro phy-total-input" value={ltcDtmTotal} readOnly style={{ width: 72 }} />
-                          </td>
-                          <td className="phy-ltc-cell" style={{ textAlign: 'center' }}>
-                            <input className="phy-input phy-ro phy-total-input" value={ltcCumTotal} readOnly style={{ width: 72 }} />
-                          </td>
-                          <td className="phy-ltc-cell" style={{ textAlign: 'center', background: '#f1f4f8' }}>
-                            <input className="phy-input phy-ro" value="-" readOnly style={{ width: 60 }} />
-                          </td>
-                          {!blocked && <td className="phy-ltc-cell" />}
-                        </tr>
-                        {/* Add row button */}
-                        {!blocked && (
-                          <tr>
-                            <td colSpan={7} style={{ padding: '6px 8px' }}>
-                              <button
-                                onClick={addLtcRow}
-                                style={{
-                                  background: '#073354', color: '#fff', border: 'none', borderRadius: 4,
-                                  padding: '4px 14px', cursor: 'pointer', fontSize: 12,
-                                }}
-                              >+ Add Course</button>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </td>
-              </tr>
-
-              {/* (b) Short term */}
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={7}>(b) <b>Short term</b></td>
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={3}>(i) Number of courses completed</td>
-                <DashCell bg={BG1} />
-                <EditCell value={dtm.stmNocComp}  onChange={set('stmNocComp')}  bg={BG1} />
-                <CalcCell value={stmNocCompCum}   bg={BG1} />
-                <DashCell bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={3}>(ii) Number of trainees trained (completed)</td>
-                <DashCell bg={BG2} />
-                <EditCell value={dtm.stmNottComp} onChange={set('stmNottComp')} bg={BG2} />
-                <CalcCell value={stmNottCompCum}  bg={BG2} />
-                <DashCell bg={BG2} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-slabel" colSpan={3}>(c) <b>Others</b></td>
-                <DashCell bg={BG1} />
-                <EditCell value={dtm.trngOther}   onChange={set('trngOther')}   bg={BG1} />
-                <CalcCell value={trngOtherCum}    bg={BG1} />
-                <DashCell bg={BG1} />
-              </tr>
-
-              {/* Total (a+b+c) Training */}
-              <tr>
-                <td className="phy-cell phy-slabel" rowSpan={2}><b>Total<br />(a+b+c)</b></td>
-                <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>No. of courses</td>
-                <DashCell bg={BG2} />
-                <EditCell value={dtm.trngTotalNoc} onChange={set('trngTotalNoc')} bg={BG2} />
-                <CalcCell value={trngTotalNocCum}  bg={BG2} total />
-                <DashCell bg={BG2} />
-              </tr>
-              <tr>
-                <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>No. of Trainees</td>
-                <TgtCell value={FIX_VAL2} bg={BG1} />
-                <EditCell value={dtm.trngTotalNot} onChange={set('trngTotalNot')} bg={BG1} />
-                <CalcCell value={trngTotalNotCum}  bg={BG1} total />
-                <PctCell  cum={trngTotalNotCum} target={FIX_VAL2} bg={BG1} />
-              </tr>
-
-              {/* Seminars / Workshops */}
-              <tr>
-                <td className="phy-cell phy-slabel" rowSpan={2}>Seminars /<br />Workshops</td>
-                <td className="phy-cell" colSpan={2} style={{ background: BG2 }}>No.</td>
-                <DashCell bg={BG2} />
-                <EditCell value={dtm.seminarsNos}  onChange={set('seminarsNos')} bg={BG2} />
-                <CalcCell value={seminarsNosCum}   bg={BG2} />
-                <DashCell bg={BG2} />
-              </tr>
-              <tr>
-                <td className="phy-cell" colSpan={2} style={{ background: BG1 }}>Participants</td>
-                <DashCell bg={BG1} />
-                <EditCell value={dtm.seminarsPts}  onChange={set('seminarsPts')} bg={BG1} />
-                <CalcCell value={seminarsPtsCum}   bg={BG1} />
-                <DashCell bg={BG1} />
-              </tr>
-
+              {ltcCourses.map((row, i) => (
+                <tr key={i}>
+                  <td className="phy-cell phy-rowno"><span>{i + 1}</span></td>
+                  <td className="phy-cell">
+                    <input className="phy-input phy-input-text" value={row.name} onChange={setLtc(i, 'name')}
+                      disabled={blocked} placeholder="e.g. Diploma in Tool & Die Making" />
+                  </td>
+                  <td className="phy-cell phy-in-cell">
+                    <input className="phy-input" inputMode="numeric" value={row.dtm} onChange={setLtc(i, 'dtm')} disabled={blocked} placeholder="0" />
+                  </td>
+                  <td className="phy-cell phy-in-cell">
+                    <input className="phy-input" inputMode="numeric" value={row.cumMon} onChange={setLtc(i, 'cumMon')} disabled={blocked} placeholder="0" />
+                  </td>
+                  {!blocked && (
+                    <td className="phy-cell phy-in-cell">
+                      <button type="button" className="phy-row-del" onClick={() => removeLtcRow(i)}
+                        disabled={ltcCourses.length <= 1} title="Remove course" aria-label="Remove course">
+                        <CloseOutlined />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
             </tbody>
+            <tfoot>
+              <tr className="phy-total-row">
+                <td className="phy-cell" />
+                <td className="phy-cell phy-total-label">
+                  Total
+                  {!blocked && (
+                    <button type="button" className="phy-add-btn" onClick={addLtcRow}><PlusOutlined /> Add course</button>
+                  )}
+                </td>
+                <CalcCell value={ltcDtmTotal} total />
+                <CalcCell value={ltcCumTotal} total />
+                {!blocked && <td className="phy-cell" />}
+              </tr>
+            </tfoot>
           </table>
         </div>
-      </div>
 
-      {/* ══════════════════════════════════════════════════
-          CARD 2 — SECTION C: Trainees bifurcation (Category)
-          ══════════════════════════════════════════════════ */}
-      <div className="phy-card phy-card-mt">
-        <div className="phy-card-title">C. Trainees Trained — Category Bifurcation</div>
-        <div className="phy-table-wrap">
-          <table className="phy-table">
+        <div className="phy-table-wrap phy-gap">
+          <table className="phy-table phy-stat">
+            <colgroup>
+              <col style={{ width: 230 }} /><col style={{ width: 150 }} />
+              <col style={{ width: 100 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 170 }} />
+            </colgroup>
+            <StatHead />
             <tbody>
               <tr>
-                <td className="phy-cell phy-letter" rowSpan={4}><b>C.</b></td>
-                <td className="phy-cell phy-bifur-label" rowSpan={2} style={{ background: BG2, width: 260 }}>
-                  (a) Trainees trained (bifurcation)<br />(During the month)
-                </td>
-                <th className="phy-th" style={{ width: 70 }}>GEN</th>
-                <th className="phy-th" style={{ width: 70 }}>SC</th>
-                <th className="phy-th" style={{ width: 70 }}>ST</th>
-                <th className="phy-th" style={{ width: 70 }}>OBC</th>
-                <th className="phy-th" style={{ width: 70 }}>Min.</th>
-                <th className="phy-th" style={{ width: 70 }}>Total</th>
+                <td className="phy-cell phy-label phy-sub" rowSpan={2}>(b) Short term</td>
+                <td className="phy-cell phy-unit">Courses completed</td>
+                <DashCell /><EditCell value={dtm.stmNocComp} onChange={set('stmNocComp')} disabled={blocked} /><CalcCell value={stmNocCompCum} /><DashCell />
               </tr>
               <tr>
-                <SmEditCell value={dtm.gen} onChange={set('gen')} bg={BG1} />
-                <SmEditCell value={dtm.sc}  onChange={set('sc')}  bg={BG1} />
-                <SmEditCell value={dtm.st}  onChange={set('st')}  bg={BG1} />
-                <SmEditCell value={dtm.obc} onChange={set('obc')} bg={BG1} />
-                <SmEditCell value={dtm.min} onChange={set('min')} bg={BG1} />
-                <SmCalcCell value={catDtmTotal} bg={BG1} />
+                <td className="phy-cell phy-unit">Trainees trained (completed)</td>
+                <DashCell /><EditCell value={dtm.stmNottComp} onChange={set('stmNottComp')} disabled={blocked} /><CalcCell value={stmNottCompCum} /><DashCell />
               </tr>
               <tr>
-                <td className="phy-cell phy-bifur-label" rowSpan={2} style={{ background: BG1 }}>
-                  (b) Trainees trained (bifurcation)<br />(Cumulative)
-                </td>
-                <th className="phy-th">GEN</th>
-                <th className="phy-th">SC</th>
-                <th className="phy-th">ST</th>
-                <th className="phy-th">OBC</th>
-                <th className="phy-th">Min.</th>
-                <th className="phy-th">Total</th>
+                <td className="phy-cell phy-label phy-sub" colSpan={2}>(c) Others</td>
+                <DashCell /><EditCell value={dtm.trngOther} onChange={set('trngOther')} disabled={blocked} /><CalcCell value={trngOtherCum} /><DashCell />
+              </tr>
+              <tr className="phy-total-row">
+                <td className="phy-cell phy-total-label" rowSpan={2}>Total (a+b+c)</td>
+                <td className="phy-cell phy-unit">No. of courses</td>
+                <DashCell /><EditCell value={dtm.trngTotalNoc} onChange={set('trngTotalNoc')} disabled={blocked} /><CalcCell value={trngTotalNocCum} total /><DashCell />
+              </tr>
+              <tr className="phy-total-row">
+                <td className="phy-cell phy-unit">No. of trainees</td>
+                <TgtCell value={FIX_VAL2} />
+                <EditCell value={dtm.trngTotalNot} onChange={set('trngTotalNot')} disabled={blocked} />
+                <CalcCell value={trngTotalNotCum} total />
+                <PctCell cum={trngTotalNotCum} target={FIX_VAL2} />
               </tr>
               <tr>
-                <SmCalcCell value={genCum}  bg={BG2} />
-                <SmCalcCell value={scCum}   bg={BG2} />
-                <SmCalcCell value={stCum}   bg={BG2} />
-                <SmCalcCell value={obcCum}  bg={BG2} />
-                <SmCalcCell value={minCum}  bg={BG2} />
-                <SmCalcCell value={catCumTotal} bg={BG2} />
+                <td className="phy-cell phy-label phy-sub" rowSpan={2}>Seminars / Workshops</td>
+                <td className="phy-cell phy-unit">No.</td>
+                <DashCell /><EditCell value={dtm.seminarsNos} onChange={set('seminarsNos')} disabled={blocked} /><CalcCell value={seminarsNosCum} /><DashCell />
+              </tr>
+              <tr>
+                <td className="phy-cell phy-unit">Participants</td>
+                <DashCell /><EditCell value={dtm.seminarsPts} onChange={set('seminarsPts')} disabled={blocked} /><CalcCell value={seminarsPtsCum} /><DashCell />
               </tr>
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* ═══════════ C – H. Bifurcation ═══════════ */}
+      <div className="phy-bifur-grid">
+        <BifurCard letter="C" title="Category" dtm={dtm} set={set} cum={cumOf} disabled={blocked} expected={traineesThisMonth}
+          cols={[{ key: 'gen', label: 'GEN' }, { key: 'sc', label: 'SC' }, { key: 'st', label: 'ST' }, { key: 'obc', label: 'OBC' }, { key: 'min', label: 'Minority' }]} />
+        <BifurCard letter="D" title="Gender" dtm={dtm} set={set} cum={cumOf} disabled={blocked} expected={traineesThisMonth}
+          cols={[{ key: 'men', label: 'Men' }, { key: 'wmn', label: 'Women' }, { key: 'transgender', label: 'Transgender' }]} />
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          CARD 3 — SECTION D: Gender bifurcation
-          ══════════════════════════════════════════════════ */}
-      <div className="phy-card phy-card-mt">
-        <div className="phy-card-title">D. Trainees Trained — Gender Bifurcation</div>
-        <div className="phy-table-wrap">
-          <table className="phy-table">
-            <tbody>
-              <tr>
-                <td className="phy-cell phy-letter" rowSpan={4}><b>D.</b></td>
-                <td className="phy-cell phy-bifur-label" rowSpan={2} style={{ background: BG2, width: 260 }}>
-                  (a) Trainees trained (bifurcation)<br />(During the month)
-                </td>
-                <th className="phy-th" style={{ width: 90 }}>MEN</th>
-                <th className="phy-th" style={{ width: 90 }}>WOMEN</th>
-                <th className="phy-th" style={{ width: 90 }}>TRANSGENDER</th>
-                <th className="phy-th" style={{ width: 90 }}>Total</th>
-              </tr>
-              <tr>
-                <SmEditCell value={dtm.men}         onChange={set('men')}         bg={BG1} />
-                <SmEditCell value={dtm.wmn}         onChange={set('wmn')}         bg={BG1} />
-                <SmEditCell value={dtm.transgender} onChange={set('transgender')} bg={BG1} />
-                <SmCalcCell value={genDtmTotal} bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-bifur-label" rowSpan={2} style={{ background: BG1 }}>
-                  (b) Trainees trained (bifurcation)<br />(Cumulative)
-                </td>
-                <th className="phy-th">MEN</th>
-                <th className="phy-th">WOMEN</th>
-                <th className="phy-th">TRANSGENDER</th>
-                <th className="phy-th">Total</th>
-              </tr>
-              <tr>
-                <SmCalcCell value={menCum}   bg={BG2} />
-                <SmCalcCell value={wmnCum}   bg={BG2} />
-                <SmCalcCell value={transCum} bg={BG2} />
-                <SmCalcCell value={genCumTotal} bg={BG2} />
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <BifurCard letter="E – F" title="Qualification" dtm={dtm} set={set} cum={cumOf} disabled={blocked} expected={traineesThisMonth}
+        cols={[
+          { key: 'thFail', label: 'HSC (10th) dropout / below 10th' }, { key: 'thPass', label: 'HSC (10th)' },
+          { key: 'twelfth', label: 'Intermediate (12th)' }, { key: 'iti', label: 'ITI & pursuing' },
+          { key: 'diploma', label: 'Diploma & pursuing' }, { key: 'gradNonTech', label: 'Graduate (Non-Tech)' },
+          { key: 'gradTech', label: 'Graduate (Tech)' }, { key: 'pgNonTech', label: 'PG (Non-Tech)' },
+          { key: 'pgTech', label: 'PG (Tech)' }, { key: 'phdMhil', label: 'Ph.D / M.Phil' },
+        ]} />
+
+      <div className="phy-bifur-grid phy-bifur-grid-age">
+        <BifurCard letter="G" title="Age group" dtm={dtm} set={set} cum={cumOf} disabled={blocked} expected={traineesThisMonth}
+          cols={[{ key: 'a1520', label: '15 – 20' }, { key: 'a2125', label: '21 – 25' }, { key: 'a2630', label: '26 – 30' }, { key: 'a3140', label: '31 – 40' }, { key: 'above40', label: 'Above 40' }]} />
+        <BifurCard letter="H" title="Persons with disability" dtm={dtm} set={set} cum={cumOf} disabled={blocked} total={false}
+          cols={[{ key: 'ph', label: 'PH' }]} />
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          CARD 4 — SECTIONS E+F: Qualification bifurcation
-          ══════════════════════════════════════════════════ */}
-      <div className="phy-card phy-card-mt">
-        <div className="phy-card-title">E & F. Trainees Trained — Qualification Bifurcation</div>
-        <div className="phy-table-wrap">
-          {/* Part E — 7 qualification columns */}
-          <table className="phy-table" style={{ marginBottom: 8 }}>
-            <thead>
-              <tr>
-                <th className="phy-th" rowSpan={2} style={{ width: 28 }}>E.</th>
-                <th className="phy-th" rowSpan={2} style={{ width: 220 }}>Category</th>
-                <th className="phy-th">HSC(10th)<br />Dropout / Below 10th</th>
-                <th className="phy-th">HSC(10th)</th>
-                <th className="phy-th">Intermediate (12th)</th>
-                <th className="phy-th">ITI & Pursuing</th>
-                <th className="phy-th">Diploma & Pursuing</th>
-                <th className="phy-th">Graduate (Non-Tech) & Pursuing</th>
-                <th className="phy-th">Graduate (Tech) & Pursuing</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="phy-cell phy-bifur-label" colSpan={2} style={{ background: BG2 }}>
-                  (a) During the month
-                </td>
-                <SmEditCell value={dtm.thFail}     onChange={set('thFail')}     bg={BG1} />
-                <SmEditCell value={dtm.thPass}     onChange={set('thPass')}     bg={BG1} />
-                <SmEditCell value={dtm.twelfth}    onChange={set('twelfth')}    bg={BG1} />
-                <SmEditCell value={dtm.iti}        onChange={set('iti')}        bg={BG1} />
-                <SmEditCell value={dtm.diploma}    onChange={set('diploma')}    bg={BG1} />
-                <SmEditCell value={dtm.gradNonTech}onChange={set('gradNonTech')}bg={BG1} />
-                <SmEditCell value={dtm.gradTech}   onChange={set('gradTech')}   bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-bifur-label" colSpan={2} style={{ background: BG1 }}>
-                  (b) Cumulative
-                </td>
-                <SmCalcCell value={thFailCum}  bg={BG2} />
-                <SmCalcCell value={thPassCum}  bg={BG2} />
-                <SmCalcCell value={twelfthCum} bg={BG2} />
-                <SmCalcCell value={itiCum}     bg={BG2} />
-                <SmCalcCell value={diplomaCum} bg={BG2} />
-                <SmCalcCell value={gradNTCum}  bg={BG2} />
-                <SmCalcCell value={gradTCum}   bg={BG2} />
-              </tr>
-            </tbody>
-          </table>
-
-          {/* Part F — PG + Total */}
-          <table className="phy-table">
-            <thead>
-              <tr>
-                <th className="phy-th" rowSpan={2} style={{ width: 28 }}>F.</th>
-                <th className="phy-th" rowSpan={2} style={{ width: 220 }}>Category</th>
-                <th className="phy-th">Post Graduate<br />(Non-Tech) & Pursuing</th>
-                <th className="phy-th">Post Graduate<br />(Tech) & Pursuing</th>
-                <th className="phy-th">Ph.D / M.Phil</th>
-                <th className="phy-th">Total<br />(All Qualifications)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="phy-cell phy-bifur-label" colSpan={2} style={{ background: BG2 }}>
-                  (a) During the month
-                </td>
-                <SmEditCell value={dtm.pgNonTech} onChange={set('pgNonTech')} bg={BG1} />
-                <SmEditCell value={dtm.pgTech}    onChange={set('pgTech')}    bg={BG1} />
-                <SmEditCell value={dtm.phdMhil}   onChange={set('phdMhil')}   bg={BG1} />
-                <SmCalcCell value={qualAllDtm}    bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-bifur-label" colSpan={2} style={{ background: BG1 }}>
-                  (b) Cumulative
-                </td>
-                <SmCalcCell value={pgNTCum}     bg={BG2} />
-                <SmCalcCell value={pgTCum}      bg={BG2} />
-                <SmCalcCell value={phdMhilCum}  bg={BG2} />
-                <SmCalcCell value={qualAllCum}  bg={BG2} />
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          CARD 5 — SECTION G: Age bifurcation
-          ══════════════════════════════════════════════════ */}
-      <div className="phy-card phy-card-mt">
-        <div className="phy-card-title">G. Trainees Trained — Age Bifurcation</div>
-        <div className="phy-table-wrap">
-          <table className="phy-table">
-            <thead>
-              <tr>
-                <th className="phy-th" rowSpan={2} style={{ width: 28 }}>G.</th>
-                <th className="phy-th" rowSpan={2} style={{ width: 220 }}>Category</th>
-                <th className="phy-th" style={{ width: 80 }}>15 – 20</th>
-                <th className="phy-th" style={{ width: 80 }}>21 – 25</th>
-                <th className="phy-th" style={{ width: 80 }}>26 – 30</th>
-                <th className="phy-th" style={{ width: 80 }}>31 – 40</th>
-                <th className="phy-th" style={{ width: 80 }}>Above 40</th>
-                <th className="phy-th" style={{ width: 80 }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="phy-cell phy-bifur-label" colSpan={2} style={{ background: BG2 }}>
-                  (a) During the month
-                </td>
-                <SmEditCell value={dtm.a1520}   onChange={set('a1520')}   bg={BG1} />
-                <SmEditCell value={dtm.a2125}   onChange={set('a2125')}   bg={BG1} />
-                <SmEditCell value={dtm.a2630}   onChange={set('a2630')}   bg={BG1} />
-                <SmEditCell value={dtm.a3140}   onChange={set('a3140')}   bg={BG1} />
-                <SmEditCell value={dtm.above40} onChange={set('above40')} bg={BG1} />
-                <SmCalcCell value={ageDtmTot}   bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-bifur-label" colSpan={2} style={{ background: BG1 }}>
-                  (b) Cumulative
-                </td>
-                <SmCalcCell value={a1520Cum}  bg={BG2} />
-                <SmCalcCell value={a2125Cum}  bg={BG2} />
-                <SmCalcCell value={a2630Cum}  bg={BG2} />
-                <SmCalcCell value={a3140Cum}  bg={BG2} />
-                <SmCalcCell value={aboveCum}  bg={BG2} />
-                <SmCalcCell value={ageCumTot} bg={BG2} />
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          CARD 6 — SECTION H: PH (Physically Handicapped)
-          ══════════════════════════════════════════════════ */}
-      <div className="phy-card phy-card-mt">
-        <div className="phy-card-title">H. Trainees Trained — Physically Handicapped (PH)</div>
-        <div className="phy-table-wrap">
-          <table className="phy-table">
-            <thead>
-              <tr>
-                <th className="phy-th" rowSpan={2} style={{ width: 28 }}>H.</th>
-                <th className="phy-th" rowSpan={2} style={{ width: 260 }}>Category</th>
-                <th className="phy-th" style={{ width: 120 }}>PH</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="phy-cell phy-bifur-label" colSpan={2} style={{ background: BG2 }}>
-                  (a) During the month
-                </td>
-                <SmEditCell value={dtm.ph} onChange={set('ph')} bg={BG1} />
-              </tr>
-              <tr>
-                <td className="phy-cell phy-bifur-label" colSpan={2} style={{ background: BG1 }}>
-                  (b) Cumulative
-                </td>
-                <SmCalcCell value={phCum} bg={BG2} />
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Action bar ── */}
+      {/* ── Sticky action bar ── */}
       <div className="phy-actions">
-        <Button onClick={handleReset}>Reset</Button>
-        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked || hasData}>Add</Button>
-        <Button onClick={handleSave} loading={saving} disabled={blocked || !hasData}>Update</Button>
-        {user?.role === 'SU' && hasData && (
-          <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
-        )}
-        <Button onClick={() => window.print()}>Print</Button>
+        <div className="phy-actions-hint">
+          <InfoCircleOutlined />
+          <span>Enter figures <b>for this month</b>. Each bifurcation should add up to the month's <b>No. of trainees</b>.</span>
+        </div>
+        <div className="phy-actions-btns">
+          <Button icon={<ReloadOutlined />} onClick={handleReset} disabled={blocked}>Reset</Button>
+          <Button icon={<PrinterOutlined />} onClick={() => window.print()}>Print</Button>
+          {isSU && hasData && (
+            <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
+          )}
+          {hasData
+            ? <Button type="primary" icon={<EditOutlined />} onClick={handleSave} loading={saving} disabled={blocked}>Update</Button>
+            : <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={blocked}>Add</Button>}
+        </div>
       </div>
-
     </div>
   );
 }

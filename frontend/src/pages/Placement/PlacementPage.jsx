@@ -1,28 +1,31 @@
 import { useState, useEffect } from 'react';
 import { Button, Spin, Alert, message } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined, PrinterOutlined, ReloadOutlined, SaveOutlined, EditOutlined,
+  TeamOutlined, TrophyOutlined, CheckCircleOutlined, LockOutlined, ClockCircleOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './PlacementPage.css';
 
 const n = (v) => parseFloat(v) || 0;
-const BG1 = '#F2F2F2';
-const BG2 = '#FBF8EF';
 
 /* ═══════════════════════════════════════════════════════
    Cell helpers — defined OUTSIDE component to avoid remount
    ═══════════════════════════════════════════════════════ */
-function EditCell({ value, onChange, bg = '#fffef0', cls = '' }) {
+function EditCell({ value, onChange, disabled, cls = '' }) {
   return (
-    <td className={`plc-cell plc-center${cls ? ' ' + cls : ''}`}>
+    <td className={`plc-cell plc-in-cell${cls ? ' ' + cls : ''}`}>
       <input
-        className="plc-input plc-editable"
-        style={{ background: bg }}
+        className="plc-input"
         type="number"
         min="0"
         step="1"
+        inputMode="numeric"
         value={value}
         onChange={onChange}
+        disabled={disabled}
         placeholder="0"
       />
     </td>
@@ -30,41 +33,36 @@ function EditCell({ value, onChange, bg = '#fffef0', cls = '' }) {
 }
 
 function CalcCell({ value, total = false, cls = '' }) {
-  const display = typeof value === 'number' ? value : (parseFloat(value) || 0);
   return (
-    <td className={`plc-cell plc-center${cls ? ' ' + cls : ''}`}>
-      <input
-        className={`plc-input plc-ro${total ? ' plc-total-input' : ''}`}
-        value={display}
-        readOnly
-      />
+    <td className={`plc-cell plc-calc${total ? ' plc-calc-total' : ''}${cls ? ' ' + cls : ''}`}>
+      {n(value)}
     </td>
   );
 }
 
 /* ── Row definitions ── */
 const D_ROWS = [
-  { key: 'nsqfCom',  no: '(i)',   label: 'NSQF (NSQF Compliance, AICTE / NCVT / SCVTC Courses)',      bg: BG1 },
-  { key: 'nsqfExe',  no: '(ii)',  label: 'NSQF Exempted — 26 Courses',                                 bg: BG2 },
-  { key: 'nonNsqf',  no: '(iii)', label: 'Non-NSQF (all other short term / tailor-made courses)',      bg: BG1 },
+  { key: 'nsqfCom',  no: '(i)',   label: 'NSQF (NSQF Compliance, AICTE / NCVT / SCVTC Courses)' },
+  { key: 'nsqfExe',  no: '(ii)',  label: 'NSQF Exempted — 26 Courses' },
+  { key: 'nonNsqf',  no: '(iii)', label: 'Non-NSQF (all other short term / tailor-made courses)' },
 ];
 
 const E_ROWS = [
-  { key: 'trnCert',     no: '(i)',    label: 'Trainees Certified',                                                                            bg: BG2 },
-  { key: 'trnOptPlc',   no: '(ii)',   label: 'Total trainees opted for placement',                                                            bg: BG1 },
-  { key: 'trnRegSmrk',  no: '(iii)',  label: 'Trainees registered on Sampark Portal',                                                         bg: BG2 },
-  { key: 'cndPlcd',     no: '(iv)',   label: 'Candidates got placement (through institute as well as after leaving the institution)',          bg: BG1 },
-  { key: 'empTrn',      no: '(v)',    label: 'Candidates who were already employed, attending training for re-skilling / up-skilling',        bg: BG2 },
-  { key: 'cndOptHstd',  no: '(vi)',   label: 'Candidates who opted for higher studies (including candidates continuing their education)',      bg: BG1 },
-  { key: 'cndOptSlfs',  no: '(vii)',  label: 'Candidates opted for self-employment',                                                          bg: BG2 },
-  { key: 'cndToBePlcd', no: '(viii)', label: 'Candidates who were yet to be placed',                                                          bg: BG1 },
+  { key: 'trnCert',     no: '(i)',    label: 'Trainees certified' },
+  { key: 'trnOptPlc',   no: '(ii)',   label: 'Total trainees opted for placement' },
+  { key: 'trnRegSmrk',  no: '(iii)',  label: 'Trainees registered on Sampark Portal' },
+  { key: 'cndPlcd',     no: '(iv)',   label: 'Candidates got placement (through institute as well as after leaving the institution)' },
+  { key: 'empTrn',      no: '(v)',    label: 'Candidates already employed, attending training for re-skilling / up-skilling' },
+  { key: 'cndOptHstd',  no: '(vi)',   label: 'Candidates who opted for higher studies (including those continuing their education)' },
+  { key: 'cndOptSlfs',  no: '(vii)',  label: 'Candidates opted for self-employment' },
+  { key: 'cndToBePlcd', no: '(viii)', label: 'Candidates yet to be placed' },
 ];
 
 /* Section E categories — each row is captured under all three */
 const E_CATS = [
-  { suf: '',    label: 'NSQF' },
-  { suf: 'Ex',  label: 'NSQF exempted' },
-  { suf: 'Non', label: 'Non NSQF' },
+  { suf: '',    label: 'NSQF',          cls: 'plc-cat-a' },
+  { suf: 'Ex',  label: 'NSQF exempted', cls: 'plc-cat-b' },
+  { suf: 'Non', label: 'Non-NSQF',      cls: 'plc-cat-c' },
 ];
 
 const D_KEYS   = D_ROWS.map(r => r.key);
@@ -87,6 +85,7 @@ export default function PlacementPage() {
   const [hasData, setHasData] = useState(false);
   const [loadErr, setLoadErr] = useState('');
   const set = k => e => setDtm(prev => ({ ...prev, [k]: e.target.value }));
+  const isSU = user?.role === 'SU';
 
   useEffect(() => {
     if (!selection?.instId || !selection?.month || !selection?.year) return;
@@ -124,7 +123,12 @@ export default function PlacementPage() {
     setSaving(true);
     api.post('/entry/placement/save', {
       instId: selection.instId, month: selection.month, year: selection.year, ...dtm,
-    }).then(() => message.success('Placement data saved successfully!'))
+    }).then(() => {
+      message.success('Placement data saved successfully!');
+      // saved → switch to "existing data" mode: enables Update / Clear Data (SU), locks the form for others
+      setHasData(true);
+      if (user?.role !== 'SU') setBlocked(true);
+    })
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
   };
@@ -141,6 +145,8 @@ export default function PlacementPage() {
     mon: E_ROWS.reduce((s, r) => s + n(dtm[r.key + c.suf]), 0),
     cum: E_ROWS.reduce((s, r) => s + cum[r.key + c.suf], 0),
   }));
+  /* "Candidates got placement" (iv) per category — the headline placement figure */
+  const placed = E_CATS.map(c => ({ mon: n(dtm['cndPlcd' + c.suf]), cum: cum['cndPlcd' + c.suf] }));
 
   const handleReset = () => setDtm(INIT);
 
@@ -166,183 +172,193 @@ export default function PlacementPage() {
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
 
+  const status = blocked
+    ? { cls: 'plc-status-locked', icon: <LockOutlined />, text: 'Submitted — locked' }
+    : hasData
+      ? { cls: 'plc-status-saved', icon: <CheckCircleOutlined />, text: isSU ? 'Submitted — editable (SU)' : 'Submitted' }
+      : { cls: 'plc-status-new', icon: <ClockCircleOutlined />, text: 'Not yet submitted' };
+
+  const kpis = [
+    { label: 'Trainees trained (D)', icon: <TeamOutlined />, cls: 'plc-kpi-main', mon: dTotMon, cum: dTotCum },
+    ...E_CATS.map((c, i) => ({ label: `Placed — ${c.label}`, icon: <TrophyOutlined />, cls: c.cls, mon: placed[i].mon, cum: placed[i].cum })),
+  ];
+
   return (
     <div className="plc-page">
-      {/* print-only header (app shell + title bar are hidden when printing) */}
+      {/* print-only header (app shell + hero are hidden when printing) */}
       <div className="plc-print-header">
-        <div className="plc-print-title">Monthly Progress Report — Sections D &amp; E</div>
+        <div className="plc-print-title">Monthly Progress Report — Sections D &amp; E (Trainees &amp; Placement)</div>
         <div className="plc-print-sub">
           {selection?.instName || ''}
           {selection?.monthName ? ` — ${selection.monthName} ${selection.year}` : ''}
         </div>
       </div>
 
-      {loadErr && <Alert type="warning" message={loadErr} style={{ margin: '8px 0' }} />}
-      {blocked && <Alert type="error" message="Data already submitted for this month. Contact SU to modify." style={{ margin: '8px 0' }} />}
+      {/* ── Hero ── */}
+      <header className="plc-hero">
+        <div className="plc-hero-main">
+          <span className="plc-hero-kicker">Monthly Progress Report · Sections D &amp; E</span>
+          <h1 className="plc-hero-title">Placement Section</h1>
+          <span className="plc-hero-inst">{selection?.instName || '—'}</span>
+        </div>
+        <div className="plc-hero-side">
+          {selection?.monthName && <span className="plc-hero-chip">{selection.monthName} {selection.year}</span>}
+          <span className={`plc-status ${status.cls}`}>{status.icon}{status.text}</span>
+        </div>
+      </header>
 
-      {/* ── Title Bar ── */}
-      <div className="plc-titlebar">
-        <div className="plc-titlebar-left">
-          <span className="plc-page-label">Monthly Progress Report — Sections D &amp; E</span>
-          <span className="plc-institute">{selection?.instName || 'Placement Section'}</span>
-        </div>
-        <div className="plc-titlebar-right">
-          {selection?.monthName && (
-            <span className="plc-meta-chip">{selection.monthName} {selection.year}</span>
-          )}
-          <span className="plc-note">Trainees &amp; Placement Data</span>
-        </div>
+      {loadErr && <Alert type="warning" showIcon message={loadErr} className="plc-alert" />}
+      {blocked && (
+        <Alert type="info" showIcon icon={<LockOutlined />} className="plc-alert"
+          message="This month's placement data has been submitted."
+          description="The form is read-only. Contact the SU (Senet Division) if a correction is needed." />
+      )}
+
+      {/* ── KPI tiles ── */}
+      <div className="plc-kpis">
+        {kpis.map(k => (
+          <div key={k.label} className={`plc-kpi ${k.cls}`}>
+            <span className="plc-kpi-icon">{k.icon}</span>
+            <div className="plc-kpi-body">
+              <div className="plc-kpi-label">{k.label}</div>
+              <div className="plc-kpi-value">{k.cum}</div>
+              <div className="plc-kpi-sub">cumulative · <b>{k.mon}</b> this month</div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* ═══════════════════════════════════════════════════
           D. Trainees Trained Under
           ═══════════════════════════════════════════════════ */}
-      <div className="plc-card">
-        <div className="plc-card-title">D. Trainees Trained Under</div>
+      <section className="plc-card">
+        <div className="plc-card-head">
+          <span className="plc-badge">D</span>
+          <div>
+            <h2>Trainees trained under</h2>
+            <p>Number of trainees trained this month, by course type.</p>
+          </div>
+        </div>
         <div className="plc-table-wrap">
-          <table className="plc-table">
+          <table className="plc-table plc-table-d">
             <colgroup>
-              <col style={{ width: 36 }} />
-              <col style={{ width: 54 }} />
+              <col style={{ width: 58 }} />
               <col />
-              <col style={{ width: 150 }} />
+              <col style={{ width: 170 }} />
               <col style={{ width: 170 }} />
             </colgroup>
             <thead>
               <tr>
-                <th className="plc-th" colSpan={3}></th>
+                <th className="plc-th">S.No</th>
+                <th className="plc-th plc-th-left">Course type</th>
                 <th className="plc-th">During the month</th>
-                <th className="plc-th">Cumulative<br />(up to the month)</th>
+                <th className="plc-th">Cumulative <span>(up to the month)</span></th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td className="plc-letter" rowSpan={D_ROWS.length + 2}><b>D.</b></td>
-                <td className="plc-cell plc-section-hdr" colSpan={4}>
-                  <b style={{ color: '#811700' }}>Trainees trained under</b>
-                </td>
-              </tr>
-
               {D_ROWS.map(r => (
                 <tr key={r.key}>
-                  <td className="plc-cell plc-rowno">{r.no}</td>
-                  <td className="plc-cell plc-label" style={{ background: r.bg }}>{r.label}</td>
-                  <EditCell value={dtm[r.key]} onChange={set(r.key)} bg={r.bg} />
+                  <td className="plc-cell plc-rowno"><span>{r.no}</span></td>
+                  <td className="plc-cell plc-label">{r.label}</td>
+                  <EditCell value={dtm[r.key]} onChange={set(r.key)} disabled={blocked} />
                   <CalcCell value={cum[r.key]} />
                 </tr>
               ))}
-
+            </tbody>
+            <tfoot>
               <tr className="plc-total-row">
-                <td className="plc-cell plc-rowno"></td>
-                <td className="plc-cell plc-total-label"><b>Total</b></td>
+                <td className="plc-cell" />
+                <td className="plc-cell plc-total-label">Total</td>
                 <CalcCell value={dTotMon} total />
                 <CalcCell value={dTotCum} total />
               </tr>
-            </tbody>
+            </tfoot>
           </table>
         </div>
-      </div>
+      </section>
 
       {/* ═══════════════════════════════════════════════════
           E. Placement Section — NSQF / NSQF exempted / Non NSQF
           ═══════════════════════════════════════════════════ */}
-      <div className="plc-card" style={{ marginTop: 14 }}>
-        <div className="plc-card-title">E. Placement Section</div>
+      <section className="plc-card">
+        <div className="plc-card-head">
+          <span className="plc-badge">E</span>
+          <div>
+            <h2>Placement</h2>
+            <p>Outcome of trainees for each course category — enter the figures for this month.</p>
+          </div>
+          <div className="plc-cat-legend">
+            {E_CATS.map(c => <span key={c.suf} className={c.cls}>{c.label}</span>)}
+          </div>
+        </div>
         <div className="plc-table-wrap">
           <table className="plc-table plc-table-e">
             <colgroup>
-              <col style={{ width: 36 }} />
-              <col style={{ width: 46 }} />
-              <col style={{ width: 260 }} />
+              <col style={{ width: 58 }} />
+              <col style={{ width: 280 }} />
               {E_CATS.flatMap(c => [
-                <col key={`${c.suf}-m`} style={{ width: 96 }} />,
-                <col key={`${c.suf}-c`} style={{ width: 110 }} />,
+                <col key={`${c.suf}-m`} style={{ width: 104 }} />,
+                <col key={`${c.suf}-c`} style={{ width: 104 }} />,
               ])}
             </colgroup>
             <thead>
               <tr>
-                <th className="plc-th" colSpan={3} rowSpan={2}>Name</th>
+                <th className="plc-th" rowSpan={2}>S.No</th>
+                <th className="plc-th plc-th-left" rowSpan={2}>Particulars</th>
                 {E_CATS.map(c => (
-                  <th className="plc-th plc-grp-start" key={c.suf} colSpan={2}>{c.label}</th>
+                  <th className={`plc-th plc-th-cat ${c.cls} plc-grp-start`} key={c.suf} colSpan={2}>{c.label}</th>
                 ))}
               </tr>
               <tr>
                 {E_CATS.map(c => [
-                  <th className="plc-th plc-grp-start" key={`${c.suf}-m`}>During the month</th>,
-                  <th className="plc-th" key={`${c.suf}-c`}>Cumulative<br />(up to the month)</th>,
+                  <th className={`plc-th plc-th-sub ${c.cls} plc-grp-start`} key={`${c.suf}-m`}>During<br />the month</th>,
+                  <th className={`plc-th plc-th-sub ${c.cls}`} key={`${c.suf}-c`}>Cumulative</th>,
                 ])}
               </tr>
             </thead>
             <tbody>
-              {E_ROWS.map((r, idx) => (
+              {E_ROWS.map(r => (
                 <tr key={r.key}>
-                  {idx === 0 && (
-                    <td className="plc-letter" rowSpan={E_ROWS.length + 1}><b>E.</b></td>
-                  )}
-                  <td className="plc-cell plc-rowno">{r.no}</td>
-                  <td className="plc-cell plc-label" style={{ background: r.bg }}>{r.label}</td>
+                  <td className="plc-cell plc-rowno"><span>{r.no}</span></td>
+                  <td className="plc-cell plc-label">{r.label}</td>
                   {E_CATS.map(c => [
-                    <EditCell key={`${c.suf}-m`} cls="plc-grp-start" value={dtm[r.key + c.suf]} onChange={set(r.key + c.suf)} bg={r.bg} />,
+                    <EditCell key={`${c.suf}-m`} cls="plc-grp-start" value={dtm[r.key + c.suf]} onChange={set(r.key + c.suf)} disabled={blocked} />,
                     <CalcCell key={`${c.suf}-c`} value={cum[r.key + c.suf]} />,
                   ])}
                 </tr>
               ))}
-
+            </tbody>
+            <tfoot>
               <tr className="plc-total-row">
-                <td className="plc-cell plc-rowno"></td>
-                <td className="plc-cell plc-total-label"><b>Total</b></td>
+                <td className="plc-cell" />
+                <td className="plc-cell plc-total-label">Total</td>
                 {eTot.map((t, i) => [
                   <CalcCell key={`t${i}-m`} cls="plc-grp-start" value={t.mon} total />,
                   <CalcCell key={`t${i}-c`} value={t.cum} total />,
                 ])}
               </tr>
-            </tbody>
+            </tfoot>
           </table>
         </div>
+      </section>
 
-        {/* ── Summary strip ── */}
-        <div className="plc-summary-strip">
-          <div className="plc-summary-item">
-            <span className="plc-summary-label">Trainees (D) — Cumulative</span>
-            <span className="plc-summary-val">{dTotCum}</span>
-          </div>
-          <div className="plc-summary-divider" />
-          <div className="plc-summary-item">
-            <span className="plc-summary-label">Placements NSQF — Cum.</span>
-            <span className="plc-summary-val plc-summary-green">{eTot[0].cum}</span>
-          </div>
-          <div className="plc-summary-divider" />
-          <div className="plc-summary-item">
-            <span className="plc-summary-label">Placements Exempted — Cum.</span>
-            <span className="plc-summary-val plc-summary-green">{eTot[1].cum}</span>
-          </div>
-          <div className="plc-summary-divider" />
-          <div className="plc-summary-item">
-            <span className="plc-summary-label">Placements Non-NSQF — Cum.</span>
-            <span className="plc-summary-val plc-summary-green">{eTot[2].cum}</span>
-          </div>
+      {/* ── Sticky action bar ── */}
+      <div className="plc-actions">
+        <div className="plc-actions-hint">
+          <InfoCircleOutlined />
+          <span>Enter figures <b>for this month</b> only — cumulative values and totals are calculated automatically.</span>
+        </div>
+        <div className="plc-actions-btns">
+          <Button icon={<ReloadOutlined />} onClick={handleReset} disabled={blocked}>Reset</Button>
+          <Button icon={<PrinterOutlined />} onClick={() => window.print()}>Print</Button>
+          {isSU && hasData && (
+            <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
+          )}
+          {hasData
+            ? <Button type="primary" icon={<EditOutlined />} onClick={handleSave} loading={saving} disabled={blocked}>Update</Button>
+            : <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={blocked}>Add</Button>}
         </div>
       </div>
-
-      {/* ── Legend ── */}
-      <div className="plc-legend">
-        <span><b>C</b> : Auto Calculated / Formula Field</span>
-        <span><b>*</b> : Mandatory Field</span>
-        <span><b>D.</b> : Trainees Trained Under (NSQF / Non-NSQF)</span>
-        <span><b>E.</b> : Placement Section (i–viii) × NSQF / NSQF exempted / Non NSQF</span>
-      </div>
-
-      {/* ── Action bar ── */}
-      <div className="plc-actions">
-        <Button onClick={handleReset}>Reset</Button>
-        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked || hasData}>Add</Button>
-        <Button onClick={handleSave} loading={saving} disabled={blocked || !hasData}>Update</Button>
-        {user?.role === 'SU' && hasData && (
-          <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
-        )}
-        <Button onClick={() => window.print()}>Print</Button>
-      </div>
-
     </div>
   );
 }

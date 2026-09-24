@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../services/api';
-import { exportToExcel } from '../../utils/reportUtils';
+import { exportToExcel, usePrintOnlyReport } from '../../utils/reportUtils';
 
 const INST = ['CFC Agra','CFC Aurangabad','CFC Bhiwadi','CFC Bhubaneswar','CFC Chennai',
               'CFC Guwahati','CFC Hyderabad','CFC Indore','CFC Jalandhar','CFC Kolkata',
@@ -25,6 +25,7 @@ export default function AgeWiseReport() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [demo, setDemo] = useState(false);
+  usePrintOnlyReport();
 
   useEffect(() => {
     if (!month || !year) { navigate('/app/reports/trainees/age', { replace: true }); return; }

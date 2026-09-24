@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  UserOutlined, LockOutlined, EyeOutlined, EyeInvisibleOutlined, ReloadOutlined,
+  SafetyOutlined, LoginOutlined, WarningOutlined, CalendarOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import AuthShell from '../../components/AuthShell';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -20,6 +25,7 @@ export default function LoginPage() {
   const [uid, setUid]   = useState('');
   const [pwd, setPwd]   = useState('');
   const [code, setCode] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -70,107 +76,64 @@ export default function LoginPage() {
   const dateStr = `${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
 
   return (
-    <div className="lp-page">
-      <div className="lp-card">
+    <AuthShell>
+      <div className="as-card">
+        <div className="as-card-head">
+          <h2>Sign in</h2>
+          <p>{clientTitle} — enter your User ID and password to continue.</p>
+        </div>
 
-        {/* ── HEADER ── */}
-        <div className="lp-header">
-          <div className="lp-brand">MPR-TCEC</div>
-          <div className="lp-emblem">
-            <img src="/images/india-gov-logo.jpg" width="53" height="63" alt=""
-              onError={e => { e.target.src = '/images/india-gov-logo.gif'; }} />
-          </div>
-          <div className="lp-org">
-            <span className="lp-org-text">
-              Office of Development Commissioner(MSME)<br />
-              Ministry of Micro, Small &amp; Medium Enterprises
+        <form onSubmit={handleSubmit} autoComplete="off">
+          <label className="as-field">
+            <span className="as-label">User Name</span>
+            <span className="as-input-wrap">
+              <span className="as-input-icon"><UserOutlined /></span>
+              <input className="as-input" type="text" value={uid} autoFocus
+                onChange={e => { setUid(e.target.value); setErrorMsg(''); }}
+                maxLength={45} autoComplete="off" placeholder="e.g. TCEC-Johrat" />
             </span>
-          </div>
-          <div className="lp-logo">
-            <img src="/images/msme-logo.jpg" width="179" height="73" alt=""
-              onError={e => { e.target.style.display = 'none'; }} />
-          </div>
-        </div>
+          </label>
 
-        {/* ── MARQUEE ── */}
-        <div className="lp-marquee">
-          <span className="lp-scroll">Monthly Progress Report (MPR) of DC-MSME TCEC</span>
-        </div>
+          <label className="as-field">
+            <span className="as-label">Password</span>
+            <span className="as-input-wrap">
+              <span className="as-input-icon"><LockOutlined /></span>
+              <input className="as-input" type={showPwd ? 'text' : 'password'} value={pwd}
+                onChange={e => { setPwd(e.target.value); setErrorMsg(''); }}
+                maxLength={45} autoComplete="off" placeholder="Enter your password" />
+              <button type="button" className="as-eye" onClick={() => setShowPwd(s => !s)} tabIndex={-1}
+                aria-label={showPwd ? 'Hide password' : 'Show password'}>
+                {showPwd ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              </button>
+            </span>
+          </label>
 
-        {/* ── BODY ── */}
-        <div className="db-body">
-          <div className="lg-form-card">
-
-            {/* Client bar */}
-            <div className="lp-client-bar">{clientTitle}</div>
-
-            {/* Form header */}
-            <div className="db-form-header">Enter Your User ID &amp; Password</div>
-
-            <div className="lg-form-body">
-              <form onSubmit={handleSubmit} autoComplete="off" className="lp-form">
-                <table className="lp-form-tbl" cellPadding="0" cellSpacing="0">
-                  <tbody>
-                    <tr>
-                      <td className="lp-lbl"><span className="lp-req">*</span> User Name:</td>
-                      <td className="lp-inp">
-                        <input type="text" value={uid} onChange={e => { setUid(e.target.value); setErrorMsg(''); }}
-                          maxLength={45} className="lp-field" autoComplete="off" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="lp-lbl"><span className="lp-req">*</span> Password:</td>
-                      <td className="lp-inp">
-                        <input type="password" value={pwd} onChange={e => { setPwd(e.target.value); setErrorMsg(''); }}
-                          maxLength={45} className="lp-field" autoComplete="off" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="lp-lbl"><span className="lp-req">*</span> Please Enter code</td>
-                      <td className="lp-inp">
-                        <input type="text" value={code} onChange={e => setCode(e.target.value)}
-                          maxLength={5} className="lp-field" autoComplete="off"
-                          placeholder="Type the answer" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colSpan="2" className="lp-captcha-row">
-                        <span className="lp-captcha-box">{captcha.display}</span>
-                        <button type="button" onClick={refreshCaptcha} className="lp-refresh">↻</button>
-                      </td>
-                    </tr>
-                    {errorMsg && (
-                      <tr>
-                        <td colSpan="2">
-                          <div className="lg-error-box">⚠ {errorMsg}</div>
-                        </td>
-                      </tr>
-                    )}
-                    <tr>
-                      <td colSpan="2" className="lp-submit-row">
-                        <input type="submit"
-                          value={loading ? 'Please wait...' : 'Submit'}
-                          disabled={loading}
-                          className="lp-submit" />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </form>
-
-              <div className="lp-date">Date: {dateStr}</div>
+          <div className="as-field">
+            <span className="as-label">Security check — solve the sum</span>
+            <div className="as-captcha">
+              <span className="as-captcha-code" aria-label={`Captcha: ${captcha.display}`}>{captcha.display} =</span>
+              <span className="as-input-wrap">
+                <span className="as-input-icon"><SafetyOutlined /></span>
+                <input className="as-input" type="text" inputMode="numeric" value={code}
+                  onChange={e => setCode(e.target.value)} maxLength={5} autoComplete="off" placeholder="Answer" />
+              </span>
+              <button type="button" className="as-captcha-refresh" onClick={refreshCaptcha}
+                title="New code" aria-label="Refresh captcha"><ReloadOutlined /></button>
             </div>
-
           </div>
-        </div>
 
-        {/* ── FOOTER ── */}
-        <div className="lp-footer">
-          <span>Created &amp; Designed by O/O DC-MSME</span>
-          <span>Contact Us : 011-23062354 (Senet Division)</span>
-        </div>
+          {errorMsg && <div className="as-error" role="alert"><WarningOutlined /> {errorMsg}</div>}
 
+          <button type="submit" className="as-submit" disabled={loading}>
+            <LoginOutlined /> {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+
+        <div className="as-meta">
+          <span><CalendarOutlined /> {dateStr}</span>
+          <span>Forgot password? Call 011-23062354</span>
+        </div>
       </div>
-    </div>
+    </AuthShell>
   );
 }

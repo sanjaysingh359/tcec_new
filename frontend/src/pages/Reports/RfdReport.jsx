@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import { exportToExcel } from '../../utils/reportUtils';
+import { exportToExcel, usePrintOnlyReport } from '../../utils/reportUtils';
 
 const MOCK_INSTITUTES = [
   'CFC Agra','CFC Aurangabad','CFC Bhiwadi','CFC Bhubaneswar','CFC Chennai',
@@ -33,6 +33,7 @@ export default function RfdReport() {
   const [rows, setRows]   = useState([]);
   const [demo, setDemo]   = useState(false);
   const [loading, setLoading] = useState(true);
+  usePrintOnlyReport();
   const tableId = 'rfd-rpt-tbl';
 
   useEffect(() => {

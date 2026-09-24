@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Button, Spin, Alert, message } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined, PrinterOutlined, ReloadOutlined, SaveOutlined, EditOutlined,
+  WalletOutlined, FundOutlined, PieChartOutlined, BankOutlined,
+  CheckCircleOutlined, LockOutlined, ClockCircleOutlined, InfoCircleOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './BudgetPage.css';
@@ -9,44 +13,58 @@ import './BudgetPage.css';
    Cell helpers — defined OUTSIDE component
    ═══════════════════════════════════════════════════════ */
 
-function EditCell({ value, onChange, bg = '#fffef0', width = 100 }) {
+function EditCell({ value, onChange, disabled, cls = '' }) {
   return (
-    <td className="bud-cell bud-center">
+    <td className={`bud-cell bud-in-cell${cls ? ' ' + cls : ''}`}>
       <input
-        className="bud-input bud-editable"
-        style={{ background: bg, width }}
+        className="bud-input"
+        inputMode="decimal"
         value={value}
         onChange={onChange}
+        disabled={disabled}
+        placeholder="0"
       />
     </td>
   );
 }
 
-function CalcCell({ value, bg = '#f1f4f8', width = 100, total = false }) {
-  const display =
-    typeof value === 'number' ? value.toFixed(2) : (parseFloat(value) || 0).toFixed(2);
+function CalcCell({ value, total = false, neg = false, decimals = 2 }) {
+  const v = typeof value === 'number' ? value : (parseFloat(value) || 0);
   return (
-    <td className="bud-cell bud-center">
-      <input
-        className={`bud-input bud-ro${total ? ' bud-total-input' : ''}`}
-        style={{ background: bg, width }}
-        value={display}
-        readOnly
-      />
+    <td className={`bud-cell bud-calc${total ? ' bud-calc-total' : ''}${neg ? ' bud-neg' : ''}`}>
+      {v.toFixed(decimals)}
     </td>
   );
 }
 
-function LabelCell({ children, colSpan = 1, rowSpan = 1, align = 'left', bg }) {
+/* Free-text section (F – I) */
+function TextCard({ letter, title, value, onChange, disabled, readOnlyText, max, placeholder }) {
+  const ro = readOnlyText !== undefined && readOnlyText !== null;
+  const text = ro ? readOnlyText : value;
   return (
-    <td
-      className="bud-cell bud-label"
-      colSpan={colSpan}
-      rowSpan={rowSpan}
-      style={{ textAlign: align, background: bg }}
-    >
-      {children}
-    </td>
+    <section className="bud-card bud-text-card">
+      <div className="bud-card-head">
+        <span className="bud-badge">{letter}</span>
+        <h2>{title}</h2>
+      </div>
+      <div className="bud-text-body">
+        <textarea
+          className={`bud-textarea${ro ? ' bud-textarea-ro' : ''}`}
+          rows={4}
+          maxLength={ro ? undefined : max}
+          value={text}
+          onChange={onChange}
+          readOnly={ro}
+          disabled={!ro && disabled}
+          placeholder={placeholder}
+        />
+        <div className="bud-char-count">
+          {ro
+            ? <span className="bud-ro-note"><LockOutlined /> Entered on the Significant Achievement page — edit it there.</span>
+            : <span className={max - (value || '').length < 40 ? 'bud-count-low' : ''}>{max - (value || '').length} characters remaining</span>}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -148,6 +166,19 @@ export default function BudgetPage() {
       .finally(() => setLoading(false));
   }, [selection?.instId, selection?.month, selection?.year]);
 
+  /* ── Print: strip the app shell so only the form prints (button + Ctrl+P) ── */
+  useEffect(() => {
+    const on  = () => document.body.classList.add('bud-printing');
+    const off = () => document.body.classList.remove('bud-printing');
+    window.addEventListener('beforeprint', on);
+    window.addEventListener('afterprint', off);
+    return () => {
+      window.removeEventListener('beforeprint', on);
+      window.removeEventListener('afterprint', off);
+      off();
+    };
+  }, []);
+
   const handleSave = () => {
     if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
     setSaving(true);
@@ -155,7 +186,12 @@ export default function BudgetPage() {
       instId: selection.instId, month: selection.month, year: selection.year, ...form,
       // never overwrite the Achievement page's JSON with the Budget textarea
       sigAchiev: sigFromAch === null ? form.sigAchiev : '',
-    }).then(() => message.success('Budget data saved successfully!'))
+    }).then(() => {
+      message.success('Budget data saved successfully!');
+      // saved → switch to "existing data" mode: enables Update / Clear Data (SU), locks the form for others
+      setHasData(true);
+      if (user?.role !== 'SU') setBlocked(true);
+    })
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
   };
@@ -201,274 +237,209 @@ export default function BudgetPage() {
 
   /* ── remaining char counts ── */
   const MAX_CHARS = 400;
+  const isSU = user?.role === 'SU';
+
+  const status = blocked
+    ? { cls: 'bud-status-locked', icon: <LockOutlined />, text: 'Submitted — locked' }
+    : hasData
+      ? { cls: 'bud-status-saved', icon: <CheckCircleOutlined />, text: isSU ? 'Submitted — editable (SU)' : 'Submitted' }
+      : { cls: 'bud-status-new', icon: <ClockCircleOutlined />, text: 'Not yet submitted' };
+
+  const kpis = [
+    { label: 'Budget B.E.',               icon: <BankOutlined />,     cls: 'bud-k-gold',  value: BE_BUDGET,            sub: `Year ${YEAR_LABEL}` },
+    { label: 'Total funds (CF + GIA)',    icon: <WalletOutlined />,   cls: 'bud-k-navy',  value: totalAmt.toFixed(2),  sub: 'Rs. Lakh' },
+    { label: 'Utilization',               icon: <PieChartOutlined />, cls: 'bud-k-teal',  value: totalCum.toFixed(2),  sub: <>cumulative · <b>{totalDtm.toFixed(2)}</b> this month</> },
+    { label: 'Unspent balance',           icon: <FundOutlined />,     cls: totalBal < 0 ? 'bud-k-red' : 'bud-k-green', value: totalBal.toFixed(2), sub: totalBal < 0 ? 'Over-utilized!' : 'Rs. Lakh' },
+  ];
 
   return (
     <div className="bud-page">
-
-      {loadErr && <Alert type="warning" message={loadErr} style={{ margin: '8px 0' }} />}
-      {blocked && <Alert type="error" message="Data already submitted for this month. Contact SU to modify." style={{ margin: '8px 0' }} />}
-
-      {/* ── Title Bar ── */}
-      <div className="bud-titlebar">
-        <div className="bud-titlebar-left">
-          <span className="bud-page-label">Monthly Progress Report — Sections C–I</span>
-          <span className="bud-institute">{selection?.instName || 'Budget Section'}</span>
-        </div>
-        <div className="bud-titlebar-right">
-          {selection?.monthName && (
-            <span className="bud-meta-chip">{selection.monthName} {selection.year}</span>
-          )}
-          <span className="bud-note">* All monetary values in Rs. Lakh</span>
+      {/* print-only header (app shell + hero are hidden when printing) */}
+      <div className="bud-print-header">
+        <div className="bud-print-title">Monthly Progress Report — Sections C to I (Budget)</div>
+        <div className="bud-print-sub">
+          {selection?.instName || ''}
+          {selection?.monthName ? ` — ${selection.monthName} ${selection.year}` : ''}
+          {' · '}Budget B.E. (Rs. Lakh): {BE_BUDGET}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════
-          CARD — Sections C through H
-          ═══════════════════════════════════════════════════ */}
-      <div className="bud-card">
+      {/* ── Hero ── */}
+      <header className="bud-hero">
+        <div className="bud-hero-main">
+          <span className="bud-hero-kicker">Monthly Progress Report · Sections C – I</span>
+          <h1 className="bud-hero-title">Budget Section</h1>
+          <span className="bud-hero-inst">{selection?.instName || '—'}</span>
+        </div>
+        <div className="bud-hero-side">
+          {selection?.monthName && <span className="bud-hero-chip">{selection.monthName} {selection.year}</span>}
+          <span className={`bud-status ${status.cls}`}>{status.icon}{status.text}</span>
+        </div>
+      </header>
+
+      {loadErr && <Alert type="warning" showIcon message={loadErr} className="bud-alert" />}
+      {blocked && (
+        <Alert type="info" showIcon icon={<LockOutlined />} className="bud-alert"
+          message="This month's budget data has been submitted."
+          description="The form is read-only. Contact the SU (Senet Division) if a correction is needed." />
+      )}
+
+      {/* ── KPI tiles ── */}
+      <div className="bud-kpis">
+        {kpis.map(k => (
+          <div key={k.label} className={`bud-kpi ${k.cls}`}>
+            <span className="bud-kpi-icon">{k.icon}</span>
+            <div>
+              <div className="bud-kpi-label">{k.label}</div>
+              <div className="bud-kpi-value">₹ {k.value} <small>L</small></div>
+              <div className="bud-kpi-sub">{k.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ═══════════ C. Budget ═══════════ */}
+      <section className="bud-card">
+        <div className="bud-card-head">
+          <span className="bud-badge">C</span>
+          <div>
+            <h2>Budget</h2>
+            <p>Enter the amounts and this month's utilization — cumulative and balance are calculated. All values in Rs. Lakh.</p>
+          </div>
+          <span className="bud-be-pill">B.E. {BE_BUDGET} · {YEAR_LABEL}</span>
+        </div>
         <div className="bud-table-wrap">
           <table className="bud-table">
             <colgroup>
-              <col style={{ width: 36 }} />
-              <col style={{ width: 240 }} />
-              <col style={{ width: 120 }} />
-              <col style={{ width: 120 }} />
-              <col style={{ width: 120 }} />
-              <col style={{ width: 120 }} />
-              <col style={{ width: 120 }} />
+              <col />
+              <col style={{ width: 150 }} /><col style={{ width: 150 }} />
+              <col style={{ width: 150 }} /><col style={{ width: 150 }} />
             </colgroup>
-
+            <thead>
+              <tr>
+                <th className="bud-th bud-th-left">Particulars</th>
+                <th className="bud-th">Amount</th>
+                <th className="bud-th">Utilization<span>during the month</span></th>
+                <th className="bud-th">Utilization<span>cumulative</span></th>
+                <th className="bud-th">Balance</th>
+              </tr>
+            </thead>
             <tbody>
-
-              {/* ─── C. BUDGET ─────────────────────────────── */}
               <tr>
-                <td className="bud-cell bud-letter" rowSpan={5}><b>C.</b></td>
-                <td className="bud-cell bud-section-hdr" colSpan={6}>
-                  <b>Budget B.E. (Rs. Lakh):</b>{' '}
-                  <span className="bud-be-val">{BE_BUDGET}</span>
-                  &nbsp;&nbsp;&nbsp;
-                  <b>Year:</b> {YEAR_LABEL}
-                </td>
-              </tr>
-
-              {/* Column headers */}
-              <tr className="bud-col-hdr-row">
-                <td className="bud-cell" colSpan={2}></td>
-                <th className="bud-th">Amount<br />(Rs. Lakh.)</th>
-                <th className="bud-th">Utilization<br />(During month)</th>
-                <th className="bud-th">Utilization<br />(Cumulative)</th>
-                <th className="bud-th">Balance<br />(Rs. Lakh.)</th>
-              </tr>
-
-              {/* (a) Carry Forward */}
-              <tr>
-                <LabelCell colSpan={2} bg="#FBF8EF">
-                  (a) Carry Forward From Previous Year
-                </LabelCell>
-                <EditCell value={form.cfAmount}  onChange={set('cfAmount')} />
-                <EditCell value={form.cfDtm}     onChange={set('cfDtm')} />
+                <td className="bud-cell bud-label"><span className="bud-rowno">(a)</span>Carry forward from previous year</td>
+                <EditCell value={form.cfAmount} onChange={set('cfAmount')} disabled={blocked} />
+                <EditCell value={form.cfDtm}    onChange={set('cfDtm')}    disabled={blocked} />
                 <CalcCell value={cfCum} />
-                <CalcCell value={cfBal} bg={cfBal < 0 ? '#ffe8e8' : '#f1f4f8'} />
+                <CalcCell value={cfBal} neg={cfBal < 0} />
               </tr>
-
-              {/* (b) GIA */}
               <tr>
-                <LabelCell colSpan={2} bg="#F2F2F2">
-                  (b) GIA Released During the Year (Till Date)
-                </LabelCell>
-                <EditCell value={form.giaAmount} onChange={set('giaAmount')} bg="#F2F2F2" />
-                <EditCell value={form.giaDtm}    onChange={set('giaDtm')}    bg="#F2F2F2" />
+                <td className="bud-cell bud-label"><span className="bud-rowno">(b)</span>GIA released during the year (till date)</td>
+                <EditCell value={form.giaAmount} onChange={set('giaAmount')} disabled={blocked} />
+                <EditCell value={form.giaDtm}    onChange={set('giaDtm')}    disabled={blocked} />
                 <CalcCell value={giaCum} />
-                <CalcCell value={giaBal} bg={giaBal < 0 ? '#ffe8e8' : '#f1f4f8'} />
+                <CalcCell value={giaBal} neg={giaBal < 0} />
               </tr>
-
-              {/* Total */}
-              <tr className="bud-total-row">
-                <td className="bud-cell bud-total-label" colSpan={2}><b>Total</b></td>
-                <CalcCell value={totalAmt} total bg="#e8f0fa" />
-                <CalcCell value={totalDtm} total bg="#e8f0fa" />
-                <CalcCell value={totalCum} total bg="#e8f0fa" />
-                <CalcCell value={totalBal} total bg={totalBal < 0 ? '#ffd6d6' : '#e8f0fa'} />
-              </tr>
-
-              {/* ─── A/B/C/D column header divider ──────────── */}
-              <tr className="bud-abcd-row">
-                <td className="bud-cell" colSpan={3}></td>
-                <th className="bud-th bud-abcd">A</th>
-                <th className="bud-th bud-abcd">B</th>
-                <th className="bud-th bud-abcd">C</th>
-                <th className="bud-th bud-abcd">D</th>
-              </tr>
-
-              {/* ─── D. STAFF STRENGTH ───────────────────────── */}
-              <tr>
-                <td className="bud-cell bud-letter" rowSpan={2}><b>D.</b></td>
-                <td className="bud-cell bud-label bud-center" rowSpan={2} style={{ background: '#eef3f8' }}>
-                  Staff Strength
-                </td>
-                <LabelCell align="center" bg="#FBF8EF">Sanctioned</LabelCell>
-                <EditCell value={form.ssA} onChange={set('ssA')} />
-                <EditCell value={form.ssB} onChange={set('ssB')} />
-                <EditCell value={form.ssC} onChange={set('ssC')} />
-                <EditCell value={form.ssD} onChange={set('ssD')} />
-              </tr>
-              <tr>
-                <LabelCell align="center" bg="#F2F2F2">In Position</LabelCell>
-                <EditCell value={form.posA} onChange={set('posA')} bg="#F2F2F2" />
-                <EditCell value={form.posB} onChange={set('posB')} bg="#F2F2F2" />
-                <EditCell value={form.posC} onChange={set('posC')} bg="#F2F2F2" />
-                <EditCell value={form.posD} onChange={set('posD')} bg="#F2F2F2" />
-              </tr>
-
-              {/* ─── E. MACHINE PROCURED ─────────────────────── */}
-              <tr>
-                <td className="bud-cell bud-letter"><b>E.</b></td>
-                <LabelCell colSpan={2}>Machine Procured</LabelCell>
-                <LabelCell align="center" bg="#FBF8EF">During the month</LabelCell>
-                <EditCell value={form.machineDtm} onChange={set('machineDtm')} />
-                <LabelCell align="center" bg="#FBF8EF">Cumulative</LabelCell>
-                <CalcCell value={machineCum} />
-              </tr>
-
-              {/* ─── F. DETAILS OF VISITS ────────────────────── */}
-              <tr>
-                <td className="bud-cell bud-letter"><b>F.</b></td>
-                <LabelCell bg="#eef3f8">
-                  Details of Visits of MSME / Industrial / Assco / Institutions
-                </LabelCell>
-                <td className="bud-cell" colSpan={5} style={{ padding: 8 }}>
-                  <textarea
-                    className="bud-textarea"
-                    rows={4}
-                    maxLength={MAX_CHARS}
-                    value={form.detailVisit}
-                    onChange={set('detailVisit')}
-                    placeholder="Enter details of visits… (max 400 characters)"
-                  />
-                  <div className="bud-char-count">
-                    {MAX_CHARS - form.detailVisit.length} characters remaining
-                  </div>
-                </td>
-              </tr>
-
-              {/* ─── G. SIGNIFICANT ACHIEVEMENTS ─────────────── */}
-              <tr>
-                <td className="bud-cell bud-letter"><b>G.</b></td>
-                <LabelCell bg="#eef3f8">
-                  Significant Achievements, if any, including new initiatives taken like NMCP etc.
-                </LabelCell>
-                <td className="bud-cell" colSpan={5} style={{ padding: 8 }}>
-                  {sigFromAch !== null ? (
-                    <>
-                      <textarea
-                        className="bud-textarea"
-                        rows={4}
-                        value={sigFromAch}
-                        readOnly
-                        style={{ background: '#f1f4f8' }}
-                      />
-                      <div className="bud-char-count">
-                        Entered on the Significant Achievement page — edit it there.
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <textarea
-                        className="bud-textarea"
-                        rows={4}
-                        maxLength={MAX_CHARS}
-                        value={form.sigAchiev}
-                        onChange={set('sigAchiev')}
-                        placeholder="Enter significant achievements… (max 400 characters)"
-                      />
-                      <div className="bud-char-count">
-                        {MAX_CHARS - form.sigAchiev.length} characters remaining
-                      </div>
-                    </>
-                  )}
-                </td>
-              </tr>
-
-              {/* ─── H. SHORT FALLS ──────────────────────────── */}
-              <tr>
-                <td className="bud-cell bud-letter"><b>H.</b></td>
-                <LabelCell bg="#eef3f8">
-                  Short falls, if any (with reasons)
-                </LabelCell>
-                <td className="bud-cell" colSpan={5} style={{ padding: 8 }}>
-                  <textarea
-                    className="bud-textarea"
-                    rows={4}
-                    maxLength={MAX_CHARS}
-                    value={form.shortFalls}
-                    onChange={set('shortFalls')}
-                    placeholder="Enter short falls with reasons… (max 400 characters)"
-                  />
-                  <div className="bud-char-count">
-                    {MAX_CHARS - form.shortFalls.length} characters remaining
-                  </div>
-                </td>
-              </tr>
-
-              {/* ─── I. PROMOTIONAL ACTIVITIES ───────────────── */}
-              <tr>
-                <td className="bud-cell bud-letter"><b>I.</b></td>
-                <LabelCell bg="#eef3f8">
-                  Promotional Activities
-                </LabelCell>
-                <td className="bud-cell" colSpan={5} style={{ padding: 8 }}>
-                  <textarea
-                    className="bud-textarea"
-                    rows={4}
-                    maxLength={MAX_CHARS}
-                    value={form.promoActiv}
-                    onChange={set('promoActiv')}
-                    placeholder="Enter promotional activities… (max 400 characters)"
-                  />
-                  <div className="bud-char-count">
-                    {MAX_CHARS - form.promoActiv.length} characters remaining
-                  </div>
-                </td>
-              </tr>
-
             </tbody>
+            <tfoot>
+              <tr className="bud-total-row">
+                <td className="bud-cell bud-total-label">Total</td>
+                <CalcCell value={totalAmt} total />
+                <CalcCell value={totalDtm} total />
+                <CalcCell value={totalCum} total />
+                <CalcCell value={totalBal} total neg={totalBal < 0} />
+              </tr>
+            </tfoot>
           </table>
         </div>
+      </section>
 
-        {/* ── Summary strip ── */}
-        <div className="bud-summary-strip">
-          <div className="bud-summary-item">
-            <span className="bud-summary-label">Total Amount</span>
-            <span className="bud-summary-val">₹ {totalAmt.toFixed(2)} L</span>
+      {/* ═══════════ D. Staff strength  +  E. Machine procured ═══════════ */}
+      <div className="bud-pair">
+        <section className="bud-card">
+          <div className="bud-card-head">
+            <span className="bud-badge">D</span>
+            <div><h2>Staff strength</h2><p>Sanctioned posts and staff in position, by group.</p></div>
           </div>
-          <div className="bud-summary-item">
-            <span className="bud-summary-label">Total Utilization (Month)</span>
-            <span className="bud-summary-val">₹ {totalDtm.toFixed(2)} L</span>
+          <div className="bud-table-wrap">
+            <table className="bud-table bud-table-staff">
+              <thead>
+                <tr>
+                  <th className="bud-th bud-th-left"></th>
+                  <th className="bud-th">Group A</th><th className="bud-th">Group B</th>
+                  <th className="bud-th">Group C</th><th className="bud-th">Group D</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="bud-cell bud-label">Sanctioned</td>
+                  {['ssA', 'ssB', 'ssC', 'ssD'].map(k => <EditCell key={k} value={form[k]} onChange={set(k)} disabled={blocked} />)}
+                </tr>
+                <tr>
+                  <td className="bud-cell bud-label">In position</td>
+                  {['posA', 'posB', 'posC', 'posD'].map(k => <EditCell key={k} value={form[k]} onChange={set(k)} disabled={blocked} />)}
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div className="bud-summary-item">
-            <span className="bud-summary-label">Total Utilization (Cum.)</span>
-            <span className="bud-summary-val">₹ {totalCum.toFixed(2)} L</span>
+        </section>
+
+        <section className="bud-card">
+          <div className="bud-card-head">
+            <span className="bud-badge">E</span>
+            <div><h2>Machine procured</h2><p>Value in Rs. Lakh.</p></div>
           </div>
-          <div className="bud-summary-item">
-            <span className="bud-summary-label">Total Unspent Balance</span>
-            <span className={`bud-summary-val${totalBal < 0 ? ' bud-neg' : ''}`}>
-              ₹ {totalBal.toFixed(2)} L
-            </span>
+          <div className="bud-table-wrap">
+            <table className="bud-table">
+              <thead>
+                <tr>
+                  <th className="bud-th">During the month</th>
+                  <th className="bud-th">Cumulative</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <EditCell value={form.machineDtm} onChange={set('machineDtm')} disabled={blocked} />
+                  <CalcCell value={machineCum} />
+                </tr>
+              </tbody>
+            </table>
           </div>
+        </section>
+      </div>
+
+      {/* ═══════════ F – I. Narrative sections ═══════════ */}
+      <div className="bud-text-grid">
+        <TextCard letter="F" title="Details of visits of MSME / Industrial / Assco / Institutions"
+          value={form.detailVisit} onChange={set('detailVisit')} disabled={blocked} max={MAX_CHARS}
+          placeholder="Enter details of visits…" />
+        <TextCard letter="G" title="Significant achievements, including new initiatives like NMCP"
+          value={form.sigAchiev} onChange={set('sigAchiev')} disabled={blocked} max={MAX_CHARS}
+          readOnlyText={sigFromAch} placeholder="Enter significant achievements…" />
+        <TextCard letter="H" title="Short falls, if any (with reasons)"
+          value={form.shortFalls} onChange={set('shortFalls')} disabled={blocked} max={MAX_CHARS}
+          placeholder="Enter short falls with reasons…" />
+        <TextCard letter="I" title="Promotional activities"
+          value={form.promoActiv} onChange={set('promoActiv')} disabled={blocked} max={MAX_CHARS}
+          placeholder="Enter promotional activities…" />
+      </div>
+
+      {/* ── Sticky action bar ── */}
+      <div className="bud-actions">
+        <div className="bud-actions-hint">
+          <InfoCircleOutlined />
+          <span>All monetary values are in <b>Rs. Lakh</b>. Cumulative utilization and balances are calculated automatically.</span>
+        </div>
+        <div className="bud-actions-btns">
+          <Button icon={<ReloadOutlined />} onClick={handleReset} disabled={blocked}>Reset</Button>
+          <Button icon={<PrinterOutlined />} onClick={() => window.print()}>Print</Button>
+          {isSU && hasData && (
+            <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
+          )}
+          {hasData
+            ? <Button type="primary" icon={<EditOutlined />} onClick={handleSave} loading={saving} disabled={blocked}>Update</Button>
+            : <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={blocked}>Add</Button>}
         </div>
       </div>
-
-      {/* ── Action bar ── */}
-      <div className="bud-actions">
-        <Button onClick={handleReset}>Reset</Button>
-        <Button type="primary" onClick={handleSave} loading={saving} disabled={blocked || hasData}>Add</Button>
-        <Button onClick={handleSave} loading={saving} disabled={blocked || !hasData}>Update</Button>
-        {user?.role === 'SU' && hasData && (
-          <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
-        )}
-        <Button onClick={() => window.print()}>Print</Button>
-      </div>
-
     </div>
   );
 }

@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button, message, Spin, Alert } from 'antd';
-import { SaveOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
+import {
+  SaveOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, PrinterOutlined,
+  RiseOutlined, WalletOutlined, FallOutlined, PercentageOutlined,
+  CheckCircleOutlined, LockOutlined, ClockCircleOutlined, InfoCircleOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './FinancialPage.css';
@@ -37,83 +41,88 @@ const ZERO_TARGETS = {
   perRecCash: 0,      perRecAccrual: 0,
 };
 
-/* ─── row background constants ─── */
-const R1 = '#F2F2F2';
-const R2 = '#FBF8EF';
+/* Revenue-earning heads — each is entered on both Cash (`cash…`) and Accrual (`accrual…`) basis */
+const EARN_ROWS = [
+  { id: 'Training',  label: 'Training' },
+  { group: 'Production' },
+  { id: 'Tooling',   label: '(a) Tooling',       indent: true },
+  { id: 'OtherJob',  label: '(b) Other job work', indent: true },
+  { id: 'Consult',   label: 'Consultancy' },
+  { id: 'Testing',   label: 'Testing / calibration / services' },
+  { id: 'Misc',      label: 'Misc.' },
+];
 
 /* ═══════════════════════════════════════
    Cell Components  (defined outside to
    avoid remount on parent re-render)
    ═══════════════════════════════════════ */
 
-function TargetCell({ value = 0, bg = '#fff' }) {
+function InCell({ value, onChange, disabled, cls = '', integer = false }) {
   return (
-    <td className="fin-cell" style={{ background: bg }}>
-      <input className="fin-input fin-ro" type="text" value={value} readOnly />
-    </td>
-  );
-}
-
-function CalcCell({ value, bg = '#fff', total = false }) {
-  return (
-    <td className="fin-cell" style={{ background: bg }}>
+    <td className={`fin-cell fin-in-cell ${cls}`}>
       <input
-        className={`fin-input fin-ro${total ? ' fin-total-input' : ''}`}
-        type="text"
-        value={fmt(value)}
-        readOnly
-      />
-    </td>
-  );
-}
-
-function PctCell({ cumVal, target, bg = '#fff' }) {
-  return (
-    <td className="fin-cell" style={{ background: bg }}>
-      <input className="fin-input fin-ro" type="text" value={pct(cumVal, target)} readOnly />
-    </td>
-  );
-}
-
-function DashCell({ bg = '#fff' }) {
-  return (
-    <td className="fin-cell" style={{ background: bg }}>
-      <input className="fin-input fin-ro" type="text" value="—" readOnly
-        style={{ textAlign: 'center', color: '#999' }} />
-    </td>
-  );
-}
-
-function UserCell({ value, onChange, bg = '#fff' }) {
-  return (
-    <td className="fin-cell" style={{ background: bg }}>
-      <input
-        className="fin-input fin-editable"
-        type="text"
+        className="fin-input"
+        inputMode={integer ? 'numeric' : 'decimal'}
         value={value}
         onChange={onChange}
-        placeholder="0"
+        disabled={disabled}
+        placeholder={integer ? '0' : '0.00'}
       />
     </td>
   );
 }
 
-/* Editable Target cell — used only for Revenue Expenditure's Target column,
-   the rest of the Target column stays read-only (annual, set on /app/target).
-   Whole numbers only, matching tbl_trng_exp_target's Integer columns. */
-function TargetEditCell({ value, onChange, bg = '#fff' }) {
+function CalcCell({ value, total = false, cls = '' }) {
+  return <td className={`fin-cell fin-calc${total ? ' fin-calc-total' : ''}${value < 0 ? ' fin-neg' : ''} ${cls}`}>{fmt(value)}</td>;
+}
+
+function TgtCell({ value, cls = '' }) {
+  return <td className={`fin-cell fin-tgt ${cls}`}>{n(value) ? n(value).toFixed(2) : '—'}</td>;
+}
+
+function DashCell({ cls = '' }) {
+  return <td className={`fin-cell fin-dash ${cls}`}>—</td>;
+}
+
+function PctCell({ cumVal, target, cls = '' }) {
+  if (!n(target)) return <td className={`fin-cell fin-dash ${cls}`}>—</td>;
+  const p = (n(cumVal) / n(target)) * 100;
   return (
-    <td className="fin-cell" style={{ background: bg }}>
-      <input
-        className="fin-input fin-editable"
-        type="number" min="0" step="1"
-        value={value}
-        onChange={onChange}
-        placeholder="0"
-      />
+    <td className={`fin-cell fin-pct ${cls}`}>
+      <div className="fin-pct-val">{p.toFixed(1)}%</div>
+      <div className="fin-pct-bar"><span style={{ width: `${Math.min(Math.max(p, 0), 100)}%` }} /></div>
     </td>
   );
 }
+
+/* Two-basis head: Particulars | Cash (4 cols) | Accrual (4 cols) */
+function BasisHead({ first = 'Particulars' }) {
+  const sub = (cls) => (
+    <>
+      <th className={`fin-th fin-th-sub ${cls} fin-grp-start`}>Target</th>
+      <th className={`fin-th fin-th-sub ${cls}`}>During<br />the month</th>
+      <th className={`fin-th fin-th-sub ${cls}`}>Cumulative</th>
+      <th className={`fin-th fin-th-sub ${cls}`}>% of target</th>
+    </>
+  );
+  return (
+    <thead>
+      <tr>
+        <th className="fin-th fin-th-left" rowSpan={2}>{first}</th>
+        <th className="fin-th fin-th-cat fin-cash fin-grp-start" colSpan={4}>Cash basis</th>
+        <th className="fin-th fin-th-cat fin-accr fin-grp-start" colSpan={4}>Accrual basis</th>
+      </tr>
+      <tr>{sub('fin-cash')}{sub('fin-accr')}</tr>
+    </thead>
+  );
+}
+
+const COLS = (
+  <colgroup>
+    <col style={{ width: 190 }} />
+    {Array.from({ length: 8 }, (_, i) => <col key={i} style={{ width: 96 }} />)}
+  </colgroup>
+);
 
 /* ═══════════════════════════════════════
    Main Component
@@ -212,7 +221,12 @@ export default function FinancialPage() {
       revExpCash: dtm.revExpCash, revExpAccrual: dtm.revExpAccrual,
       perRecCashAch: dtm.perRecCashAch, perRecAccrualAch: dtm.perRecAccrualAch,
       revExpCashTarget: TARGETS.revExpCash, revExpAccrualTarget: TARGETS.revExpAccrual,
-    }).then(() => message.success('Financial data saved successfully!'))
+    }).then(() => {
+      message.success('Financial data saved successfully!');
+      // saved → switch to "existing data" mode: enables Update / Clear Data (SU), locks the form for others
+      setHasData(true);
+      if (user?.role !== 'SU') setBlocked(true);
+    })
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
   };
@@ -238,329 +252,203 @@ export default function FinancialPage() {
   };
 
   const instName  = selection?.instName  || '—';
-  const monthYear = selection ? `${selection.monthName} ${selection.year}` : '';
+  const isSU = user?.role === 'SU';
+
+  /* ── Print: strip the app shell so only the form prints (button + Ctrl+P) ── */
+  useEffect(() => {
+    const on  = () => document.body.classList.add('fin-printing');
+    const off = () => document.body.classList.remove('fin-printing');
+    window.addEventListener('beforeprint', on);
+    window.addEventListener('afterprint', off);
+    return () => {
+      window.removeEventListener('beforeprint', on);
+      window.removeEventListener('afterprint', off);
+      off();
+    };
+  }, []);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin size="large" /></div>;
 
+  const status = blocked
+    ? { cls: 'fin-status-locked', icon: <LockOutlined />, text: 'Submitted — locked' }
+    : hasData
+      ? { cls: 'fin-status-saved', icon: <CheckCircleOutlined />, text: isSU ? 'Submitted — editable (SU)' : 'Submitted' }
+      : { cls: 'fin-status-new', icon: <ClockCircleOutlined />, text: 'Not yet submitted' };
+
+  const ofTarget = (c, t) => (n(t) ? `${pct(c, t)}% of target ${n(t).toFixed(2)}` : 'no annual target set');
+  const kpis = [
+    { label: 'Revenue earned (cash)',     icon: <RiseOutlined />,       cls: 'fin-k-teal',  value: fmt(cashCum), sub: ofTarget(cashCum, TARGETS.cashTotal) },
+    { label: 'Revenue earned (accrual)',  icon: <WalletOutlined />,     cls: 'fin-k-navy',  value: fmt(accrCum), sub: ofTarget(accrCum, TARGETS.accrualTotal) },
+    { label: 'Revenue expenditure (cash)',icon: <FallOutlined />,       cls: 'fin-k-gold',  value: fmt(cum.revExpCash), sub: ofTarget(cum.revExpCash, TARGETS.revExpCash) },
+    { label: 'Recovery (cash, cum.)',     icon: <PercentageOutlined />, cls: prCashCum >= 100 ? 'fin-k-green' : 'fin-k-red', value: `${prCashCum.toFixed(1)}%`,
+      sub: <>surplus <b>{fmt(excCashCum)}</b> Rs. L</> },
+  ];
+
   return (
     <div className="fin-page">
-
-      {loadErr && <Alert type="warning" message={loadErr} style={{ margin: '8px 0' }} />}
-      {blocked && <Alert type="error" message="Data already submitted for this month. Contact SU to modify." style={{ margin: '8px 0' }} />}
-
-      {/* ── Title bar ── */}
-      <div className="fin-titlebar">
-        <div className="fin-titlebar-left">
-          <span className="fin-page-label">Financial Section</span>
-          <span className="fin-institute">{instName}</span>
-        </div>
-        <div className="fin-titlebar-right">
-          {monthYear && <span className="fin-meta-chip">📅 {monthYear}</span>}
-          <span className="fin-note">All Values in Rs. Lakhs</span>
+      {/* print-only header */}
+      <div className="fin-print-header">
+        <div className="fin-print-title">Monthly Progress Report — Section A (Financial) · All values in Rs. Lakh</div>
+        <div className="fin-print-sub">
+          {instName}{selection?.monthName ? ` — ${selection.monthName} ${selection.year}` : ''}
         </div>
       </div>
 
-      {/* ── Table card ── */}
-      <div className="fin-card">
+      {/* ── Hero ── */}
+      <header className="fin-hero">
+        <div className="fin-hero-main">
+          <span className="fin-hero-kicker">Monthly Progress Report · Section A</span>
+          <h1 className="fin-hero-title">Financial Section</h1>
+          <span className="fin-hero-inst">{instName}</span>
+        </div>
+        <div className="fin-hero-side">
+          {selection?.monthName && <span className="fin-hero-chip">{selection.monthName} {selection.year}</span>}
+          <span className={`fin-status ${status.cls}`}>{status.icon}{status.text}</span>
+        </div>
+      </header>
+
+      {loadErr && <Alert type="warning" showIcon message={loadErr} className="fin-alert" />}
+      {blocked && (
+        <Alert type="info" showIcon icon={<LockOutlined />} className="fin-alert"
+          message="This month's financial data has been submitted."
+          description="The form is read-only. Contact the SU (Senet Division) if a correction is needed." />
+      )}
+
+      {/* ── KPI tiles ── */}
+      <div className="fin-kpis">
+        {kpis.map(k => (
+          <div key={k.label} className={`fin-kpi ${k.cls}`}>
+            <span className="fin-kpi-icon">{k.icon}</span>
+            <div>
+              <div className="fin-kpi-label">{k.label}</div>
+              <div className="fin-kpi-value">{k.value}</div>
+              <div className="fin-kpi-sub">{k.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ═══════════ (1) Revenue earning ═══════════ */}
+      <section className="fin-card">
+        <div className="fin-card-head">
+          <span className="fin-badge">1</span>
+          <div>
+            <h2>Revenue earning</h2>
+            <p>Enter this month's earnings on both bases. Targets are the annual targets; cumulative and % are calculated. Rs. Lakh.</p>
+          </div>
+          <div className="fin-legend"><span className="fin-cash">Cash basis</span><span className="fin-accr">Accrual basis</span></div>
+        </div>
         <div className="fin-table-wrap">
           <table className="fin-table">
-            <colgroup>
-              <col style={{ width: '2%'  }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '9%'  }} />
-              <col style={{ width: '17%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '13%' }} />
-            </colgroup>
-
-            {/* ══ HEADER ══ */}
-            <thead>
-              <tr>
-                <th className="fin-th" colSpan={4} rowSpan={2}>
-                  Financial Cash basis / Accrual basis
-                </th>
-                <th className="fin-th" rowSpan={2}>Target</th>
-                <th className="fin-th" colSpan={3}>Achievement</th>
-              </tr>
-              <tr>
-                <th className="fin-th">During the month</th>
-                <th className="fin-th">Cum. upto month</th>
-                <th className="fin-th">%age w.r.t. Target</th>
-              </tr>
-            </thead>
-
-            {/* ══ BODY ══ */}
+            {COLS}
+            <BasisHead first="Head of revenue" />
             <tbody>
-
-              {/* ── FINANCIAL section header ── */}
-              <tr>
-                <td className="fin-cell fin-letter" rowSpan={23} valign="top">A</td>
-                <td className="fin-cell fin-section-hdr" colSpan={7}>FINANCIAL</td>
+              {EARN_ROWS.map(r => r.group ? (
+                <tr key={r.group} className="fin-group-row"><td colSpan={9}>{r.group}</td></tr>
+              ) : (
+                <tr key={r.id}>
+                  <td className={`fin-cell fin-label${r.indent ? ' fin-indent' : ''}`}>{r.label}</td>
+                  {['cash', 'accrual'].map(b => {
+                    const k = b + r.id;
+                    return (
+                      <React.Fragment key={b}>
+                        <TgtCell value={TARGETS[k]} cls="fin-grp-start" />
+                        <InCell value={dtm[k]} onChange={handleChange(k)} disabled={blocked} />
+                        <CalcCell value={cum[k]} />
+                        <PctCell cumVal={cum[k]} target={TARGETS[k]} />
+                      </React.Fragment>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="fin-total-row">
+                <td className="fin-cell fin-label">Total revenue earned</td>
+                <TgtCell value={TARGETS.cashTotal} cls="fin-grp-start" />
+                <CalcCell value={cashDtm} total />
+                <CalcCell value={cashCum} total />
+                <PctCell cumVal={cashCum} target={TARGETS.cashTotal} />
+                <TgtCell value={TARGETS.accrualTotal} cls="fin-grp-start" />
+                <CalcCell value={accrDtm} total />
+                <CalcCell value={accrCum} total />
+                <PctCell cumVal={accrCum} target={TARGETS.accrualTotal} />
               </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
 
-              {/* ════════════════════════════
-                  Revenue Earning — Cash basis
-                  ════════════════════════════ */}
-
-              {/* Training */}
+      {/* ═══════════ (2)–(4) Expenditure, surplus & recovery ═══════════ */}
+      <section className="fin-card">
+        <div className="fin-card-head">
+          <span className="fin-badge">2</span>
+          <div>
+            <h2>Expenditure, surplus &amp; recovery</h2>
+            <p>Revenue expenditure targets can be edited here. Surplus and recovery are calculated from earnings and expenditure.</p>
+          </div>
+        </div>
+        <div className="fin-table-wrap">
+          <table className="fin-table">
+            {COLS}
+            <BasisHead />
+            <tbody>
               <tr>
-                <td className="fin-cell fin-slabel" rowSpan={16}>Revenue<br />earning</td>
-                <td className="fin-cell" rowSpan={8} style={{ background: R1, fontWeight: 500 }}>
-                  Cash basis
+                <td className="fin-cell fin-label">(2) Revenue expenditure</td>
+                <InCell value={TARGETS.revExpCash} onChange={handleTargetChange('revExpCash')} disabled={blocked} integer cls="fin-grp-start fin-in-tgt" />
+                <InCell value={dtm.revExpCash} onChange={handleChange('revExpCash')} disabled={blocked} />
+                <CalcCell value={cum.revExpCash} />
+                <PctCell cumVal={cum.revExpCash} target={TARGETS.revExpCash} />
+                <InCell value={TARGETS.revExpAccrual} onChange={handleTargetChange('revExpAccrual')} disabled={blocked} integer cls="fin-grp-start fin-in-tgt" />
+                <InCell value={dtm.revExpAccrual} onChange={handleChange('revExpAccrual')} disabled={blocked} />
+                <CalcCell value={cum.revExpAccrual} />
+                <PctCell cumVal={cum.revExpAccrual} target={TARGETS.revExpAccrual} />
+              </tr>
+              <tr>
+                <td className="fin-cell fin-label">(3) Excess of income over expenditure</td>
+                <DashCell cls="fin-grp-start" />
+                <CalcCell value={excCashDtm} />
+                <CalcCell value={excCashCum} />
+                <DashCell />
+                <DashCell cls="fin-grp-start" />
+                <CalcCell value={excAccrDtm} />
+                <CalcCell value={excAccrCum} />
+                <DashCell />
+              </tr>
+              <tr>
+                <td className="fin-cell fin-label">
+                  (4) %age recovery
+                  <div className="fin-label-note">earning ÷ expenditure × 100 · last column: achievement (entered)</div>
                 </td>
-                <td className="fin-cell" style={{ background: R1 }}>Training</td>
-                <TargetCell value={TARGETS.cashTraining} bg={R1} />
-                <UserCell   value={dtm.cashTraining}     onChange={handleChange('cashTraining')} bg={R1} />
-                <CalcCell   value={cum.cashTraining}     bg={R1} />
-                <PctCell    cumVal={cum.cashTraining}    target={TARGETS.cashTraining} bg={R1} />
+                <TgtCell value={TARGETS.perRecCash} cls="fin-grp-start" />
+                <CalcCell value={prCashDtm} />
+                <CalcCell value={prCashCum} />
+                <InCell value={dtm.perRecCashAch} onChange={handleChange('perRecCashAch')} disabled={blocked} />
+                <TgtCell value={TARGETS.perRecAccrual} cls="fin-grp-start" />
+                <CalcCell value={prAccrDtm} />
+                <CalcCell value={prAccrCum} />
+                <InCell value={dtm.perRecAccrualAch} onChange={handleChange('perRecAccrualAch')} disabled={blocked} />
               </tr>
-
-              {/* Production sub-header */}
-              <tr>
-                <td className="fin-cell fin-sub-hdr" colSpan={5}>Production</td>
-              </tr>
-
-              {/* (a) Tooling */}
-              <tr>
-                <td className="fin-cell" style={{ background: R2 }}>
-                  <b>(a)</b>&nbsp;Tooling
-                </td>
-                <TargetCell value={TARGETS.cashTooling} bg={R2} />
-                <UserCell   value={dtm.cashTooling}     onChange={handleChange('cashTooling')} bg={R2} />
-                <CalcCell   value={cum.cashTooling}     bg={R2} />
-                <PctCell    cumVal={cum.cashTooling}    target={TARGETS.cashTooling} bg={R2} />
-              </tr>
-
-              {/* (b) Other Job Work */}
-              <tr>
-                <td className="fin-cell" style={{ background: R2 }}>
-                  <b>(b)</b>&nbsp;Other Job Work
-                </td>
-                <TargetCell value={TARGETS.cashOtherJob} bg={R2} />
-                <UserCell   value={dtm.cashOtherJob}     onChange={handleChange('cashOtherJob')} bg={R2} />
-                <CalcCell   value={cum.cashOtherJob}     bg={R2} />
-                <PctCell    cumVal={cum.cashOtherJob}    target={TARGETS.cashOtherJob} bg={R2} />
-              </tr>
-
-              {/* Consultancy */}
-              <tr>
-                <td className="fin-cell" style={{ background: R1 }}>Consultancy</td>
-                <TargetCell value={TARGETS.cashConsult} bg={R1} />
-                <UserCell   value={dtm.cashConsult}     onChange={handleChange('cashConsult')} bg={R1} />
-                <CalcCell   value={cum.cashConsult}     bg={R1} />
-                <PctCell    cumVal={cum.cashConsult}    target={TARGETS.cashConsult} bg={R1} />
-              </tr>
-
-              {/* Misc. */}
-              <tr>
-                <td className="fin-cell" style={{ background: R1 }}>Misc.</td>
-                <TargetCell value={TARGETS.cashMisc} bg={R1} />
-                <UserCell   value={dtm.cashMisc}     onChange={handleChange('cashMisc')} bg={R1} />
-                <CalcCell   value={cum.cashMisc}     bg={R1} />
-                <PctCell    cumVal={cum.cashMisc}    target={TARGETS.cashMisc} bg={R1} />
-              </tr>
-
-              {/* Testing/calibration/services */}
-              <tr>
-                <td className="fin-cell" style={{ background: R1 }}>Testing / calibration / services</td>
-                <TargetCell value={0} bg={R1} />
-                <UserCell   value={dtm.cashTesting}  onChange={handleChange('cashTesting')} bg={R1} />
-                <CalcCell   value={cum.cashTesting}  bg={R1} />
-                <PctCell    cumVal={cum.cashTesting} target={0} bg={R1} />
-              </tr>
-
-              {/* Cash Total */}
-              <tr>
-                <td className="fin-cell" style={{ fontWeight: 'bold' }}>Total</td>
-                <td className="fin-cell">
-                  <input className="fin-input fin-ro fin-total-input" type="text"
-                    value={TARGETS.cashTotal} readOnly />
-                </td>
-                <td className="fin-cell">
-                  <input className="fin-input fin-ro fin-total-input" type="text"
-                    value={fmt(cashDtm)} readOnly />
-                </td>
-                <td className="fin-cell">
-                  <input className="fin-input fin-ro fin-total-input" type="text"
-                    value={fmt(cashCum)} readOnly />
-                </td>
-                <td className="fin-cell">
-                  <input className="fin-input fin-ro fin-total-input" type="text"
-                    value={pct(cashCum, TARGETS.cashTotal)} readOnly />
-                </td>
-              </tr>
-
-              {/* ══════════════════════════════
-                  Revenue Earning — Accrual basis
-                  ══════════════════════════════ */}
-
-              {/* Training */}
-              <tr>
-                <td className="fin-cell" rowSpan={8} style={{ background: R2, fontWeight: 500 }}>
-                  Accrual basis
-                </td>
-                <td className="fin-cell" style={{ background: R1 }}>Training</td>
-                <TargetCell value={TARGETS.accrualTraining} bg={R1} />
-                <UserCell   value={dtm.accrualTraining}     onChange={handleChange('accrualTraining')} bg={R1} />
-                <CalcCell   value={cum.accrualTraining}     bg={R1} />
-                <PctCell    cumVal={cum.accrualTraining}    target={TARGETS.accrualTraining} bg={R1} />
-              </tr>
-
-              {/* Production sub-header */}
-              <tr>
-                <td className="fin-cell fin-sub-hdr" colSpan={5}>Production</td>
-              </tr>
-
-              {/* (a) Tooling */}
-              <tr>
-                <td className="fin-cell" style={{ background: R2 }}>
-                  <b>(a)</b>&nbsp;Tooling
-                </td>
-                <TargetCell value={TARGETS.accrualTooling} bg={R2} />
-                <UserCell   value={dtm.accrualTooling}     onChange={handleChange('accrualTooling')} bg={R2} />
-                <CalcCell   value={cum.accrualTooling}     bg={R2} />
-                <PctCell    cumVal={cum.accrualTooling}    target={TARGETS.accrualTooling} bg={R2} />
-              </tr>
-
-              {/* (b) Other Job Work */}
-              <tr>
-                <td className="fin-cell" style={{ background: R2 }}>
-                  <b>(b)</b>&nbsp;Other Job Work
-                </td>
-                <TargetCell value={TARGETS.accrualOtherJob} bg={R2} />
-                <UserCell   value={dtm.accrualOtherJob}     onChange={handleChange('accrualOtherJob')} bg={R2} />
-                <CalcCell   value={cum.accrualOtherJob}     bg={R2} />
-                <PctCell    cumVal={cum.accrualOtherJob}    target={TARGETS.accrualOtherJob} bg={R2} />
-              </tr>
-
-              {/* Consultancy */}
-              <tr>
-                <td className="fin-cell" style={{ background: R1 }}>Consultancy</td>
-                <TargetCell value={TARGETS.accrualConsult} bg={R1} />
-                <UserCell   value={dtm.accrualConsult}     onChange={handleChange('accrualConsult')} bg={R1} />
-                <CalcCell   value={cum.accrualConsult}     bg={R1} />
-                <PctCell    cumVal={cum.accrualConsult}    target={TARGETS.accrualConsult} bg={R1} />
-              </tr>
-
-              {/* Misc. */}
-              <tr>
-                <td className="fin-cell" style={{ background: R2 }}>Misc.</td>
-                <TargetCell value={TARGETS.accrualMisc} bg={R2} />
-                <UserCell   value={dtm.accrualMisc}     onChange={handleChange('accrualMisc')} bg={R2} />
-                <CalcCell   value={cum.accrualMisc}     bg={R2} />
-                <PctCell    cumVal={cum.accrualMisc}    target={TARGETS.accrualMisc} bg={R2} />
-              </tr>
-
-              {/* Testing/calibration/services */}
-              <tr>
-                <td className="fin-cell" style={{ background: R1 }}>Testing / calibration / services</td>
-                <TargetCell value={0} bg={R1} />
-                <UserCell   value={dtm.accrualTesting}  onChange={handleChange('accrualTesting')} bg={R1} />
-                <CalcCell   value={cum.accrualTesting}  bg={R1} />
-                <PctCell    cumVal={cum.accrualTesting} target={0} bg={R1} />
-              </tr>
-
-              {/* Accrual Total */}
-              <tr>
-                <td className="fin-cell" style={{ fontWeight: 'bold' }}>Total</td>
-                <td className="fin-cell">
-                  <input className="fin-input fin-ro fin-total-input" type="text"
-                    value={TARGETS.accrualTotal} readOnly />
-                </td>
-                <td className="fin-cell">
-                  <input className="fin-input fin-ro fin-total-input" type="text"
-                    value={fmt(accrDtm)} readOnly />
-                </td>
-                <td className="fin-cell">
-                  <input className="fin-input fin-ro fin-total-input" type="text"
-                    value={fmt(accrCum)} readOnly />
-                </td>
-                <td className="fin-cell">
-                  <input className="fin-input fin-ro fin-total-input" type="text"
-                    value={pct(accrCum, TARGETS.accrualTotal)} readOnly />
-                </td>
-              </tr>
-
-              {/* ══════════════════════════
-                  Revenue Expenditure
-                  ══════════════════════════ */}
-              <tr>
-                <td className="fin-cell fin-slabel" rowSpan={2}>Revenue<br />Expenditure</td>
-                <td className="fin-cell" colSpan={2} style={{ background: R1 }}>Cash basis</td>
-                <TargetEditCell value={TARGETS.revExpCash} onChange={handleTargetChange('revExpCash')} bg={R1} />
-                <UserCell   value={dtm.revExpCash}     onChange={handleChange('revExpCash')} bg={R1} />
-                <CalcCell   value={cum.revExpCash}     bg={R1} />
-                <PctCell    cumVal={cum.revExpCash}    target={TARGETS.revExpCash} bg={R1} />
-              </tr>
-              <tr>
-                <td className="fin-cell" colSpan={2} style={{ background: R2 }}>Accrual basis</td>
-                <TargetEditCell value={TARGETS.revExpAccrual} onChange={handleTargetChange('revExpAccrual')} bg={R2} />
-                <UserCell   value={dtm.revExpAccrual}     onChange={handleChange('revExpAccrual')} bg={R2} />
-                <CalcCell   value={cum.revExpAccrual}     bg={R2} />
-                <PctCell    cumVal={cum.revExpAccrual}    target={TARGETS.revExpAccrual} bg={R2} />
-              </tr>
-
-              {/* ═══════════════════════════════════
-                  Excess of Income over Expenditure
-                  ═══════════════════════════════════ */}
-              <tr>
-                <td className="fin-cell fin-slabel" rowSpan={2}>
-                  Excess of Income<br />over Expenditure
-                </td>
-                <td className="fin-cell" colSpan={2} style={{ background: R1 }}>Cash basis</td>
-                <DashCell bg={R1} />
-                <CalcCell value={excCashDtm} bg={R1} />
-                <CalcCell value={excCashCum} bg={R1} />
-                <DashCell bg={R1} />
-              </tr>
-              <tr>
-                <td className="fin-cell" colSpan={2} style={{ background: R2 }}>Accrual basis</td>
-                <DashCell bg={R2} />
-                <CalcCell value={excAccrDtm} bg={R2} />
-                <CalcCell value={excAccrCum} bg={R2} />
-                <DashCell bg={R2} />
-              </tr>
-
-              {/* ══════════════════
-                  %age Recovery
-                  ══════════════════ */}
-              <tr>
-                <td className="fin-cell fin-slabel" rowSpan={2}>%age Recovery</td>
-                <td className="fin-cell" colSpan={2} style={{ background: R1 }}>Cash Basis</td>
-                <TargetCell value={TARGETS.perRecCash} bg={R1} />
-                <CalcCell   value={prCashDtm} bg={R1} />
-                <CalcCell   value={prCashCum} bg={R1} />
-                <UserCell   value={dtm.perRecCashAch} onChange={handleChange('perRecCashAch')} bg={R1} />
-              </tr>
-              <tr>
-                <td className="fin-cell" colSpan={2} style={{ background: R2 }}>Accrual Basis</td>
-                <TargetCell value={TARGETS.perRecAccrual} bg={R2} />
-                <CalcCell   value={prAccrDtm} bg={R2} />
-                <CalcCell   value={prAccrCum} bg={R2} />
-                <UserCell   value={dtm.perRecAccrualAch} onChange={handleChange('perRecAccrualAch')} bg={R2} />
-              </tr>
-
             </tbody>
           </table>
         </div>
+      </section>
 
-        {/* ── Action bar ── */}
-        <div className="fin-actions">
-          <Button icon={<ReloadOutlined />} onClick={() => setDtm(INIT_DTM)}>Reset</Button>
-          <Button
-            type="primary" icon={<SaveOutlined />}
-            onClick={handleSubmit} loading={saving} disabled={blocked || hasData}
-            style={{ backgroundColor: '#073354', borderColor: '#073354' }}
-          >Add</Button>
-          <Button icon={<SaveOutlined />} onClick={handleSubmit} loading={saving} disabled={blocked || !hasData}>Update</Button>
-          {user?.role === 'SU' && hasData && (
-            <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>
-              Clear Data
-            </Button>
+      {/* ── Sticky action bar ── */}
+      <div className="fin-actions">
+        <div className="fin-actions-hint">
+          <InfoCircleOutlined />
+          <span>All values in <b>Rs. Lakh</b>. Enter figures <b>for this month</b> — cumulative, totals and percentages are calculated.</span>
+        </div>
+        <div className="fin-actions-btns">
+          <Button icon={<ReloadOutlined />} onClick={() => setDtm(INIT_DTM)} disabled={blocked}>Reset</Button>
+          <Button icon={<PrinterOutlined />} onClick={() => window.print()}>Print</Button>
+          {isSU && hasData && (
+            <Button danger icon={<DeleteOutlined />} onClick={handleClear} loading={clearing}>Clear Data</Button>
           )}
-          <Button onClick={() => window.print()}>Print</Button>
+          {hasData
+            ? <Button type="primary" icon={<EditOutlined />} onClick={handleSubmit} loading={saving} disabled={blocked}>Update</Button>
+            : <Button type="primary" icon={<SaveOutlined />} onClick={handleSubmit} loading={saving} disabled={blocked}>Add</Button>}
         </div>
       </div>
     </div>

@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Select } from 'antd';
+import {
+  BankOutlined, EditOutlined, BarChartOutlined, CalendarOutlined, LogoutOutlined,
+  ArrowRightOutlined, WarningOutlined, CheckCircleFilled, LockOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import AuthShell from '../../components/AuthShell';
+import './DashboardPage.css';
 
 const MONTHS = [
   { value: '1',  label: 'APRIL' },
@@ -32,6 +39,8 @@ function getDefaults() {
   return { fiscalMonth, year };
 }
 
+const cap = s => s.charAt(0) + s.slice(1).toLowerCase();
+
 export default function DashboardPage() {
   const { user, logout, saveSelection } = useAuth();
   const navigate = useNavigate();
@@ -43,7 +52,7 @@ export default function DashboardPage() {
   const [section,    setSection]    = useState(isRU ? '2' : '1');
   const [month,      setMonth]      = useState(fiscalMonth);
   const [year,       setYear]       = useState(defaultYear);
-  const [institutes, setInstitutes] = useState([]);      // SU: all institutes
+  const [institutes, setInstitutes] = useState([]);      // SU/RU: all institutes
   const [selInstId,  setSelInstId]  = useState('');      // selected inst_id
   const [selInstName,setSelInstName]= useState('');      // selected inst_name
   const [loading,    setLoading]    = useState(true);
@@ -127,153 +136,109 @@ export default function DashboardPage() {
     navigate('/login');
   }
 
-  const username = user?.userId || user?.uid || 'User';
+  const username  = user?.userId || user?.uid || 'User';
+  const roleLabel = isSU ? 'Super User' : isRU ? 'Report User' : 'Institute User';
+  const monthName = MONTHS.find(m => m.value === month)?.label || '';
+  const sections = [
+    { v: '1', icon: <EditOutlined />,     title: 'Entry Section',  text: 'Fill in the monthly forms', locked: isRU },
+    { v: '2', icon: <BarChartOutlined />, title: 'Report Section', text: 'View reports & analysis' },
+  ];
 
   return (
-    <div className="lp-page">
-      <div className="lp-card">
-
-        {/* ── HEADER ── */}
-        <div className="lp-header">
-          <div className="lp-brand">MPR-TCEC</div>
-          <div className="lp-emblem">
-            <img src="/images/india-gov-logo.jpg" width="53" height="63" alt=""
-              onError={e => { e.target.src = '/images/india-gov-logo.gif'; }} />
+    <AuthShell>
+      <div className="as-card as-card-wide">
+        {/* ── Welcome ── */}
+        <div className="db2-welcome">
+          <span className="db2-avatar">{username.charAt(0).toUpperCase()}</span>
+          <div className="db2-welcome-text">
+            <span className="db2-hello">Welcome back,</span>
+            <b>{username}</b>
+            <span className={`db2-role db2-role-${isSU ? 'su' : isRU ? 'ru' : 'iu'}`}>{roleLabel}</span>
           </div>
-          <div className="lp-org">
-            <span className="lp-org-text">
-              Office of Development Commissioner(MSME)<br />
-              Ministry of Micro, Small &amp; Medium Enterprises
-            </span>
-          </div>
-          <div className="lp-logo">
-            <img src="/images/msme-logo.jpg" width="179" height="73" alt=""
-              onError={e => { e.target.style.display = 'none'; }} />
-          </div>
+          <button type="button" className="db2-logout" onClick={handleLogout}><LogoutOutlined /> Logout</button>
         </div>
 
-        {/* ── MARQUEE ── */}
-        <div className="lp-marquee">
-          <span className="lp-scroll">Monthly Progress Report (MPR) of DC-MSME TCEC</span>
+        <div className="as-card-head db2-head">
+          <h2>Choose where to work</h2>
+          <p>Select the institute, section and the reporting month &amp; year.</p>
         </div>
 
-        {/* ── USER BAR ── */}
-        <div className="db-user-bar">
-          <span>Welcome, <strong>{username}</strong>
-            {isSU && <span className="db-role-badge db-role-su"> (Super User)</span>}
-            {isRU && <span className="db-role-badge db-role-su" style={{ background: '#e65c00' }}> (Report User)</span>}
-            {!isSU && !isRU && <span className="db-role-badge db-role-iu"> (Institute User)</span>}
-          </span>
-          <button className="db-logout-btn" onClick={handleLogout}>&#x2715; Logout</button>
-        </div>
+        {error && <div className="as-error" role="alert"><WarningOutlined /> {error}</div>}
 
-        {/* ── BODY ── */}
-        <div className="db-body">
-          <div className="db-form-card">
-            <div className="db-form-header">Choose your Respective Month &amp; Year</div>
-
-            {error && (
-              <div className="db-error-bar">{error}</div>
+        <form onSubmit={handleSubmit} autoComplete="off">
+          {/* Institute */}
+          <div className="as-field">
+            <span className="as-label">Institute</span>
+            {loading ? (
+              <div className="db2-skeleton" />
+            ) : (isSU || isRU) ? (
+              <Select
+                className="db2-select"
+                size="large"
+                showSearch
+                value={selInstId || undefined}
+                onChange={handleInstChange}
+                optionFilterProp="label"
+                placeholder="Search institute…"
+                suffixIcon={<BankOutlined />}
+                options={institutes.map(i => ({ value: i.instId, label: `${i.instName} (${i.instId})` }))}
+              />
+            ) : (
+              <div className="db2-inst-fixed"><BankOutlined /> {selInstName || selInstId || '—'}</div>
             )}
-
-            <form onSubmit={handleSubmit} autoComplete="off">
-              <table className="lp-form-tbl" cellPadding="0" cellSpacing="0">
-                <tbody>
-
-                  {/* Institute row */}
-                  <tr>
-                    <td className="lp-lbl"><span className="lp-req">*</span> Institute:</td>
-                    <td className="lp-inp">
-                      {loading ? (
-                        <span className="db-loading-text">Loading…</span>
-                      ) : (isSU || isRU) ? (
-                        <select
-                          value={selInstId}
-                          onChange={e => handleInstChange(e.target.value)}
-                          className="lp-field db-select"
-                          required
-                        >
-                          {institutes.map(inst => (
-                            <option key={inst.instId} value={inst.instId}>
-                              {inst.instId} — {inst.instName}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          readOnly
-                          value={selInstName || selInstId || '—'}
-                          className="lp-field db-inst-readonly"
-                        />
-                      )}
-                    </td>
-                  </tr>
-
-                  {/* Section */}
-                  <tr>
-                    <td className="lp-lbl"><span className="lp-req">*</span> Section:</td>
-                    <td className="lp-inp">
-                      {isRU ? (
-                        <input type="text" readOnly value="Report Section" className="lp-field db-inst-readonly" />
-                      ) : (
-                        <select value={section} onChange={e => setSection(e.target.value)} className="lp-field db-select">
-                          <option value="1">Entry Form Section</option>
-                          <option value="2">Report Section</option>
-                        </select>
-                      )}
-                    </td>
-                  </tr>
-
-                  {/* Month */}
-                  <tr>
-                    <td className="lp-lbl"><span className="lp-req">*</span> Month:</td>
-                    <td className="lp-inp">
-                      <select value={month} onChange={e => setMonth(e.target.value)} className="lp-field db-select">
-                        {MONTHS.map(m => (
-                          <option key={m.value} value={m.value}>{m.label}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-
-                  {/* Year */}
-                  <tr>
-                    <td className="lp-lbl"><span className="lp-req">*</span> Year:</td>
-                    <td className="lp-inp">
-                      <select value={year} onChange={e => setYear(e.target.value)} className="lp-field db-select">
-                        {YEARS.map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td colSpan="2" className="lp-submit-row">
-                      <input
-                        type="submit"
-                        value={loading ? 'Please wait…' : 'Go'}
-                        disabled={loading || !selInstId}
-                        className="lp-submit"
-                        style={{ padding: '7px 48px' }}
-                      />
-                    </td>
-                  </tr>
-
-                </tbody>
-              </table>
-            </form>
           </div>
-        </div>
 
-        {/* ── FOOTER ── */}
-        <div className="lp-footer">
-          <span>Created &amp; Designed by O/O DC-MSME</span>
-          <span>Contact Us : 011-23062354 (Senet Division)</span>
-        </div>
+          {/* Section */}
+          <div className="as-field">
+            <span className="as-label">Section</span>
+            <div className="db2-sections">
+              {sections.map(s => (
+                <button type="button" key={s.v} disabled={s.locked}
+                  className={`db2-section${section === s.v ? ' is-on' : ''}`}
+                  onClick={() => setSection(s.v)}>
+                  <span className="db2-section-icon">{s.icon}</span>
+                  <span className="db2-section-text"><b>{s.title}</b><small>{s.locked ? 'Not available for your role' : s.text}</small></span>
+                  {s.locked ? <LockOutlined className="db2-section-mark" />
+                    : section === s.v && <CheckCircleFilled className="db2-section-mark" />}
+                </button>
+              ))}
+            </div>
+          </div>
 
+          {/* Month + Year */}
+          <div className="as-field">
+            <div className="db2-my-head">
+              <span className="as-label">Month</span>
+              <label className="db2-year">
+                <CalendarOutlined />
+                <span>Financial year</span>
+                <select value={year} onChange={e => setYear(e.target.value)} aria-label="Financial year">
+                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="db2-months">
+              {MONTHS.map(m => (
+                <button type="button" key={m.value}
+                  className={`db2-month${month === m.value ? ' is-on' : ''}${m.value === fiscalMonth && year === defaultYear ? ' is-now' : ''}`}
+                  onClick={() => setMonth(m.value)}
+                  title={m.value === fiscalMonth && year === defaultYear ? 'Current month' : undefined}>
+                  {cap(m.label).slice(0, 3)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="db2-summary">
+            You're opening <b>{section === '1' ? 'Entry Section' : 'Report Section'}</b> for{' '}
+            <b>{cap(monthName)} {year}</b>{selInstName && <> · <b>{selInstName}</b></>}
+          </div>
+
+          <button type="submit" className="as-submit" disabled={loading || !selInstId}>
+            {loading ? 'Please wait…' : <>Continue <ArrowRightOutlined /></>}
+          </button>
+        </form>
       </div>
-    </div>
+    </AuthShell>
   );
 }

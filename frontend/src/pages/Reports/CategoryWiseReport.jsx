@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../services/api';
-import { exportToExcel } from '../../utils/reportUtils';
+import { exportToExcel, usePrintOnlyReport } from '../../utils/reportUtils';
 
 /* ── Mock data (12 institutes) ── */
 const MOCK_INSTITUTES = [
@@ -40,6 +40,7 @@ export default function CategoryWiseReport() {
   const [rows,    setRows]    = useState([]);
   const [loading, setLoading] = useState(true);
   const [demo,    setDemo]    = useState(false);
+  usePrintOnlyReport();
 
   useEffect(() => {
     if (!month || !year) { navigate('/app/reports/trainees/category', { replace: true }); return; }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import { exportToExcel } from '../../utils/reportUtils';
+import { exportToExcel, usePrintOnlyReport } from '../../utils/reportUtils';
 
 export default function AchievementReport() {
   const { state }  = useLocation();
@@ -10,6 +10,7 @@ export default function AchievementReport() {
   const [rows, setRows]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState(false);
+  usePrintOnlyReport();
   const tableId = 'ach-rpt-tbl';
 
   useEffect(() => {
