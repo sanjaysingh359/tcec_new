@@ -5,6 +5,8 @@ import com.tcec.api.entity.*;
 import com.tcec.api.repository.*;
 import com.tcec.api.service.AuthService;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,19 +25,22 @@ public class EntryController {
     private final PlacementRepository  plaRepo;
     private final TrngExpTargetRepository targetRepo;
     private final AuthService          authService;
+    private final JdbcTemplate         jdbc;
 
     public EntryController(FinancialRepository  finRepo,
                            PhysicalRepository   phyRepo,
                            BudgetRepository     budRepo,
                            PlacementRepository  plaRepo,
                            TrngExpTargetRepository targetRepo,
-                           AuthService          authService) {
+                           AuthService          authService,
+                           JdbcTemplate         jdbc) {
         this.finRepo     = finRepo;
         this.phyRepo     = phyRepo;
         this.budRepo     = budRepo;
         this.plaRepo     = plaRepo;
         this.targetRepo  = targetRepo;
         this.authService = authService;
+        this.jdbc        = jdbc;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -329,6 +334,18 @@ public class EntryController {
             existing.put("above40",       intVal(p.getAbove()));
             existing.put("ph",            intVal(p.getTtbDtmPh()));
             existing.put("ltcTotal",      intVal(p.getTaLtcDtm()));
+            existing.put("ltcCumTotal",   intVal(p.getTaLtcCum()));
+            // Long-term courses are stored course-wise in tbl_course_txn (legacy PhysicalInsert)
+            existing.put("ltcCourses", jdbc.query(
+                    "SELECT course_name, dtm, commulative FROM tbl_course_txn "
+                  + "WHERE inst_id = ? AND months = ? AND years = ? ORDER BY ctid",
+                    (rs, i) -> {
+                        Map<String, Object> c = new LinkedHashMap<>();
+                        c.put("name",   rs.getString("course_name") == null ? "" : rs.getString("course_name"));
+                        c.put("dtm",    rs.getInt("dtm"));
+                        c.put("cumMon", rs.getInt("commulative"));
+                        return c;
+                    }, instId, p.getMonths().trim(), p.getYears().trim()));
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -340,6 +357,7 @@ public class EntryController {
     }
 
     @PostMapping("/physical/save")
+    @Transactional
     public ResponseEntity<ApiResponse<String>> savePhysical(
             @RequestBody Map<String, Object> body,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
@@ -401,7 +419,21 @@ public class EntryController {
         int a3140       = intVal(body.get("a3140"));
         int above40     = intVal(body.get("above40"));
         int ph          = intVal(body.get("ph"));
-        int ltcTotal    = intVal(body.get("ltcTotal"));
+
+        // Long-term courses, course-wise (legacy: TA_LTC_DTM = Σ course DTM,
+        // TA_LTC_CUM = Σ course "cumulative up to the month" as entered by the institute)
+        List<Map<String, Object>> ltcCourses = new ArrayList<>();
+        if (body.get("ltcCourses") instanceof List<?> raw) {
+            for (Object o : raw) {
+                if (!(o instanceof Map<?, ?> c)) continue;
+                String name = c.get("name") == null ? "" : c.get("name").toString().trim();
+                int cDtm = intVal(c.get("dtm")), cCum = intVal(c.get("cumMon"));
+                if (name.isEmpty() && cDtm == 0 && cCum == 0) continue;
+                ltcCourses.add(Map.of("name", name, "dtm", cDtm, "cumMon", cCum));
+            }
+        }
+        int ltcTotal    = ltcCourses.stream().mapToInt(c -> (int) c.get("dtm")).sum();
+        int ltcCumTotal = ltcCourses.stream().mapToInt(c -> (int) c.get("cumMon")).sum();
 
         BigDecimal twMsmeVal   = dbd(body, "twMsmeValues");
         BigDecimal twOtherVal  = dbd(body, "twOtherValues");
@@ -476,10 +508,20 @@ public class EntryController {
         p.setLimit3Cum(         sumInt(prev, TblPhysical::getLimit3)         + a2630);
         p.setLimit4Cum(         sumInt(prev, TblPhysical::getLimit4)         + a3140);
         p.setAbovec(            sumInt(prev, TblPhysical::getAbove)          + above40);
-        p.setTaLtcCum(          sumInt(prev, TblPhysical::getTaLtcDtm)       + ltcTotal);
+        p.setTaLtcCum(          ltcCumTotal);
         p.setGeneralTtb(        sumInt(prev, TblPhysical::getGen)            + gen);
+        // Total trainees (a+b+c) cumulative = LTC + short-term (NTT) + others, as the legacy form computed
+        p.setTringTotalNotCum(  ltcCumTotal + p.getTaStcNttCum() + p.getTaOthersCum());
 
         phyRepo.save(p);
+
+        jdbc.update("DELETE FROM tbl_course_txn WHERE inst_id = ? AND months = ? AND years = ?",
+                instId, month, year);
+        for (Map<String, Object> c : ltcCourses) {
+            jdbc.update("INSERT INTO tbl_course_txn (inst_id, months, years, dtm, commulative, dates, course_name) "
+                      + "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    instId, month, year, c.get("dtm"), c.get("cumMon"), month + "-" + year, c.get("name"));
+        }
         return ResponseEntity.ok(ApiResponse.ok("Saved successfully"));
     }
 

@@ -160,13 +160,17 @@ export default function PhysicalPage() {
       const data = r.data?.data;
       if (!data) return;
       setPrev({ ...ZERO_PREV, ...(data.prevCum || {}) });
+      setLtcCourses([{ name: '', dtm: '', cumMon: '' }]);
       if (data.targets) {
         if (data.targets.phyTotalNos != null) setFix1(data.targets.phyTotalNos);
         if (data.targets.trngTotalNot != null) setFix2(data.targets.trngTotalNot);
       }
       if (data.hasData) {
         setHasData(true);
-        setDtm(prev => ({ ...prev, ...(data.existing || {}) }));
+        const { ltcCourses: savedLtc, ...ex } = data.existing || {};
+        setDtm(prev => ({ ...prev, ...ex }));
+        if (Array.isArray(savedLtc) && savedLtc.length)
+          setLtcCourses(savedLtc.map(c => ({ name: c.name || '', dtm: String(c.dtm ?? ''), cumMon: String(c.cumMon ?? '') })));
         if (user?.role !== 'SU') setBlocked(true);
       }
     }).catch(() => setLoadErr('Could not load form data from server.'))
@@ -176,11 +180,10 @@ export default function PhysicalPage() {
   const handleSave = () => {
     if (!selection?.instId) { message.error('No institute selected. Go to Dashboard first.'); return; }
     setSaving(true);
-    const ltcDtmTotal = ltcCourses.reduce((s, r) => s + n(r.dtm), 0);
     api.post('/entry/physical/save', {
       instId: selection.instId, month: selection.month, year: selection.year,
       ...dtm,
-      ltcTotal: ltcDtmTotal,
+      ltcCourses,
     }).then(() => message.success('Physical data saved successfully!'))
       .catch(err => message.error(err.response?.data?.message || 'Save failed'))
       .finally(() => setSaving(false));
@@ -226,7 +229,8 @@ export default function PhysicalPage() {
   const trngOtherCum   = PREV.trngOther   + n(dtm.trngOther);
 
   const trngTotalNocCum = PREV.trngTotalNoc + n(dtm.trngTotalNoc);
-  const trngTotalNotCum = PREV.trngTotalNot + n(dtm.trngTotalNot);
+  // (a+b+c) cumulative = LTC cumulative + short-term trainees cumulative + others (as in the legacy form)
+  const trngTotalNotCum = ltcCumTotal + stmNottCompCum + trngOtherCum;
 
   const seminarsNosCum = PREV.seminarsNos + n(dtm.seminarsNos);
   const seminarsPtsCum = PREV.seminarsPts + n(dtm.seminarsPts);
