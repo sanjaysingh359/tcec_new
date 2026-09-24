@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './BudgetPage.css';
+import '../../styles/entry-compact.css';
 
 /* ═══════════════════════════════════════════════════════
    Cell helpers — defined OUTSIDE component

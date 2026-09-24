@@ -1,111 +1,64 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { Select } from 'antd';
+import { LineChartOutlined, BankOutlined, ClusterOutlined } from '@ant-design/icons';
 import api from '../../services/api';
+import ReportSelector from '../../components/ReportSelector';
 
-const YEARS = [
-  '2026-2027','2025-2026','2024-2025','2023-2024','2022-2023',
-  '2021-2022','2020-2021','2019-2020','2018-2019','2017-2018',
-  '2016-2017','2015-2016','2014-2015','2013-2014','2012-2013','2011-2012',
-];
-
-function getDefaultYear() {
-  const d = new Date();
-  const y = d.getFullYear();
-  return d.getMonth() >= 3 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
-}
+const ALL = 'totalInstitutes';
+const ALL_NAME = 'Cumulative Of All Institutes';
 
 export default function GraphicalReportPage() {
-  const { selection } = useAuth();
-  const navigate = useNavigate();
-
   const [institutes, setInstitutes] = useState([]);
   const [loadingInst, setLoadingInst] = useState(true);
   const [instError, setInstError] = useState(null);
-
-  const [selectedInst, setSelectedInst] = useState('totalInstitutes');
-  const [selectedYear, setSelectedYear] = useState(selection?.year || getDefaultYear());
+  const [selectedInst, setSelectedInst] = useState(ALL);
 
   useEffect(() => {
     setLoadingInst(true);
     api.get('/institutes/active')
-      .then(res => {
-        setInstitutes(res.data?.data || []);
-        setInstError(null);
-      })
-      .catch(() => {
-        setInstError('Could not load institutes. Using offline mode.');
-        setInstitutes([]);
-      })
+      .then(res => { setInstitutes(res.data?.data || []); setInstError(null); })
+      .catch(() => { setInstError('Could not load institutes — only the cumulative view is available.'); setInstitutes([]); })
       .finally(() => setLoadingInst(false));
   }, []);
 
-  function handleGenerate(e) {
-    e.preventDefault();
-    const isAll = selectedInst === 'totalInstitutes';
-    const instName = isAll
-      ? 'Cumulative Of All Institutes'
-      : (institutes.find(i => i.instId === selectedInst)?.instName || selectedInst);
-
-    navigate('/app/reports/graphical/chart', {
-      state: { instId: selectedInst, instName, year: selectedYear, isAll },
-    });
-  }
+  const isAll = selectedInst === ALL;
+  const instName = isAll ? ALL_NAME : (institutes.find(i => i.instId === selectedInst)?.instName || selectedInst);
 
   return (
-    <div className="gr-page">
-      <div className="gr-title-bar">
-        Check your monthly progress report of MSME-AB in Graphical Representation
-      </div>
-
-      {instError && (
-        <div className="gr-warn">{instError}</div>
+    <ReportSelector
+      title="Graphical Representation"
+      description="Month-by-month charts of the monthly progress report of MSME-AB for a financial year."
+      target="/app/reports/graphical/chart"
+      icon={<LineChartOutlined />}
+      yearOnly
+      includes={[
+        'Revenue, recurring expenditure and surplus — monthly and cumulative',
+        'Trainees trained — monthly and cumulative',
+        'Units assisted — monthly and cumulative',
+        'For one institute or all institutes combined',
+      ]}
+      note={instError}
+      top={(
+        <>
+          <span className="rs2-inst-label">Institute / Tool Room</span>
+          <Select
+            className="rs2-inst-select"
+            size="large"
+            showSearch
+            loading={loadingInst}
+            value={selectedInst}
+            onChange={setSelectedInst}
+            optionFilterProp="label"
+            suffixIcon={<BankOutlined />}
+            options={[
+              { value: ALL, label: `${ALL_NAME} (all institutes)` },
+              ...institutes.map(i => ({ value: i.instId, label: i.instName })),
+            ]}
+          />
+        </>
       )}
-
-      <form onSubmit={handleGenerate} autoComplete="off">
-        <table className="gr-form-tbl" cellPadding="0" cellSpacing="0">
-          <tbody>
-            <tr>
-              <td className="gr-lbl">Institute / Tool Room</td>
-              <td className="gr-inp">
-                <select
-                  value={selectedInst}
-                  onChange={e => setSelectedInst(e.target.value)}
-                  className="lp-field gr-select"
-                  disabled={loadingInst}
-                >
-                  <option value="totalInstitutes">Cumulative Of All Institutes</option>
-                  {institutes.map(inst => (
-                    <option key={inst.instId} value={inst.instId}>{inst.instName}</option>
-                  ))}
-                </select>
-                {loadingInst && <span className="gr-loading"> Loading...</span>}
-              </td>
-            </tr>
-            <tr>
-              <td className="gr-lbl">Year</td>
-              <td className="gr-inp">
-                <select
-                  value={selectedYear}
-                  onChange={e => setSelectedYear(e.target.value)}
-                  className="lp-field gr-select"
-                >
-                  {YEARS.map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </td>
-            </tr>
-            <tr>
-              <td colSpan="2" className="gr-btn-row">
-                <button type="submit" className="gr-generate-btn">
-                  Generate
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </form>
-    </div>
+      subject={<>{isAll ? <ClusterOutlined /> : <BankOutlined />} {instName}</>}
+      buildState={(_month, _monthName, year) => ({ instId: selectedInst, instName, year, isAll })}
+    />
   );
 }

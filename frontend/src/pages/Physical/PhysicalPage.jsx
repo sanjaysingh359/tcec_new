@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './PhysicalPage.css';
+import '../../styles/entry-compact.css';
 
 /* ═══════════════════════════════════════════════════════
    Cell helpers — defined OUTSIDE component to avoid remount

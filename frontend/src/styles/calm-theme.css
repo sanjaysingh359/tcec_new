@@ -1,0 +1,164 @@
+/* ════════════════════════════════════════════════════════════════════
+   CALM THEME — loaded last (main.jsx), overrides colour only.
+   One main colour (navy), grey neutrals, and gold ONLY for "current /
+   selected". Red / green are kept for status (negative, saved, not sent).
+   The tricolour rule appears once: under the top header.
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  --c-navy: #073354;
+  --c-navy-2: #1f5f96;
+  --c-ink: #0f2440;
+  --c-ink-2: #4a5a6c;
+  --c-ink-3: #8a99aa;
+  --c-line: #dfe7f0;
+  --c-tint: #eaf1f9;
+  --c-soft: #f3f6fa;
+}
+
+/* ── 1. Page headers: light cards instead of a second dark band ── */
+:is(.fin-hero, .phy-hero, .bud-hero, .plc-hero, .tgt-hero, .home-hero, .cp-hero, .ct-hero, .md-hero,
+    .ast-hero, .gc-hero, .tg-hero, .tb-hero, .rs2-hero, .ach-titlebar, .gem-titlebar) {
+  background: #fff !important;
+  color: var(--c-ink) !important;
+  border: 1px solid var(--c-line) !important;
+  border-left: 4px solid var(--c-navy) !important;
+  box-shadow: 0 2px 10px rgba(7,51,84,0.05) !important;
+}
+:is(.fin-hero, .phy-hero, .bud-hero, .plc-hero, .tgt-hero, .home-hero, .cp-hero, .ct-hero, .md-hero,
+    .ast-hero, .gc-hero, .tg-hero, .tb-hero, .rs2-hero)::after { display: none !important; }
+
+:is(.fin-hero, .phy-hero, .bud-hero, .plc-hero, .tgt-hero, .home-hero, .cp-hero, .ct-hero, .md-hero,
+    .ast-hero, .gc-hero, .tg-hero, .tb-hero, .rs2-hero, .ach-titlebar, .gem-titlebar)
+  :is(h1, h2, [class*="hero-title"], .ach-institute) { color: var(--c-ink) !important; }
+
+:is(.fin-hero, .phy-hero, .bud-hero, .plc-hero, .tgt-hero, .home-hero, .cp-hero, .ct-hero, .md-hero,
+    .ast-hero, .gc-hero, .tg-hero, .tb-hero, .rs2-hero, .ach-titlebar, .gem-titlebar)
+  :is([class*="kicker"], .ach-page-label) { color: var(--c-ink-3) !important; opacity: 1 !important; }
+
+:is(.fin-hero, .phy-hero, .bud-hero, .plc-hero, .tgt-hero, .home-hero, .cp-hero, .ct-hero, .md-hero,
+    .ast-hero, .gc-hero, .tg-hero, .tb-hero, .rs2-hero, .ach-titlebar, .gem-titlebar)
+  :is(p, [class*="hero-inst"]) { color: var(--c-ink-2) !important; }
+
+:is(.cp-hero, .md-hero, .ast-hero, .gc-hero, .tg-hero, .tb-hero, .rs2-hero) [class*="hero-icon"] {
+  background: var(--c-tint) !important;
+  color: var(--c-navy) !important;
+  border: none !important;
+}
+
+/* chips in headers → quiet grey */
+:is(.fin-hero-chip, .phy-hero-chip, .bud-hero-chip, .plc-hero-chip, .tgt-hero-chip, .ach-meta-chip),
+.home-hero-meta span:not(.is-entry):not(.is-report) {
+  background: var(--c-soft) !important;
+  color: var(--c-ink) !important;
+  border: 1px solid var(--c-line) !important;
+}
+.home-hero-meta .is-entry  { background: #e6f4ea !important; color: #1e5c2e !important; border-color: #b9dcc3 !important; }
+.home-hero-meta .is-report { background: #e3f3fc !important; color: #005b8a !important; border-color: #b6dcf2 !important; }
+
+/* header buttons: outline; the main action (Export) is solid navy */
+:is(.tb-hero, .gc-hero) :is(.tb-btn, .gc-btn), .home-switch {
+  background: #fff !important;
+  color: var(--c-navy) !important;
+  border: 1px solid #cdd8e4 !important;
+  box-shadow: none !important;
+}
+:is(.tb-hero, .gc-hero) :is(.tb-btn, .gc-btn):hover:not(:disabled), .home-switch:hover {
+  background: var(--c-soft) !important; border-color: var(--c-navy-2) !important; transform: none !important;
+}
+.tb-hero .tb-btn:not(.tb-btn-ghost), .gc-hero .gc-btn:not(.gc-btn-ghost) {
+  background: var(--c-navy) !important; color: #fff !important; border-color: var(--c-navy) !important;
+}
+.tb-hero .tb-btn:not(.tb-btn-ghost):hover:not(:disabled),
+.gc-hero .gc-btn:not(.gc-btn-ghost):hover:not(:disabled) { background: var(--c-navy-2) !important; }
+
+/* graphical chart header toggles */
+.gc-hero .gc-seg { background: var(--c-soft) !important; border-color: var(--c-line) !important; }
+.gc-hero .gc-seg button { color: var(--c-ink-2) !important; }
+.gc-hero .gc-seg button.is-on { background: var(--c-navy) !important; color: #fff !important; }
+
+/* MPR report toolbar */
+.mpr-actions { background: #fff !important; border-bottom: 1px solid var(--c-line) !important; }
+.mpr-back-btn { background: #fff !important; color: var(--c-navy) !important; border-color: #cdd8e4 !important; }
+.mpr-back-btn:hover { background: var(--c-soft) !important; }
+.mpr-action-title b { color: var(--c-ink) !important; }
+.mpr-action-title span { color: var(--c-ink-2) !important; }
+.mpr-jump button { background: var(--c-soft) !important; color: var(--c-ink) !important; border-color: var(--c-line) !important; }
+.mpr-jump button:hover { background: var(--c-navy) !important; color: #fff !important; border-color: var(--c-navy) !important; }
+.mpr-print-btn { background: var(--c-navy) !important; color: #fff !important; }
+.mpr-print-btn:hover { background: var(--c-navy-2) !important; }
+
+/* ── 2. App frame: header + sidebar + footer ── */
+.sn-brand {
+  background: linear-gradient(160deg, #143a63 0%, #0e2a4a 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.sn-brand-monogram { background: none !important; -webkit-text-fill-color: #fff !important; color: #fff !important; }
+.ml-topbar-app, .as-org-app { background: rgba(255,255,255,0.14) !important; color: #fff !important; }
+.ml-avatar { background: #fff !important; color: var(--c-navy) !important; }
+.ml-footer, .as-foot {
+  background: #fff !important;
+  color: var(--c-ink-3) !important;
+  border-top: 1px solid var(--c-line);
+  font-weight: 600 !important;
+}
+
+/* ── 3. Section number badges → navy tint (gold is for "current" only) ── */
+:is(.fin-badge, .phy-badge, .bud-badge, .plc-badge, .tgt-badge) {
+  background: var(--c-tint) !important;
+  color: var(--c-navy) !important;
+  box-shadow: none !important;
+}
+.mpr-sec-letter { background: #fff !important; color: var(--c-navy) !important; }
+
+/* ── 4. Summary tiles: one neutral accent; red / green / amber stay (status) ── */
+:is(.fin-k-teal, .fin-k-navy, .fin-k-gold, .bud-k-teal, .bud-k-navy, .bud-k-gold,
+    .phy-k-gold, .phy-k-navy, .phy-k-purple, .phy-k-teal, .tgt-k-gold, .tgt-k-navy, .tgt-k-teal,
+    .ast-k-navy, .ast-k-gold, .tg-k-blue, .tg-k-orange, .tg-k-aqua, .tg-k-gold,
+    .tb-k-navy, .tb-k-gold, .tb-k-slate, .tb-k-blue, .tb-k-orange, .tb-k-aqua, .tb-k-purple) {
+  --k: var(--c-navy-2) !important;
+  --k-bg: var(--c-tint) !important;
+}
+
+/* ── 5. Cash / accrual and placement categories: navy shades instead of teal / purple ── */
+.fin-page.fin-page { --fin-cash: #1f5f96; --fin-cash-bg: #eaf1f9; --fin-accr: #3d5a78; --fin-accr-bg: #eef1f5; }
+.tgt-page.tgt-page { --tgt-cash: #1f5f96; --tgt-cash-bg: #eaf1f9; --tgt-accr: #3d5a78; --tgt-accr-bg: #eef1f5; }
+.plc-page.plc-page { --plc-cat-b: #1f5f96; --plc-cat-b-bg: #eaf1f9; --plc-cat-c: #3d5a78; --plc-cat-c-bg: #eef1f5; }
+:is(.fin-pct-bar, .phy-pct-bar, .tgt-bar) span { background: var(--c-navy-2) !important; }
+
+/* ── 6. Inputs: white with grey border, blue focus ── */
+:is(.fin-input, .phy-input, .bud-input, .plc-input, .tgt-input):not(:disabled) {
+  background: #fff !important;
+  border-color: #cdd8e4 !important;
+  color: var(--c-ink) !important;
+}
+:is(.fin-input, .phy-input, .bud-input, .plc-input, .tgt-input):focus {
+  border-color: var(--c-navy-2) !important;
+  box-shadow: 0 0 0 3px rgba(31,95,150,0.15) !important;
+}
+:is(.fin-tgt, .phy-tgt) { background: var(--c-soft) !important; color: #3d5a78 !important; }
+.ach-page :is(.ach-editor-body, .ach-cell-ta, .ach-cell-inp, .ach-num-inp) { background: #fff !important; }
+
+/* ── 7. Tables: neutral highlight columns ── */
+.tb-table th.tb-tot { background: #12406b !important; }
+.tb-table td.tb-tot, .tb-table tbody tr:nth-child(even) td.tb-tot { background: var(--c-soft) !important; }
+.tb-table tfoot td.tb-tot { background: #dfe8f2 !important; }
+.ast-table th.is-cur { background: var(--c-navy-2) !important; }
+.ast-table td.is-cur { background: #f3f7fc !important; }
+.mpr-tgt, .mpr-cum { background: #f7f9fc !important; }
+.mpr-dtm, .mpr-pct { background: #fff !important; }
+.mpr-row-alt td, .mpr-row-alt td.mpr-dtm, .mpr-row-alt td.mpr-cum { background-color: #fafbfd !important; }
+.mpr-text-box, .mpr-text-cell { background: #fff !important; }
+
+/* ── 8. Dashboard, home, contact, selector details ── */
+.db2-avatar { background: var(--c-navy) !important; }
+.db2-month.is-now::after { background: var(--c-navy-2) !important; }
+.seg-a { background: #1f5f96 !important; }
+.seg-b { background: #7fa6c9 !important; }
+.home-trend-col.is-cur .home-trend-bar span { background: #FFD700 !important; }   /* current month = gold */
+.home-trend-col.is-cur .home-trend-lbl { color: var(--c-ink) !important; }
+.ct-card-tech { --ct-accent: #1f5f96 !important; --ct-tint: #eaf1f9 !important; }
+.rs2-sum-year, .rs2-fy-range .anticon { color: var(--c-navy-2) !important; }
+
+/* Home: form cards and progress bars share one accent (status stays in the pills) */
+.home-form, .home-prog { --c: var(--c-navy-2) !important; }

@@ -72,9 +72,9 @@ function Progress({ icon, label, value, target, unit, color }) {
   );
 }
 
-function Section({ title, sub, right, children }) {
+function Section({ title, sub, right, className = '', children }) {
   return (
-    <section className="home-sec">
+    <section className={`home-sec ${className}`.trim()}>
       <div className="home-sec-head">
         <div><h2>{title}</h2>{sub && <p>{sub}</p>}</div>
         {right}
@@ -233,7 +233,7 @@ function AdminView({ selection }) {
 
   return (
     <>
-      <div className="home-two">
+      <div className="home-two home-three">
         <Section title={`Submission status — ${selection.monthName} ${selection.year}`}
           sub="MPR submission by institutes (Financial + Physical) for the selected month.">
           {!mpr ? <div className="home-loading"><Spin /></div> : (
@@ -278,21 +278,21 @@ function AdminView({ selection }) {
             </div>
           )}
         </Section>
-      </div>
 
-      <Section title={`Complete submissions through ${selection.year}`} sub="Number of institutes with both Financial and Physical data, month by month.">
-        {!mpr ? <div className="home-loading"><Spin /></div> : (
-          <div className="home-trend">
-            {trend.map((v, i) => (
-              <div key={i} className={`home-trend-col${i === monthIdx ? ' is-cur' : ''}`}>
-                <span className="home-trend-val">{v}</span>
-                <div className="home-trend-bar"><span style={{ height: `${(v / trendMax) * 100}%` }} /></div>
-                <span className="home-trend-lbl">{MONTHS[i]}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
+        <Section title={`Complete submissions through ${selection.year}`} sub="Number of institutes with both Financial and Physical data, month by month.">
+          {!mpr ? <div className="home-loading"><Spin /></div> : (
+            <div className="home-trend">
+              {trend.map((v, i) => (
+                <div key={i} className={`home-trend-col${i === monthIdx ? ' is-cur' : ''}`}>
+                  <span className="home-trend-val">{v}</span>
+                  <div className="home-trend-bar"><span style={{ height: `${(v / trendMax) * 100}%` }} /></div>
+                  <span className="home-trend-lbl">{MONTHS[i]}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+      </div>
     </>
   );
 }
@@ -339,14 +339,14 @@ export default function HomePage() {
 
       {/* ── Report shortcuts ── */}
       {!isEntry && (
-        <Section title="Reports" sub="Open a report — you'll choose the month / year on the next screen.">
+        <Section title="Reports" className="home-reports" sub="Open a report — you'll choose the month / year on the next screen.">
           <div className="home-groups">
             {groups.map(g => (
               <div key={g.title} className="home-group">
                 <div className="home-group-title">{g.title}</div>
                 <div className="home-links">
                   {g.items.map(i => (
-                    <button key={i.key} className="home-link" onClick={() => navigate(i.key)}>
+                    <button key={i.key} className="home-link" title={i.desc} onClick={() => navigate(i.key)}>
                       <span className="home-link-icon">{i.icon}</span>
                       <span className="home-link-body"><b>{i.label}</b><small>{i.desc}</small></span>
                       <ArrowRightOutlined className="home-link-go" />

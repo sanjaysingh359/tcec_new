@@ -4,6 +4,7 @@ import { PlusOutlined, DeleteOutlined, PrinterOutlined } from '@ant-design/icons
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './AchievementPage.css';
+import '../../styles/entry-compact.css';
 
 /* ═══════════════════════════════════════════════════════
    Mini Rich-Text Editor (contentEditable + toolbar)

@@ -221,3 +221,105 @@
   .home-stat-row { grid-template-columns: repeat(2, 1fr); }
   .home-hero h1 { font-size: 21px; }
 }
+
+/* ═══════════════ Compact view (entry + report home) ═══════════════ */
+.home-page { gap: 10px; }
+.home-hero { padding: 10px 18px 12px; border-radius: 12px; gap: 12px; }
+.home-hero-kicker { font-size: 11.5px; }
+.home-hero h1 { font-size: 19px; margin: 0 0 5px; }
+.home-hero-meta { gap: 6px; }
+.home-hero-meta span { font-size: 11px; padding: 2px 9px; }
+.home-switch { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+
+.home-sec { padding: 10px 14px 12px; border-radius: 12px; }
+.home-sec-head { margin-bottom: 8px; }
+.home-sec-head h2 { font-size: 14px; }
+.home-sec-head p { font-size: 11.5px; margin-top: 1px; }
+.home-two { gap: 10px; }
+
+.home-ring { width: 54px; height: 54px; }
+.home-ring span { font-size: 14px; }
+.home-ring small { font-size: 8.5px; }
+
+.home-forms { gap: 8px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.home-form { padding: 7px 12px; gap: 10px; border-radius: 10px; }
+.home-form-icon { width: 32px; height: 32px; font-size: 15px; border-radius: 8px; }
+.home-form-label { font-size: 13px; }
+.home-form-desc { font-size: 11px; margin-bottom: 3px; }
+.home-pill { font-size: 10.5px; padding: 2px 8px; }
+
+.home-progs { gap: 9px; }
+.home-prog-icon { width: 26px; height: 26px; font-size: 13px; border-radius: 7px; }
+.home-prog-lbl { font-size: 12.5px; }
+.home-prog-pct { font-size: 13px; }
+.home-prog-bar { height: 7px; margin: 5px 0 3px; }
+.home-prog-nums { font-size: 11.5px; }
+.home-prog-nums b { font-size: 12px; }
+
+.home-year th { padding: 2px 2px 4px; }
+.home-year td { padding: 3px 2px; }
+.home-dot { width: 12px; height: 12px; }
+.home-year-legend { margin-top: 6px; gap: 12px; font-size: 11px; }
+.home-year-legend .home-dot { width: 10px; height: 10px; }
+
+.home-stack { height: 12px; }
+.home-stat-row { margin: 8px 0; gap: 6px; }
+.home-stat { padding: 5px 8px; }
+.home-stat b { font-size: 18px; }
+.home-pending-title { margin-bottom: 5px; font-size: 12px; }
+.home-chips { gap: 4px; max-height: 110px; }
+.home-chip { font-size: 11px; padding: 2px 8px; }
+
+.home-trend { height: 130px; gap: 8px; }
+.home-trend-col { gap: 4px; }
+.home-trend-val, .home-trend-lbl { font-size: 11px; }
+
+.home-groups { gap: 10px; }
+.home-group-title { margin-bottom: 5px; font-size: 10.5px; }
+.home-links { gap: 8px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.home-link { padding: 7px 12px; gap: 10px; border-radius: 10px; }
+.home-link-icon { width: 30px; height: 30px; font-size: 14px; border-radius: 8px; }
+.home-link-body b { font-size: 12.5px; }
+.home-link-body small { font-size: 10.5px; }
+
+/* title + session info on one line */
+.home-hero h1 { display: inline-block; vertical-align: middle; margin: 0 12px 0 0; }
+.home-hero-meta { display: inline-flex; vertical-align: middle; }
+
+/* report home: status · progress · trend side by side */
+.home-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1200px) { .home-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px)  { .home-three { grid-template-columns: 1fr; } }
+.home-three .home-trend { gap: 4px; height: 150px; }
+.home-three .home-trend-val { font-size: 10.5px; }
+.home-three .home-trend-lbl { font-size: 10px; }
+
+/* report shortcuts: one line each, description in the tooltip */
+.home-link-body small { display: none; }
+.home-links { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+
+/* keep the switch button on the header row */
+.home-hero { flex-wrap: nowrap; }
+.home-hero-main { flex: 1; min-width: 0; }
+.home-switch { white-space: nowrap; flex-shrink: 0; }
+
+/* three-column row: one-line subtitles, shorter pending list */
+.home-three .home-sec-head p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-three .home-sec-head > div { min-width: 0; }
+.home-three .home-chips { max-height: 76px; }
+
+/* report groups: label on the left, buttons on the same row */
+.home-group { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 10px; }
+.home-group-title { margin: 0; }
+.home-link { padding: 6px 10px; }
+.home-link-body b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) { .home-group { grid-template-columns: 1fr; } }
+.home-link { padding: 4px 10px; }
+.home-link-icon { width: 26px; height: 26px; font-size: 13px; }
+.home-groups { gap: 6px; }
+.home-links { gap: 6px; }
+.home-reports .home-sec-head p { display: none; }
+
+/* greeting on its own line; month / section / role chips already sit in the top header */
+.home-hero-kicker { display: block; }
+.home-hero-meta { display: none; }

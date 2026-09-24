@@ -1,0 +1,181 @@
+/* ════════════════════════════════════════════════════════════════
+   Compact view for the data-entry forms (Target, Financial, Physical,
+   Budget, Placement, Achievement). Imported after each page's own CSS;
+   selectors are scoped under the page class so they win on specificity.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Financial ── */
+.fin-page { gap: 10px; padding-bottom: 0; }
+.fin-page .fin-hero { padding: 10px 18px 13px; border-radius: 12px; }
+.fin-page .fin-hero-main { gap: 1px; }
+.fin-page .fin-hero-kicker { font-size: 10px; }
+.fin-page .fin-hero-title { font-size: 19px; }
+.fin-page .fin-hero-inst { font-size: 12.5px; }
+.fin-page .fin-hero-side { flex-direction: row; align-items: center; gap: 6px; }
+.fin-page .fin-hero-chip,
+.fin-page .fin-status { font-size: 11px; padding: 3px 10px; }
+.fin-page .fin-kpis { gap: 10px; }
+.fin-page .fin-kpi { padding: 7px 12px; gap: 10px; border-radius: 10px; box-shadow: 0 2px 8px rgba(7,51,84,0.05); }
+.fin-page .fin-kpi-icon { width: 32px; height: 32px; font-size: 15px; border-radius: 8px; }
+.fin-page .fin-kpi-label { font-size: 11px; }
+.fin-page .fin-kpi-value { font-size: 18px; }
+.fin-page .fin-kpi-sub { font-size: 10.5px; }
+.fin-page .fin-card { border-radius: 12px; }
+.fin-page .fin-card-head { padding: 7px 14px; gap: 10px; }
+.fin-page .fin-card-head h2 { font-size: 14px; }
+.fin-page .fin-card-head p { font-size: 11.5px; margin-top: 0; }
+.fin-page .fin-badge { width: 28px; height: 28px; font-size: 14px; border-radius: 8px; }
+.fin-page .fin-th { padding: 5px 6px; font-size: 11.5px; line-height: 1.2; }
+.fin-page .fin-th-sub { padding: 3px 6px; }
+.fin-page .fin-cell { padding: 3px 6px; }
+.fin-page .fin-label { font-size: 12.5px; }
+.fin-page .fin-group-row td { padding: 3px 14px; font-size: 11.5px; }
+.fin-page .fin-input { height: 27px; font-size: 12.5px; border-radius: 6px; }
+.fin-page .fin-actions { padding: 7px 14px; border-radius: 10px; }
+
+/* ── Physical ── */
+.phy-page { gap: 10px; padding-bottom: 0; }
+.phy-page .phy-hero { padding: 10px 18px 13px; border-radius: 12px; }
+.phy-page .phy-hero-main { gap: 1px; }
+.phy-page .phy-hero-kicker { font-size: 10px; }
+.phy-page .phy-hero-title { font-size: 19px; }
+.phy-page .phy-hero-inst { font-size: 12.5px; }
+.phy-page .phy-hero-side { flex-direction: row; align-items: center; gap: 6px; }
+.phy-page .phy-hero-chip,
+.phy-page .phy-status { font-size: 11px; padding: 3px 10px; }
+.phy-page .phy-kpis { gap: 10px; }
+.phy-page .phy-kpi { padding: 7px 12px; gap: 10px; border-radius: 10px; box-shadow: 0 2px 8px rgba(7,51,84,0.05); }
+.phy-page .phy-kpi-icon { width: 32px; height: 32px; font-size: 15px; border-radius: 8px; }
+.phy-page .phy-kpi-label { font-size: 11px; }
+.phy-page .phy-kpi-value { font-size: 18px; }
+.phy-page .phy-kpi-sub { font-size: 10.5px; }
+.phy-page .phy-card { border-radius: 12px; }
+.phy-page .phy-card-head { padding: 7px 14px; gap: 10px; }
+.phy-page .phy-card-head h2 { font-size: 14px; }
+.phy-page .phy-card-head p { font-size: 11.5px; margin-top: 0; }
+.phy-page .phy-badge { width: 28px; height: 28px; font-size: 14px; border-radius: 8px; }
+.phy-page .phy-th { padding: 5px 6px; font-size: 11.5px; line-height: 1.2; }
+.phy-page .phy-th-sub { padding: 3px 6px; }
+.phy-page .phy-cell { padding: 3px 6px; }
+.phy-page .phy-label { font-size: 12.5px; }
+.phy-page .phy-group-row td { padding: 3px 14px; font-size: 11.5px; }
+.phy-page .phy-input { height: 27px; font-size: 12.5px; border-radius: 6px; }
+.phy-page .phy-actions { padding: 7px 14px; border-radius: 10px; }
+
+/* ── Budget ── */
+.bud-page { gap: 10px; padding-bottom: 0; }
+.bud-page .bud-hero { padding: 10px 18px 13px; border-radius: 12px; }
+.bud-page .bud-hero-main { gap: 1px; }
+.bud-page .bud-hero-kicker { font-size: 10px; }
+.bud-page .bud-hero-title { font-size: 19px; }
+.bud-page .bud-hero-inst { font-size: 12.5px; }
+.bud-page .bud-hero-side { flex-direction: row; align-items: center; gap: 6px; }
+.bud-page .bud-hero-chip,
+.bud-page .bud-status { font-size: 11px; padding: 3px 10px; }
+.bud-page .bud-kpis { gap: 10px; }
+.bud-page .bud-kpi { padding: 7px 12px; gap: 10px; border-radius: 10px; box-shadow: 0 2px 8px rgba(7,51,84,0.05); }
+.bud-page .bud-kpi-icon { width: 32px; height: 32px; font-size: 15px; border-radius: 8px; }
+.bud-page .bud-kpi-label { font-size: 11px; }
+.bud-page .bud-kpi-value { font-size: 18px; }
+.bud-page .bud-kpi-sub { font-size: 10.5px; }
+.bud-page .bud-card { border-radius: 12px; }
+.bud-page .bud-card-head { padding: 7px 14px; gap: 10px; }
+.bud-page .bud-card-head h2 { font-size: 14px; }
+.bud-page .bud-card-head p { font-size: 11.5px; margin-top: 0; }
+.bud-page .bud-badge { width: 28px; height: 28px; font-size: 14px; border-radius: 8px; }
+.bud-page .bud-th { padding: 5px 6px; font-size: 11.5px; line-height: 1.2; }
+.bud-page .bud-th-sub { padding: 3px 6px; }
+.bud-page .bud-cell { padding: 3px 6px; }
+.bud-page .bud-label { font-size: 12.5px; }
+.bud-page .bud-group-row td { padding: 3px 14px; font-size: 11.5px; }
+.bud-page .bud-input { height: 27px; font-size: 12.5px; border-radius: 6px; }
+.bud-page .bud-actions { padding: 7px 14px; border-radius: 10px; }
+
+/* ── Placement ── */
+.plc-page { gap: 10px; padding-bottom: 0; }
+.plc-page .plc-hero { padding: 10px 18px 13px; border-radius: 12px; }
+.plc-page .plc-hero-main { gap: 1px; }
+.plc-page .plc-hero-kicker { font-size: 10px; }
+.plc-page .plc-hero-title { font-size: 19px; }
+.plc-page .plc-hero-inst { font-size: 12.5px; }
+.plc-page .plc-hero-side { flex-direction: row; align-items: center; gap: 6px; }
+.plc-page .plc-hero-chip,
+.plc-page .plc-status { font-size: 11px; padding: 3px 10px; }
+.plc-page .plc-kpis { gap: 10px; }
+.plc-page .plc-kpi { padding: 7px 12px; gap: 10px; border-radius: 10px; box-shadow: 0 2px 8px rgba(7,51,84,0.05); }
+.plc-page .plc-kpi-icon { width: 32px; height: 32px; font-size: 15px; border-radius: 8px; }
+.plc-page .plc-kpi-label { font-size: 11px; }
+.plc-page .plc-kpi-value { font-size: 18px; }
+.plc-page .plc-kpi-sub { font-size: 10.5px; }
+.plc-page .plc-card { border-radius: 12px; }
+.plc-page .plc-card-head { padding: 7px 14px; gap: 10px; }
+.plc-page .plc-card-head h2 { font-size: 14px; }
+.plc-page .plc-card-head p { font-size: 11.5px; margin-top: 0; }
+.plc-page .plc-badge { width: 28px; height: 28px; font-size: 14px; border-radius: 8px; }
+.plc-page .plc-th { padding: 5px 6px; font-size: 11.5px; line-height: 1.2; }
+.plc-page .plc-th-sub { padding: 3px 6px; }
+.plc-page .plc-cell { padding: 3px 6px; }
+.plc-page .plc-label { font-size: 12.5px; }
+.plc-page .plc-group-row td { padding: 3px 14px; font-size: 11.5px; }
+.plc-page .plc-input { height: 27px; font-size: 12.5px; border-radius: 6px; }
+.plc-page .plc-actions { padding: 7px 14px; border-radius: 10px; }
+
+/* ── Annual Target ── */
+.tgt-page { gap: 10px; padding-bottom: 0; }
+.tgt-page .tgt-hero { padding: 10px 18px 13px; border-radius: 12px; }
+.tgt-page .tgt-hero-main { gap: 1px; }
+.tgt-page .tgt-hero-kicker { font-size: 10px; }
+.tgt-page .tgt-hero-title { font-size: 19px; }
+.tgt-page .tgt-hero-inst { font-size: 12.5px; }
+.tgt-page .tgt-hero-side { flex-direction: row; align-items: center; gap: 6px; }
+.tgt-page .tgt-hero-chip,
+.tgt-page .tgt-status { font-size: 11px; padding: 3px 10px; }
+.tgt-page .tgt-kpis { gap: 10px; }
+.tgt-page .tgt-kpi { padding: 7px 12px; gap: 10px; border-radius: 10px; box-shadow: 0 2px 8px rgba(7,51,84,0.05); }
+.tgt-page .tgt-kpi-icon { width: 32px; height: 32px; font-size: 15px; border-radius: 8px; }
+.tgt-page .tgt-kpi-label { font-size: 11px; }
+.tgt-page .tgt-kpi-value { font-size: 18px; }
+.tgt-page .tgt-kpi-sub { font-size: 10.5px; }
+.tgt-page .tgt-card { border-radius: 12px; }
+.tgt-page .tgt-card-head { padding: 7px 14px; gap: 10px; }
+.tgt-page .tgt-card-head h2 { font-size: 14px; }
+.tgt-page .tgt-card-head p { font-size: 11.5px; margin-top: 0; }
+.tgt-page .tgt-badge { width: 28px; height: 28px; font-size: 14px; border-radius: 8px; }
+.tgt-page .tgt-th { padding: 5px 6px; font-size: 11.5px; line-height: 1.2; }
+.tgt-page .tgt-th-sub { padding: 3px 6px; }
+.tgt-page .tgt-cell { padding: 3px 6px; }
+.tgt-page .tgt-label { font-size: 12.5px; }
+.tgt-page .tgt-group-row td { padding: 3px 14px; font-size: 11.5px; }
+.tgt-page .tgt-input { height: 27px; font-size: 12.5px; border-radius: 6px; }
+.tgt-page .tgt-actions { padding: 7px 14px; border-radius: 10px; }
+
+/* ── Annual Target: tiles ── */
+.tgt-page .tgt-tiles { gap: 10px; padding: 12px; }
+.tgt-page .tgt-tile { padding: 10px 12px; gap: 8px; border-top-width: 3px; }
+.tgt-page .tgt-tile-icon { width: 32px; height: 32px; font-size: 15px; }
+.tgt-page .tgt-tile-title { font-size: 13px; }
+.tgt-page .tgt-tile-help { font-size: 11px; line-height: 1.35; }
+.tgt-page .tgt-input-big { height: 36px; font-size: 17px; }
+
+/* ── Significant Achievement ── */
+.ach-page { padding-bottom: 12px; }
+.ach-page .ach-titlebar { padding: 6px 16px; border-radius: 10px; }
+.ach-page .ach-institute { font-size: 14px; }
+.ach-page .ach-page-label { font-size: 10px; }
+.ach-page .ach-meta-chip { font-size: 11px; padding: 2px 10px; }
+.ach-page .ach-main { padding: 10px 0 0; gap: 10px; }
+.ach-page .ach-note-banner { padding: 5px 12px; }
+.ach-page .ach-page-heading h2 { font-size: 18px; margin-bottom: 0; }
+.ach-page .ach-inst-sub { font-size: 12px; }
+.ach-page .ach-section-head { padding: 6px 12px; gap: 8px; }
+.ach-page .ach-section-num { width: 22px; height: 22px; font-size: 11px; }
+.ach-page .ach-section-title { font-size: 13px; }
+.ach-page .ach-card-body { padding: 8px 12px 10px; }
+.ach-page .ach-import-table th, .ach-page .ach-he-table th { padding: 5px 8px; font-size: 11.5px; }
+.ach-page .ach-import-table td { padding: 3px 6px; }
+.ach-page .ach-he-table td { padding: 4px 10px; }
+.ach-page .ach-cell-ta, .ach-page .ach-cell-inp { padding: 4px 8px; font-size: 12px; }
+.ach-page .ach-num-inp { padding: 3px 8px; font-size: 12.5px; }
+.ach-page .ach-toolbar { padding: 3px 6px; }
+.ach-page .ach-editor-body { padding: 6px 10px; font-size: 12.5px; line-height: 1.55; }
+.ach-page .ach-actions { padding: 6px 0 2px; }

@@ -1,147 +1,49 @@
-import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
-import { exportToExcel, usePrintOnlyReport } from '../../utils/reportUtils';
+import { FundOutlined, RiseOutlined, WalletOutlined, LineChartOutlined, TeamOutlined, ToolOutlined } from '@ant-design/icons';
+import InstituteTableReport, { fmt, pct } from './InstituteTableReport';
 
-const MOCK_INSTITUTES = [
-  'CFC Agra','CFC Aurangabad','CFC Bhiwadi','CFC Bhubaneswar','CFC Chennai',
-  'CFC Coimbatore','CFC Guwahati','CFC Hyderabad','CFC Jaipur','CFC Kolkata',
-  'CFC Mumbai','CFC Nagpur',
+/* T = target, A = achievement (legacy Performance Analysis) */
+const pair = (group, tone, t, a) => ({ group, tone, cols: [{ key: t, label: 'Target' }, { key: a, label: 'Achieved' }] });
+const COLUMNS = [
+  pair('Revenue (Rs. lakh)', 'd', 'revT', 'revA'),
+  pair('Rec. Expdr. (Rs. lakh)', 'c', 'expT', 'expA'),
+  pair('Surplus before Depreciation', 'd', 'surpT', 'surpA'),
+  pair('Trainees Trained', 'c', 'trainT', 'trainA'),
+  pair('Units Assisted', 'd', 'unitT', 'unitA'),
 ];
 
-function ri(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+const tile = (icon, label, a, t, tone, unit = '') => {
+  const p = pct(a, t);
+  return {
+    icon, label, tone,
+    value: `${unit}${fmt(a)}`,
+    progress: t > 0 ? p : null,
+    good: t > 0 && p >= 100 ? 'Target met' : null,
+    sub: t > 0 ? `${p >= 100 ? '' : `${p}% of `}target ${unit}${fmt(t)}` : 'No target',
+  };
+};
 
-function generateMockData() {
-  return MOCK_INSTITUTES.map(name => {
-    const revT   = ri(120, 280);
-    const revA   = ri(80, revT);
-    const expT   = ri(80, 200);
-    const expA   = ri(50, expT);
-    const surpT  = revT - expT;
-    const surpA  = revA - expA;
-    const trainT = ri(300, 800);
-    const trainA = ri(200, trainT);
-    const unitT  = ri(100, 400);
-    const unitA  = ri(60, unitT);
-    return { userId: name, revT, revA, expT, expA, surpT, surpA, trainT, trainA, unitT, unitA };
-  });
-}
+const tiles = t => [
+  tile(<RiseOutlined />, 'Revenue', t.revA, t.revT, 'blue', '₹ '),
+  tile(<WalletOutlined />, 'Rec. expenditure', t.expA, t.expT, 'orange', '₹ '),
+  tile(<LineChartOutlined />, 'Surplus (before dep.)', t.surpA, t.surpT, t.surpA < 0 ? 'red' : 'green', '₹ '),
+  tile(<TeamOutlined />, 'Trainees trained', t.trainA, t.trainT, 'aqua'),
+  tile(<ToolOutlined />, 'Units assisted', t.unitA, t.unitT, 'gold'),
+];
 
 export default function AnalysisReport() {
-  const { state }  = useLocation();
-  const navigate   = useNavigate();
-  const { month, monthName, year } = state || {};
-  const [rows, setRows]   = useState([]);
-  const [demo, setDemo]   = useState(false);
-  const [loading, setLoading] = useState(true);
-  usePrintOnlyReport();
-  const tableId = 'analysis-rpt-tbl';
-
-  useEffect(() => {
-    setLoading(true);
-    api.get('/reports/analysis', { params: { month, year } })
-      .then(r => { setRows(r.data?.data || []); setDemo(false); })
-      .catch(() => { setRows([]); setDemo(true); })
-      .finally(() => setLoading(false));
-  }, [month, year]);
-
-  function sum(key) { return rows.reduce((a, r) => a + (r[key] || 0), 0); }
-
   return (
-    <div className="rpt-page">
-      <div className="rpt-header">
-        <div>
-          <div className="rpt-header-title">Performance Analysis up to {monthName}-{year}</div>
-          {demo && <div className="rpt-demo-note">⚠ Could not load report data. Please try again.</div>}
-        </div>
-        <div className="rpt-header-actions">
-          <button className="rpt-action-btn rpt-btn-back"  onClick={() => navigate('/app/reports/analysis')}>← Back</button>
-          <button className="rpt-action-btn rpt-btn-print" onClick={() => window.print()}>🖨 Print</button>
-          <button className="rpt-action-btn rpt-btn-excel" onClick={() => exportToExcel(tableId, `Analysis_${monthName}_${year}.xls`)}>⬇ Export</button>
-        </div>
-      </div>
-
-      {loading && <div className="rpt-loading"><span className="gr-spinner" /> Loading…</div>}
-
-      {!loading && (
-        <div className="rpt-table-wrap">
-          <table id={tableId} className="rpt-table" cellPadding="0" cellSpacing="0">
-            <thead>
-              <tr>
-                <th className="rpt-th rpt-th-ctr" rowSpan="4" style={{ width:36 }}>S.No</th>
-                <th className="rpt-th rpt-th-left" rowSpan="4" style={{ minWidth:160 }}>Name of Technology Centre</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm" colSpan="10">
-                  Performance during year {year} up to {monthName}
-                </th>
-              </tr>
-              <tr>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm" colSpan="2">Revenue (Rs. in lakh)</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-cum" colSpan="2">Rec. Expdr. (Rs. in lakh)</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm" colSpan="2">Surplus</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-cum" colSpan="2">Trainees Trained</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm" colSpan="2">Units Assisted</th>
-              </tr>
-              <tr>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm" rowSpan="2">T</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm" rowSpan="2">A</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-cum" rowSpan="2">T</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-cum" rowSpan="2">A</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm" colSpan="2">Before Depreciation</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-cum" rowSpan="2">T</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-cum" rowSpan="2">A</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm" rowSpan="2">T</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm" rowSpan="2">A</th>
-              </tr>
-              <tr>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm">T</th>
-                <th className="rpt-th rpt-th-ctr rpt-th-dtm">A</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, idx) => (
-                <tr key={idx} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{idx + 1}</td>
-                  <td className="rpt-td">
-                    {r.noData && <span style={{ color:'red', marginRight:2 }}>*</span>}
-                    {r.userId}
-                  </td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.revT}</td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.revA}</td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.expT}</td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.expA}</td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.surpT}</td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.surpA}</td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.trainT}</td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.trainA}</td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.unitT}</td>
-                  <td className="rpt-td" style={{ textAlign:'center' }}>{r.unitA}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="rpt-foot-row">
-                <td className="rpt-td-total" colSpan="2" style={{ textAlign:'center' }}>Total</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('revT')}</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('revA')}</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('expT')}</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('expA')}</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('surpT')}</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('surpA')}</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('trainT')}</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('trainA')}</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('unitT')}</td>
-                <td className="rpt-td-total" style={{ textAlign:'center' }}>{sum('unitA')}</td>
-              </tr>
-            </tfoot>
-          </table>
-          {rows.some(r => r.noData) && (
-            <div style={{ fontSize:11, fontFamily:'Verdana,sans-serif', fontWeight:'bold', color:'red', padding:'4px 8px' }}>
-              <span style={{ color:'red', marginRight:4 }}>*</span>
-              :- No record is found for this technology centre.
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+    <InstituteTableReport
+      heading="Performance Analysis"
+      kicker="Reports · Target vs achievement"
+      icon={<FundOutlined />}
+      titleFor={(m, y) => `Performance Analysis up to ${m}-${y}`}
+      apiPath="/reports/analysis"
+      backPath="/app/reports/analysis"
+      tableId="analysis-rpt-tbl"
+      filePrefix="Analysis"
+      columns={COLUMNS}
+      tiles={tiles}
+      unitNote="amounts in Rs. lakh"
+    />
   );
 }

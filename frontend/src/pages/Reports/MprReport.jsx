@@ -50,7 +50,7 @@ function safeHtml(html) {
 /* Section wrapper: letter + title bar, then whatever table the caller supplies */
 function Block({ letter, title, note, children }) {
   return (
-    <section className="mpr-block">
+    <section className="mpr-block" id={letter ? `mpr-sec-${letter}` : undefined}>
       {title && (
         <div className="mpr-sec-hdr">
           {letter && <span className="mpr-sec-letter">{letter}</span>}
@@ -109,6 +109,13 @@ function BifurTable({ cols, total = true }) {
     </table>
   );
 }
+
+const SECTIONS = [
+  ['A', 'Financial'], ['B', 'Physical'], ['C', 'Category'], ['D', 'Gender'], ['E', 'Qualification'],
+  ['F', 'Age group'], ['G', 'Persons with disability'], ['H', 'Budget'], ['I', 'Staff strength'],
+  ['J', 'Machine procured'], ['K', 'Visits'], ['L', 'Significant achievements'], ['M', 'Short falls'],
+  ['N', 'Promotional activities'], ['O', 'NSQF'], ['P', 'Placement'],
+];
 
 const MONTH_NAMES = ['April','May','June','July','August','September','October','November','December','January','February','March'];
 
@@ -372,13 +379,19 @@ export default function MprReport() {
     <div className="mpr-page">
       <div className="mpr-doc">
 
-        {/* ── Action bar ── */}
+        {/* ── Toolbar: stays on top while scrolling; chips jump to a section ── */}
         <div className="mpr-actions">
-          <button className="mpr-back-btn" onClick={() => navigate('/app/reports/mpr')}>← Back</button>
+          <button className="mpr-back-btn" onClick={() => navigate('/app/reports/mpr')}>← Change month</button>
+          <div className="mpr-action-title">
+            <b>{instName}</b>
+            <span>{displayMonth} {year}</span>
+          </div>
+          <nav className="mpr-jump" aria-label="Jump to section">
+            {SECTIONS.map(([l, t]) => (
+              <button key={l} title={t} onClick={() => document.getElementById(`mpr-sec-${l}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{l}</button>
+            ))}
+          </nav>
           <button className="mpr-print-btn" onClick={() => window.print()}>🖨 Print</button>
-          <span className="mpr-action-note">
-            {instName} — {displayMonth} {year}
-          </span>
         </div>
 
         {/* ── Note banner ── */}

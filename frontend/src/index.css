@@ -675,115 +675,147 @@ body {
 /* ── Top bar ── */
 .ml-topbar {
   height: 60px;
-  background: #fff;
-  border-bottom: 1px solid #dde6ef;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  background:
+    radial-gradient(60% 180% at 100% 0%, rgba(255,215,0,0.10) 0%, transparent 55%),
+    linear-gradient(90deg, #0c1c31 0%, #073354 45%, #0d4f82 100%);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  gap: 16px;
+  padding: 0 16px 0 12px;
   flex-shrink: 0;
   position: relative;
   z-index: 200;
+  box-shadow: 0 4px 14px rgba(3,15,30,0.25);
+  font-family: var(--font-ui);
+}
+.ml-topbar::after {                 /* tricolour rule */
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: linear-gradient(to right, #FF9933 0 33.3%, #ffffff 33.3% 66.6%, #138808 66.6% 100%);
 }
 .ml-topbar-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  min-width: 0;
   overflow: hidden;
 }
 .ml-collapse-btn {
-  background: #f0f4f8;
-  border: 1px solid #dde6ef;
-  border-radius: 6px;
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 9px;
   font-size: 15px;
-  color: #073354;
+  color: #fff;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.ml-collapse-btn:hover { background: #dde9f5; }
-.ml-topbar-divider {
-  width: 1px;
-  height: 32px;
-  background: #dde6ef;
-  flex-shrink: 0;
-}
-.ml-topbar-logo {
-  height: 40px;
+.ml-collapse-btn:hover { background: #FFD700; color: #073354; border-color: #FFD700; }
+.ml-topbar-logo-tile {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 42px; padding: 3px 6px;
+  background: #fff;
+  border-radius: 9px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   flex-shrink: 0;
 }
-.ml-topbar-org { line-height: 1.3; min-width: 0; }
+.ml-topbar-logo { height: 36px; display: block; }
+.ml-topbar-org { line-height: 1.25; min-width: 0; }
 .ml-topbar-org-main {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
-  color: #073354;
-  font-family: Garamond, Georgia, serif;
+  color: #fff;
+  letter-spacing: 0.2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ml-topbar-org-sub { font-size: 10.5px; color: #6b7c8e; white-space: nowrap; }
+.ml-topbar-org-sub {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; color: rgba(255,255,255,0.7); white-space: nowrap;
+}
+.ml-topbar-app {
+  padding: 0 7px; border-radius: 5px;
+  background: #FFD700; color: #073354;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.6px; line-height: 16px;
+}
 
 .ml-topbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
-/* Session chips */
-.ml-chips { display: flex; gap: 6px; align-items: center; }
-.ml-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 20px;
-  padding: 3px 12px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  letter-spacing: 0.2px;
+/* Session context: institute · month · mode · switch */
+.ml-session {
+  display: flex; align-items: center;
+  height: 36px; padding: 0 4px 0 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 12.5px; font-weight: 600;
 }
-.ml-chip-inst   { background: #e8f0fb; color: #073354; border: 1px solid #b8d0ec; }
-.ml-chip-month  { background: #fdecea; color: #880000; border: 1px solid #f5b8b3; }
-.ml-chip-entry  { background: #e6f4ea; color: #1e5c2e; border: 1px solid #a8d5b3; }
-.ml-chip-report { background: #e3f3fc; color: #005b8a; border: 1px solid #9fd0ef; }
+.ml-session-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding-right: 12px; margin-right: 12px;
+  border-right: 1px solid rgba(255,255,255,0.18);
+  white-space: nowrap;
+}
+.ml-session-item .anticon { color: #FFD700; }
+.ml-session-inst span { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.ml-session-mode {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 0 9px; height: 24px; border-radius: 7px;
+  font-size: 11.5px; font-weight: 700;
+}
+.ml-session-mode.is-entry  { background: #e6f4ea; color: #1e5c2e; }
+.ml-session-mode.is-report { background: #e3f3fc; color: #005b8a; }
+.ml-session-switch {
+  width: 28px; height: 28px; margin-left: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 7px;
+  background: transparent; color: rgba(255,255,255,0.8);
+  cursor: pointer; font-size: 14px;
+}
+.ml-session-switch:hover { background: #FFD700; color: #073354; }
 
 /* User pill button */
 .ml-user-pill {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #f5f8fc;
-  border: 1px solid #dde6ef;
-  border-radius: 24px;
-  padding: 4px 12px 4px 4px;
+  display: flex; align-items: center; gap: 9px;
+  height: 40px; padding: 0 12px 0 4px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 22px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  color: #073354;
-  font-size: 12px;
-  font-weight: 600;
-}
-.ml-user-pill:hover { background: #ddeaf8; border-color: #b0cce6; }
-.ml-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #8B0000, #cc0000);
   color: #fff;
-  font-size: 12px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  font-family: var(--font-ui);
+  transition: background 0.15s, border-color 0.15s;
 }
-.ml-user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ml-user-pill:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,215,0,0.6); }
+.ml-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffe45c, #FFD700 55%, #e0a800);
+  color: #073354;
+  font-size: 13px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.25);
+}
+.ml-user-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+.ml-user-name { font-size: 12.5px; font-weight: 700; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ml-user-role { font-size: 10.5px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.ml-user-caret { font-size: 10px; opacity: 0.7; }
+
+/* narrower screens: shorten the org text first, then the session details */
+@media (max-width: 1400px) { .ml-session-inst span { max-width: 150px; } }
+@media (max-width: 1200px) { .ml-topbar-org-sub { display: none; } .ml-topbar-org-main { font-size: 14px; } }
+@media (max-width: 1000px) { .ml-session-item:not(.ml-session-inst) { display: none; } .ml-user-text { display: none; } }
+@media (max-width: 760px)  { .ml-session, .ml-topbar-org { display: none; } }
 
 /* ── Body (sidebar + content) ── */
 .ml-body { display: flex; flex: 1; overflow: hidden; }
@@ -1438,69 +1470,6 @@ body {
   font-size: 11px;
   padding: 3px 2px;
   border: 1px solid #ccc;
-}
-
-/* ── Modify Data page ── */
-.md-panel {
-  border: 2px solid #073354;
-  border-radius: 6px;
-  padding: 16px 20px;
-  max-width: 560px;
-  background: #fff;
-}
-.md-legend {
-  font-weight: bold;
-  font-size: 14px;
-  color: #cc0000;
-  margin-bottom: 14px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #d0d0d0;
-}
-.md-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.md-radio-row { padding: 4px 0; }
-.md-lbl {
-  font-weight: bold;
-  color: #073354;
-  min-width: 130px;
-}
-.md-select {
-  width: 260px;
-  font-size: 13px;
-}
-.md-radio {
-  font-size: 13px;
-  color: #333;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.md-del-btn {
-  background: #aa0000;
-  color: #fff;
-  border: none;
-  padding: 7px 20px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.md-del-btn:hover { background: #cc0000; }
-.md-msg {
-  margin-top: 8px;
-  padding: 8px 12px;
-  background: #fff3cd;
-  border: 1px solid #f0c000;
-  border-radius: 4px;
-  color: #856404;
-  font-size: 12px;
 }
 
 /* ── Legacy ── */

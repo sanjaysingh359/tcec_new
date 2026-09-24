@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './PlacementPage.css';
+import '../../styles/entry-compact.css';
 
 const n = (v) => parseFloat(v) || 0;
 

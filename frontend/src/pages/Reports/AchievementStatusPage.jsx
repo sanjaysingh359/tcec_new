@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
+import { Spin } from 'antd';
+import {
+  TrophyOutlined, SearchOutlined, PrinterOutlined, DownloadOutlined, BankOutlined,
+  CheckCircleOutlined, CalendarOutlined,
+} from '@ant-design/icons';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { exportToExcel, usePrintOnlyReport } from '../../utils/reportUtils';
+import './AchievementStatusPage.css';
 
 const MONTH_COLS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
 const MONTH_KEYS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
@@ -12,103 +18,132 @@ const YEARS = [
 
 export default function AchievementStatusPage() {
   const { selection } = useAuth();
-  const [year, setYear]     = useState(selection?.year || YEARS[0]);
-  const [rows, setRows]     = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [fetched, setFetched] = useState(false);
-  const [shownYear, setShownYear] = useState('');
+  const [year, setYear]       = useState(selection?.year || YEARS[0]);
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState('');
   usePrintOnlyReport();
   const tableId = 'ach-status-tbl';
 
-  function handleGenerate(e) {
-    e.preventDefault();
-    setLoading(true); setFetched(false);
+  useEffect(() => {
+    setLoading(true);
     api.get('/reports/achievement/status', { params: { year } })
-      .then(r => { setRows(r.data?.data || []); setFetched(true); setShownYear(year); })
-      .catch(() => { setRows([]); setFetched(true); })
+      .then(r => setRows(r.data?.data || []))
+      .catch(() => setRows([]))
       .finally(() => setLoading(false));
-  }
+  }, [year]);
+
+  const curIdx   = year === selection?.year ? parseInt(selection?.month, 10) - 1 : -1;
+  const shown    = rows.filter(r => !search || r.userId?.toLowerCase().includes(search.toLowerCase()));
+  const perMonth = MONTH_KEYS.map(k => rows.filter(r => r[k] === 'Y').length);
+  const totalY   = perMonth.reduce((s, v) => s + v, 0);
+  const rowTotal = r => MONTH_KEYS.filter(k => r[k] === 'Y').length;
+
+  const tiles = [
+    { icon: <BankOutlined />,        label: 'Institutes',            value: rows.length, cls: 'ast-k-navy' },
+    { icon: <TrophyOutlined />,      label: `Submissions in ${year}`, value: totalY,     cls: 'ast-k-gold' },
+    curIdx >= 0 && { icon: <CheckCircleOutlined />, label: `Submitted for ${MONTH_COLS[curIdx]}`,
+      value: `${perMonth[curIdx]} / ${rows.length}`, cls: perMonth[curIdx] === rows.length ? 'ast-k-green' : 'ast-k-red' },
+  ].filter(Boolean);
 
   return (
-    <div className="rpt-page">
-      <div className="rpt-header">
-        <div className="rpt-header-title">Significant Achievement Status{fetched && shownYear ? ` — ${shownYear}` : ''}</div>
-        {fetched && (
-          <div className="rpt-header-actions">
-            <button className="rpt-action-btn rpt-btn-print" onClick={() => window.print()}>🖨 Print</button>
-            <button className="rpt-action-btn rpt-btn-excel" onClick={() => exportToExcel(tableId, `AchievementStatus_${year}.xls`)}>⬇ Export</button>
+    <div className="ast-page">
+      {/* print-only title (the hero and controls are not printed) */}
+      <div className="ast-print-title">Significant Achievement Status — {year}</div>
+
+      <header className="ast-hero rpt-no-print">
+        <div>
+          <span className="ast-kicker">Reports · Significant achievements</span>
+          <h1>Significant Achievement Status</h1>
+          <p>Which institutes have submitted their significant achievements, month by month.</p>
+        </div>
+        <span className="ast-hero-icon"><TrophyOutlined /></span>
+      </header>
+
+      <section className="ast-card ast-controls rpt-no-print">
+        <label className="ast-field">
+          <span><CalendarOutlined /> Financial year</span>
+          <select value={year} onChange={e => setYear(e.target.value)}>
+            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </label>
+        <label className="ast-field ast-field-wide">
+          <span>Find institute</span>
+          <span className="ast-search">
+            <SearchOutlined />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Type to filter the table…" />
+          </span>
+        </label>
+        {!loading && rows.length > 0 && (
+          <div className="ast-tiles">
+            {tiles.map(t => (
+              <div key={t.label} className={`ast-tile ${t.cls}`}>
+                <span className="ast-tile-icon">{t.icon}</span>
+                <div><div className="ast-tile-label">{t.label}</div><div className="ast-tile-value">{t.value}</div></div>
+              </div>
+            ))}
           </div>
         )}
-      </div>
+        <div className="ast-actions">
+          <button className="ast-btn" onClick={() => window.print()} disabled={loading}><PrinterOutlined /> Print</button>
+          <button className="ast-btn ast-btn-green" onClick={() => exportToExcel(tableId, `AchievementStatus_${year}.xls`, { title: `Significant Achievement Status — ${year}` })} disabled={loading}>
+            <DownloadOutlined /> Export
+          </button>
+        </div>
+      </section>
 
-      {/* Year selector form (not printed) */}
-      <div className="rpt-no-print" style={{ padding: '0 0 14px' }}>
-        <form onSubmit={handleGenerate} autoComplete="off">
-          <table className="gr-form-tbl" cellPadding="0" cellSpacing="0">
-            <tbody>
-              <tr>
-                <td className="gr-lbl">Year</td>
-                <td className="gr-inp">
-                  <select value={year} onChange={e => setYear(e.target.value)} className="lp-field gr-select">
-                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                </td>
-              </tr>
-              <tr>
-                <td colSpan="2" className="gr-btn-row">
-                  <button type="submit" className="gr-generate-btn" disabled={loading}>
-                    {loading ? 'Loading…' : 'Show Status'}
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </form>
-      </div>
-
-      {loading && <div className="rpt-loading"><span className="gr-spinner" /> Loading…</div>}
-
-      {fetched && !loading && (
-        <div className="rpt-table-wrap">
-          <table id={tableId} className="rpt-table" cellPadding="0" cellSpacing="0">
-            <thead>
-              <tr>
-                <th className="rpt-th rpt-th-ctr" style={{ width: 40 }}>S.No</th>
-                <th className="rpt-th rpt-th-left" style={{ minWidth: 180 }}>Institute</th>
-                {MONTH_COLS.map(m => (
-                  <th key={m} className="rpt-th rpt-th-ctr rpt-th-dtm" style={{ minWidth: 48 }}>{m}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, idx) => (
-                <tr key={idx} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
-                  <td className="rpt-td" style={{ textAlign: 'center' }}>{idx + 1}</td>
-                  <td className="rpt-td">{r.userId}</td>
-                  {MONTH_KEYS.map(mk => (
-                    <td key={mk} className={r[mk] === 'Y' ? 'rpt-ok' : 'rpt-not'}>
-                      {r[mk]}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td className="rpt-td" colSpan={14} style={{ textAlign: 'center', color: '#999', padding: 20 }}>
-                    No data found for {year}.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          <div className="rpt-nodata-legend" style={{ marginTop: 8 }}>
-            <span className="rpt-ok" style={{ padding:'2px 8px', borderRadius:2 }}>Y</span>
-            &nbsp;= Achievement submitted &nbsp;&nbsp;
-            <span className="rpt-not" style={{ padding:'2px 8px', borderRadius:2 }}>N</span>
-            &nbsp;= Not submitted
+      <section className="ast-card ast-table-card">
+        <div className="ast-card-head">
+          <h2>Submission status — {year}</h2>
+          <div className="ast-legend">
+            <span><i className="ast-pill ast-y">✓</i> Submitted</span>
+            <span><i className="ast-pill ast-n">—</i> Not submitted</span>
           </div>
         </div>
-      )}
+
+        {loading ? <div className="ast-loading"><Spin /></div> : (
+          <div className="ast-table-wrap">
+            <table id={tableId} className="ast-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 50 }}>S.No</th>
+                  <th className="ast-left">Institute</th>
+                  {MONTH_COLS.map((m, i) => <th key={m} className={i === curIdx ? 'is-cur' : ''}>{m}</th>)}
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((r, idx) => (
+                  <tr key={r.userId}>
+                    <td className="ast-num">{idx + 1}</td>
+                    <td className="ast-inst">{r.userId}</td>
+                    {MONTH_KEYS.map((mk, i) => (
+                      <td key={mk} className={i === curIdx ? 'is-cur' : ''}>
+                        <span className={`ast-pill ${r[mk] === 'Y' ? 'ast-y' : 'ast-n'}`} title={r[mk] === 'Y' ? 'Submitted' : 'Not submitted'}>
+                          {r[mk] === 'Y' ? '✓' : '—'}
+                        </span>
+                      </td>
+                    ))}
+                    <td className="ast-total">{rowTotal(r)}</td>
+                  </tr>
+                ))}
+                {shown.length === 0 && (
+                  <tr><td colSpan={15} className="ast-empty">{rows.length ? 'No institute matches the search.' : `No data found for ${year}.`}</td></tr>
+                )}
+              </tbody>
+              {rows.length > 0 && (
+                <tfoot>
+                  <tr>
+                    <td colSpan={2} className="ast-foot-lbl">Submitted ({rows.length} institutes)</td>
+                    {perMonth.map((v, i) => <td key={i} className={i === curIdx ? 'is-cur' : ''}>{v}</td>)}
+                    <td>{totalY}</td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

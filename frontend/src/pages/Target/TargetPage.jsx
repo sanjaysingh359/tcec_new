@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './TargetPage.css';
+import '../../styles/entry-compact.css';
 
 const n = (v) => parseInt(v) || 0;
 

@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react';
+import { Select, Modal, Spin, message } from 'antd';
+import {
+  DatabaseOutlined, FileSearchOutlined, DeleteOutlined, BankOutlined, SearchOutlined,
+  CheckCircleFilled, ExclamationCircleFilled, DollarOutlined, FundOutlined, BarChartOutlined,
+  UserSwitchOutlined, InfoCircleOutlined,
+} from '@ant-design/icons';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import './ModifyDataPage.css';
 
 const YEARS = [
   '2026-2027','2025-2026','2024-2025','2023-2024','2022-2023','2021-2022',
@@ -11,17 +19,24 @@ const MONTH_COLS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan',
 const MONTH_KEYS = ['apr','may','jun','jul','aug','sep','oct','nov','dec','jan','feb','mar'];
 
 const SECTIONS = [
-  { value:'01', label:'Financial Section' },
-  { value:'02', label:'Budget Section' },
-  { value:'03', label:'Physical Section' },
-  { value:'04', label:'Placement Section' },
+  { value: '01', key: 'fin', label: 'Financial', icon: <DollarOutlined /> },
+  { value: '02', key: 'bud', label: 'Budget',    icon: <FundOutlined /> },
+  { value: '03', key: 'phy', label: 'Physical',  icon: <BarChartOutlined /> },
+  { value: '04', key: 'pla', label: 'Placement', icon: <UserSwitchOutlined /> },
 ];
 
-const SECTION_KEY = { '01':'fin', '02':'bud', '03':'phy', '04':'pla' };
+/* /reports/mpr cell codes */
+const MPR_STATUS = {
+  OK:  { cls: 'md-st-ok',  short: '✓',   label: 'Complete (Financial + Physical)' },
+  A:   { cls: 'md-st-a',   short: 'Fin', label: 'Financial only' },
+  B:   { cls: 'md-st-b',   short: 'Phy', label: 'Physical only' },
+  NOT: { cls: 'md-st-not', short: '—',   label: 'Not submitted' },
+};
 
 export default function ModifyDataPage() {
-  const [year,        setYear]        = useState('');
-  const [mode,        setMode]        = useState('');
+  const { selection } = useAuth();
+  const [year,        setYear]        = useState(selection?.year || YEARS[0]);
+  const [mode,        setMode]        = useState('check');
   const [institutes,  setInstitutes]  = useState([]);
   const [institute,   setInstitute]   = useState('');
   const [section,     setSection]     = useState('');
@@ -30,7 +45,7 @@ export default function ModifyDataPage() {
   const [mprLoading,  setMprLoading]  = useState(false);
   const [stLoading,   setStLoading]   = useState(false);
   const [deleting,    setDeleting]    = useState(null); // monthNum being deleted
-  const [msg,         setMsg]         = useState('');
+  const [search,      setSearch]      = useState('');
 
   /* Load institute list once */
   useEffect(() => {
@@ -39,7 +54,7 @@ export default function ModifyDataPage() {
       .catch(() => {});
   }, []);
 
-  /* Check Report: load MPR table when year + mode=check */
+  /* Check submissions: MPR status table for the year */
   useEffect(() => {
     if (year && mode === 'check') {
       setMprLoading(true);
@@ -51,200 +66,221 @@ export default function ModifyDataPage() {
     }
   }, [year, mode]);
 
-  /* Load month-status when institute + section are both set in update mode */
+  /* Update / Delete: month-by-section status of the chosen institute */
+  const loadStatus = () => {
+    setStLoading(true);
+    return api.get('/admin/data-status', { params: { instId: institute, year } })
+      .then(r => setMonthStatus(r.data?.data || []))
+      .catch(() => setMonthStatus([]))
+      .finally(() => setStLoading(false));
+  };
   useEffect(() => {
-    if (mode === 'update' && institute && year) {
-      setStLoading(true);
-      setMonthStatus([]);
-      setMsg('');
-      api.get('/admin/data-status', { params: { instId: institute, year } })
-        .then(r => setMonthStatus(r.data?.data || []))
-        .catch(() => setMonthStatus([]))
-        .finally(() => setStLoading(false));
-    }
+    if (mode === 'update' && institute && year) { setMonthStatus([]); loadStatus(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, institute, year]);
 
-  function handleYearChange(v) {
-    setYear(v); setMode(''); setInstitute(''); setSection('');
-    setMprRows([]); setMonthStatus([]); setMsg('');
-  }
-
-  function handleDelete(monthNum) {
-    if (!window.confirm(`Delete ${SECTIONS.find(s=>s.value===section)?.label} data for month ${monthNum} of ${year}?`)) return;
-    setDeleting(monthNum);
-    setMsg('');
-    const instItem = institutes.find(i => i.instId === institute);
-    api.delete('/admin/data', { params: { instId: institute, year, month: monthNum, section } })
-      .then(() => {
-        setMsg(`✓ Deleted successfully.`);
-        // refresh status
-        return api.get('/admin/data-status', { params: { instId: institute, year } });
-      })
-      .then(r => setMonthStatus(r.data?.data || []))
-      .catch(err => setMsg(`✗ Delete failed: ${err.response?.data?.message || err.message}`))
-      .finally(() => setDeleting(null));
-  }
-
-  const sectionKey = SECTION_KEY[section];
   const instName = institutes.find(i => i.instId === institute)?.instName || institute;
+  const sec = SECTIONS.find(s => s.value === section);
+
+  function handleDelete(row) {
+    Modal.confirm({
+      title: `Delete ${sec.label} data?`,
+      icon: <ExclamationCircleFilled style={{ color: '#c62828' }} />,
+      content: (
+        <div className="md-confirm">
+          <p>This permanently deletes the <b>{sec.label} Section</b> entry for:</p>
+          <ul>
+            <li><b>{instName}</b></li>
+            <li><b>{row.label} {year}</b></li>
+          </ul>
+          <p>The institute will be able to fill it in again.</p>
+        </div>
+      ),
+      okText: 'Delete',
+      okButtonProps: { danger: true },
+      cancelText: 'Cancel',
+      onOk: () => {
+        setDeleting(row.month);
+        return api.delete('/admin/data', { params: { instId: institute, year, month: row.month, section } })
+          .then(() => { message.success(`${sec.label} data for ${row.label} ${year} deleted.`); return loadStatus(); })
+          .catch(err => message.error(`Delete failed: ${err.response?.data?.message || err.message}`))
+          .finally(() => setDeleting(null));
+      },
+    });
+  }
+
+  /* ── Check-mode summary ── */
+  const filtered = mprRows.filter(r => !search || r.userId?.toLowerCase().includes(search.toLowerCase()));
+  const counts = { OK: 0, A: 0, B: 0, NOT: 0 };
+  mprRows.forEach(r => MONTH_KEYS.forEach(k => { counts[r[k]] = (counts[r[k]] || 0) + 1; }));
+  const monthDone = MONTH_KEYS.map(k => mprRows.filter(r => r[k] === 'OK').length);
 
   return (
-    <div style={{ padding: '16px 20px', maxWidth: 1100 }}>
-      <div className="gr-title-bar" style={{ maxWidth:'100%', marginBottom:16 }}>
-        Check Report / Delete MPR
-      </div>
+    <div className="md-page">
+      {/* ── Hero ── */}
+      <header className="md-hero">
+        <div>
+          <span className="md-hero-kicker">Admin · Data management</span>
+          <h1>Check Report / Update &amp; Delete MPR</h1>
+          <p>See which institutes have submitted, and clear a month's entry so the institute can re-enter it.</p>
+        </div>
+        <span className="md-hero-icon"><DatabaseOutlined /></span>
+      </header>
 
-      {/* ── Data Management Panel ── */}
-      <div className="md-panel">
-        <div className="md-legend">Data Management</div>
-
-        <div className="md-row">
-          <label className="md-lbl">Select Year :</label>
-          <select className="lp-field md-select" value={year} onChange={e => handleYearChange(e.target.value)}>
-            <option value="">-- Select --</option>
-            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+      {/* ── Controls ── */}
+      <section className="md-card md-controls">
+        <div className="md-tabs">
+          <button className={`md-tab${mode === 'check' ? ' is-on' : ''}`} onClick={() => setMode('check')}>
+            <FileSearchOutlined /> <span><b>Check submissions</b><small>All institutes, month by month</small></span>
+          </button>
+          <button className={`md-tab${mode === 'update' ? ' is-on' : ''}`} onClick={() => setMode('update')}>
+            <DeleteOutlined /> <span><b>Update / Delete</b><small>Clear one institute's month</small></span>
+          </button>
         </div>
 
-        {year && (
-          <div className="md-row md-radio-row">
-            <label className="md-radio">
-              <input type="radio" name="mode" value="check"
-                checked={mode === 'check'} onChange={() => { setMode('check'); setInstitute(''); setSection(''); setMonthStatus([]); setMsg(''); }} />
-              &nbsp; Check Report
+        <div className="md-fields">
+          <label className="md-field">
+            <span>Financial year</span>
+            <select className="md-native" value={year} onChange={e => { setYear(e.target.value); setMonthStatus([]); }}>
+              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </label>
+
+          {mode === 'update' && (
+            <label className="md-field md-field-wide">
+              <span>Institute</span>
+              <Select
+                showSearch
+                size="large"
+                className="md-select"
+                value={institute || undefined}
+                placeholder="Search institute…"
+                optionFilterProp="label"
+                suffixIcon={<BankOutlined />}
+                onChange={v => { setInstitute(v); setSection(''); }}
+                options={institutes.map(i => ({ value: i.instId, label: i.instName }))}
+              />
             </label>
-            <label className="md-radio" style={{ marginLeft: 24 }}>
-              <input type="radio" name="mode" value="update"
-                checked={mode === 'update'} onChange={() => { setMode('update'); setMprRows([]); setMsg(''); }} />
-              &nbsp; Update / Delete Report
+          )}
+
+          {mode === 'check' && (
+            <label className="md-field md-field-wide">
+              <span>Find institute</span>
+              <span className="md-search">
+                <SearchOutlined />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Type to filter the table…" />
+              </span>
             </label>
+          )}
+        </div>
+
+        {mode === 'update' && institute && (
+          <div className="md-sections">
+            <span className="md-sections-lbl">Section to delete</span>
+            {SECTIONS.map(s => (
+              <button key={s.value} className={`md-chip${section === s.value ? ' is-on' : ''}`}
+                onClick={() => setSection(section === s.value ? '' : s.value)}>
+                {s.icon} {s.label}
+              </button>
+            ))}
+            {!section && <span className="md-hint"><InfoCircleOutlined /> Choose a section to show Delete buttons</span>}
           </div>
         )}
+      </section>
 
-        {mode === 'update' && (
-          <>
-            <div className="md-row">
-              <label className="md-lbl">Select Institute :</label>
-              <select className="lp-field md-select" value={institute}
-                onChange={e => { setInstitute(e.target.value); setSection(''); setMonthStatus([]); setMsg(''); }}>
-                <option value="">-- Select --</option>
-                {institutes.map(i => <option key={i.instId} value={i.instId}>{i.instName}</option>)}
-              </select>
-            </div>
-            {institute && (
-              <div className="md-row">
-                <label className="md-lbl">Select Section :</label>
-                <select className="lp-field md-select" value={section}
-                  onChange={e => { setSection(e.target.value); setMsg(''); }}>
-                  <option value="">-- Select --</option>
-                  {SECTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-              </div>
-            )}
-          </>
-        )}
-
-        {msg && (
-          <div className="md-msg" style={{ color: msg.startsWith('✓') ? '#1a7a2e' : '#c0392b' }}>
-            {msg}
-          </div>
-        )}
-      </div>
-
-      {/* ── Check Report: MPR status table ── */}
+      {/* ── Check submissions ── */}
       {mode === 'check' && (
-        <div style={{ marginTop: 20 }}>
-          {mprLoading && <div className="rpt-loading"><span className="gr-spinner" /> Loading…</div>}
-          {!mprLoading && mprRows.length > 0 && (
-            <div className="rpt-table-wrap">
-              <table className="rpt-table" cellPadding="0" cellSpacing="0">
+        <section className="md-card">
+          <div className="md-card-head">
+            <h2>Submission status — {year}</h2>
+            <div className="md-legend">
+              {Object.entries(MPR_STATUS).map(([k, s]) => (
+                <span key={k}><i className={s.cls}>{s.short}</i>{s.label} <b>{counts[k] || 0}</b></span>
+              ))}
+            </div>
+          </div>
+          {mprLoading ? <div className="md-loading"><Spin /></div> : (
+            <div className="md-table-wrap">
+              <table className="md-table">
                 <thead>
                   <tr>
-                    <th className="rpt-th rpt-th-ctr" style={{ width:36 }}>S.No</th>
-                    <th className="rpt-th rpt-th-left" style={{ minWidth:160 }}>Institute</th>
-                    {MONTH_COLS.map(m => (
-                      <th key={m} className="rpt-th rpt-th-ctr rpt-th-dtm" style={{ minWidth:44 }}>{m}</th>
-                    ))}
+                    <th style={{ width: 50 }}>S.No</th>
+                    <th className="md-th-left">Institute</th>
+                    {MONTH_COLS.map(m => <th key={m}>{m}</th>)}
                   </tr>
                 </thead>
                 <tbody>
-                  {mprRows.map((r, idx) => (
-                    <tr key={idx} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
-                      <td className="rpt-td" style={{ textAlign:'center' }}>{idx + 1}</td>
-                      <td className="rpt-td">{r.userId}</td>
-                      {MONTH_KEYS.map(mk => (
-                        <td key={mk} className={r[mk] === 'OK' ? 'rpt-ok' : 'rpt-not'}>{r[mk]}</td>
-                      ))}
+                  {filtered.map((r, idx) => (
+                    <tr key={r.userId}>
+                      <td className="md-num">{idx + 1}</td>
+                      <td className="md-inst">{r.userId}</td>
+                      {MONTH_KEYS.map(mk => {
+                        const s = MPR_STATUS[r[mk]] || MPR_STATUS.NOT;
+                        return <td key={mk}><span className={`md-pill ${s.cls}`} title={s.label}>{s.short}</span></td>;
+                      })}
                     </tr>
                   ))}
+                  {filtered.length === 0 && (
+                    <tr><td colSpan={14} className="md-empty">{mprRows.length ? 'No institute matches the search.' : 'No data for this year.'}</td></tr>
+                  )}
                 </tbody>
+                {mprRows.length > 0 && (
+                  <tfoot>
+                    <tr>
+                      <td colSpan={2} className="md-foot-lbl">Complete ({mprRows.length} institutes)</td>
+                      {monthDone.map((v, i) => <td key={i} className="md-foot-val">{v}</td>)}
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           )}
-          <div className="rpt-nodata-legend" style={{ marginTop: 8 }}>
-            <span className="rpt-ok" style={{ padding:'2px 8px', borderRadius:2 }}>OK</span>
-            &nbsp;= Data submitted &nbsp;&nbsp;
-            <span className="rpt-not" style={{ padding:'2px 8px', borderRadius:2 }}>NOT</span>
-            &nbsp;= Data not submitted
-          </div>
-        </div>
+        </section>
       )}
 
-      {/* ── Update/Delete: month-by-section table ── */}
-      {mode === 'update' && institute && (
-        <div style={{ marginTop: 20 }}>
-          {stLoading && <div className="rpt-loading"><span className="gr-spinner" /> Loading…</div>}
-          {!stLoading && monthStatus.length > 0 && (
+      {/* ── Update / Delete ── */}
+      {mode === 'update' && (
+        <section className="md-card">
+          {!institute ? (
+            <div className="md-empty md-empty-big"><BankOutlined /> Select an institute to see its monthly data.</div>
+          ) : stLoading && !monthStatus.length ? (
+            <div className="md-loading"><Spin /></div>
+          ) : (
             <>
-              <div style={{ marginBottom: 8, fontWeight: 600, color:'#073354' }}>
-                {instName} — {year}
+              <div className="md-card-head">
+                <h2>{instName} — {year}</h2>
+                <div className="md-legend">
+                  <span><i className="md-dot on" /> Data submitted</span>
+                  <span><i className="md-dot" /> No data</span>
+                </div>
               </div>
-              <div className="rpt-table-wrap">
-                <table className="rpt-table" cellPadding="0" cellSpacing="0">
-                  <thead>
-                    <tr>
-                      <th className="rpt-th rpt-th-ctr" style={{ width:36 }}>S.No</th>
-                      <th className="rpt-th rpt-th-left" style={{ minWidth:100 }}>Month</th>
-                      <th className="rpt-th rpt-th-ctr rpt-th-dtm" style={{ minWidth:90 }}>Financial</th>
-                      <th className="rpt-th rpt-th-ctr rpt-th-cum" style={{ minWidth:80 }}>Budget</th>
-                      <th className="rpt-th rpt-th-ctr rpt-th-dtm" style={{ minWidth:80 }}>Physical</th>
-                      <th className="rpt-th rpt-th-ctr rpt-th-cum" style={{ minWidth:80 }}>Placement</th>
-                      {section && <th className="rpt-th rpt-th-ctr" style={{ minWidth:80 }}>Action</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {monthStatus.map((r, idx) => (
-                      <tr key={r.month} className={idx % 2 === 0 ? 'rpt-row-even' : 'rpt-row-odd'}>
-                        <td className="rpt-td" style={{ textAlign:'center' }}>{idx + 1}</td>
-                        <td className="rpt-td">{r.label}</td>
-                        <td className={r.fin ? 'rpt-ok' : 'rpt-not'} style={{ textAlign:'center' }}>{r.fin ? 'OK' : '—'}</td>
-                        <td className={r.bud ? 'rpt-ok' : 'rpt-not'} style={{ textAlign:'center' }}>{r.bud ? 'OK' : '—'}</td>
-                        <td className={r.phy ? 'rpt-ok' : 'rpt-not'} style={{ textAlign:'center' }}>{r.phy ? 'OK' : '—'}</td>
-                        <td className={r.pla ? 'rpt-ok' : 'rpt-not'} style={{ textAlign:'center' }}>{r.pla ? 'OK' : '—'}</td>
-                        {section && (
-                          <td className="rpt-td" style={{ textAlign:'center' }}>
-                            {r[sectionKey] ? (
-                              <button
-                                className="md-del-btn"
-                                style={{ padding:'2px 10px', fontSize:11 }}
-                                disabled={deleting === r.month}
-                                onClick={() => handleDelete(r.month)}
-                              >
-                                {deleting === r.month ? '…' : 'Delete'}
-                              </button>
-                            ) : (
-                              <span style={{ color:'#aaa', fontSize:11 }}>No data</span>
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="md-months">
+                {monthStatus.map(r => {
+                  const has = sec && r[sec.key];
+                  return (
+                    <div key={r.month} className={`md-month${has ? ' is-target' : ''}`}>
+                      <div className="md-month-name">{r.label}</div>
+                      <ul>
+                        {SECTIONS.map(s => (
+                          <li key={s.key} className={s.value === section ? 'is-sel' : ''}>
+                            <i className={`md-dot${r[s.key] ? ' on' : ''}`} /> {s.label}
+                          </li>
+                        ))}
+                      </ul>
+                      {sec && (has ? (
+                        <button className="md-del" disabled={deleting === r.month} onClick={() => handleDelete(r)}>
+                          <DeleteOutlined /> {deleting === r.month ? 'Deleting…' : `Delete ${sec.label}`}
+                        </button>
+                      ) : (
+                        <span className="md-nodata"><CheckCircleFilled /> Nothing to delete</span>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
-        </div>
+        </section>
       )}
     </div>
   );

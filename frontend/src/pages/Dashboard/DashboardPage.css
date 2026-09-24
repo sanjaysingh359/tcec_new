@@ -132,3 +132,18 @@
   .db2-months { grid-template-columns: repeat(4, 1fr); }
   .db2-my-head { flex-direction: column; align-items: flex-start; }
 }
+
+/* Short screens — keep the whole selection card on one screen (see AuthShell.css) */
+@media (min-width: 981px) and (max-height: 820px) {
+  .db2-welcome { padding: 8px 12px; margin-bottom: 12px; }
+  .db2-avatar { width: 34px; height: 34px; font-size: 15px; }
+  .db2-head { margin-bottom: 10px; }
+  .db2-select .ant-select-selector { height: 40px !important; }
+  .db2-inst-fixed, .db2-skeleton { height: 40px; }
+  .db2-section { padding: 9px 12px; }
+  .db2-section-icon { width: 34px; height: 34px; font-size: 16px; }
+  .db2-months { gap: 6px; }
+  .db2-month { height: 34px; }
+  .db2-year select { height: 28px; }
+  .db2-summary { margin: 2px 0 10px; padding: 7px 12px; font-size: 12.5px; }
+}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Dropdown } from 'antd';
+import { Dropdown, Tooltip } from 'antd';
 import {
   HomeOutlined, DollarOutlined, BarChartOutlined, PieChartOutlined,
   AimOutlined, UserSwitchOutlined,
@@ -9,6 +9,7 @@ import {
   MenuFoldOutlined, MenuUnfoldOutlined, DownOutlined,
   UsergroupAddOutlined, TrophyOutlined,
   TagsOutlined, ManOutlined, ReadOutlined, CalendarOutlined, FileDoneOutlined, CheckCircleOutlined,
+  BankOutlined, SwapOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -158,6 +159,8 @@ function SubGroup({ item, selectedKey, onSelect, collapsed }) {
   );
 }
 
+const titleCase = t => (t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '');
+
 /* ── Avatar initials ── */
 function Avatar({ name }) {
   const letter = (name || 'U')[0].toUpperCase();
@@ -180,6 +183,7 @@ export default function MainLayout() {
     .sort((a, b) => b.length - a.length)[0] || location.pathname;
   const username = user?.userId || user?.uid || user?.userName || 'User';
   const isEntry  = selection?.section === '1';
+  const roleLabel = user?.role === 'SU' ? 'Super User' : user?.role === 'RU' ? 'Report User' : 'Institute User';
 
   function handleLogout() { logout(); navigate('/login'); }
 
@@ -205,33 +209,49 @@ export default function MainLayout() {
       {/* ══════════════ HEADER ══════════════ */}
       <header className="ml-topbar">
         <div className="ml-topbar-left">
-          <button className="ml-collapse-btn" onClick={() => setCollapsed(c => !c)}>
+          <button className="ml-collapse-btn" onClick={() => setCollapsed(c => !c)}
+            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}>
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </button>
-          <div className="ml-topbar-divider" />
-          <img src="/images/india-gov-logo.jpg" className="ml-topbar-logo" alt=""
-            onError={e => { e.target.src = '/images/india-gov-logo.gif'; }} />
+          <span className="ml-topbar-logo-tile">
+            <img src="/images/india-gov-logo.jpg" className="ml-topbar-logo" alt="Government of India"
+              onError={e => { e.target.src = '/images/india-gov-logo.gif'; }} />
+          </span>
           <div className="ml-topbar-org">
             <div className="ml-topbar-org-main">Office of Development Commissioner (MSME)</div>
-            <div className="ml-topbar-org-sub">Ministry of Micro, Small &amp; Medium Enterprises</div>
+            <div className="ml-topbar-org-sub">
+              Ministry of Micro, Small &amp; Medium Enterprises <span className="ml-topbar-app">MPR-AB</span>
+            </div>
           </div>
         </div>
 
         <div className="ml-topbar-right">
           {selection && (
-            <div className="ml-chips">
-              <span className="ml-chip ml-chip-inst">{selection.instName}</span>
-              <span className="ml-chip ml-chip-month">{selection.monthName} {selection.year}</span>
-              <span className={`ml-chip ${isEntry ? 'ml-chip-entry' : 'ml-chip-report'}`}>
-                {isEntry ? 'Entry' : 'Reports'}
+            <div className="ml-session">
+              <span className="ml-session-item ml-session-inst" title={selection.instName}>
+                <BankOutlined /> <span>{selection.instName}</span>
               </span>
+              <span className="ml-session-item">
+                <CalendarOutlined /> <span>{titleCase(selection.monthName)} {selection.year}</span>
+              </span>
+              <span className={isEntry ? 'ml-session-mode is-entry' : 'ml-session-mode is-report'}>
+                {isEntry ? <EditOutlined /> : <FileTextOutlined />} {isEntry ? 'Entry' : 'Reports'}
+              </span>
+              <Tooltip title="Switch month / section">
+                <button className="ml-session-switch" onClick={() => navigate('/dashboard')} aria-label="Switch month or section">
+                  <SwapOutlined />
+                </button>
+              </Tooltip>
             </div>
           )}
           <Dropdown menu={userDropdown} placement="bottomRight" trigger={['click']}>
             <button className="ml-user-pill">
               <Avatar name={username} />
-              <span className="ml-user-name">{username}</span>
-              <DownOutlined style={{ fontSize: 10, opacity: 0.7 }} />
+              <span className="ml-user-text">
+                <span className="ml-user-name">{username}</span>
+                {roleLabel && <span className="ml-user-role">{roleLabel}</span>}
+              </span>
+              <DownOutlined className="ml-user-caret" />
             </button>
           </Dropdown>
         </div>
