@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import './MprReport.css';
+import { parseAch, safeHtml } from '../../utils/achievement';
 
 /* ─── helpers ─────────────────────────────────────────── */
 const n   = v => parseFloat(v) || 0;
@@ -9,41 +10,6 @@ const f2  = v => n(v).toFixed(2);
 const f0  = v => Math.round(n(v));
 const pct = (num, den) => n(den) > 0 ? ((n(num) / n(den)) * 100).toFixed(2) : '-';
 const tgt = (v, dec = 2) => n(v) > 0 ? n(v).toFixed(dec) : n(v).toFixed(dec);
-
-/* Parse achievement JSON (same as AchievementPage) */
-const INIT_ACH = {
-  note: '', importRows: [], technical: '',
-  highEndDtm: '0', highEndCum: '0', masterDtm: '0', masterCum: '0',
-  mous: '', earlierMous: '', academia: '', awards: '',
-};
-function parseAch(raw) {
-  if (!raw) return INIT_ACH;
-  try { return { ...INIT_ACH, ...JSON.parse(raw) }; }
-  catch { return { ...INIT_ACH, technical: raw }; }
-}
-
-/* Rich text from the Achievement editor → safe HTML: keep only basic formatting tags,
-   drop every attribute and anything else (scripts, links, styles, event handlers). */
-const SAFE_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'UL', 'OL', 'LI', 'BR', 'P', 'DIV', 'SPAN']);
-function safeHtml(html) {
-  const doc = new DOMParser().parseFromString(`<div>${html || ''}</div>`, 'text/html');
-  const clean = node => {
-    [...node.childNodes].forEach(ch => {
-      if (ch.nodeType === Node.TEXT_NODE) return;
-      if (ch.nodeType !== Node.ELEMENT_NODE) { ch.remove(); return; }
-      if (!SAFE_TAGS.has(ch.tagName)) {
-        if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT'].includes(ch.tagName)) ch.remove();
-        else { clean(ch); ch.replaceWith(...ch.childNodes); }   // unwrap, keep cleaned content
-        return;
-      }
-      [...ch.attributes].forEach(a => ch.removeAttribute(a.name));
-      clean(ch);
-    });
-  };
-  const root = doc.body.firstChild;
-  clean(root);
-  return root.innerHTML;
-}
 
 /* ─── JSX helpers — one lettered section = one independent table ─── */
 

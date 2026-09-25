@@ -2,53 +2,143 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Spin } from 'antd';
 import {
-  TrophyOutlined, ArrowLeftOutlined, PrinterOutlined, DownloadOutlined, SearchOutlined, CalendarOutlined,
-  WarningOutlined, CheckCircleOutlined, ClockCircleOutlined, UnorderedListOutlined,
-  ColumnHeightOutlined, VerticalAlignMiddleOutlined,
+  TrophyOutlined, ArrowLeftOutlined, PrinterOutlined, CalendarOutlined, WarningOutlined, SearchOutlined,
 } from '@ant-design/icons';
 import api from '../../services/api';
-import { exportToExcel, usePrintOnlyReport } from '../../utils/reportUtils';
+import { usePrintOnlyReport } from '../../utils/reportUtils';
+import { parseAch, safeHtml, isBlankHtml } from '../../utils/achievement';
 import './TraineeBreakdownReport.css';
 import './AchievementReport.css';
 
-const pct = (a, b) => (b > 0 ? Math.round((a * 100) / b) : 0);
+const ALL_INST = 'all';
+const n = v => Number(v) || 0;
+
+/* Numbered section heading, as on the entry form and the old report */
+function Sec({ num, title, hint, children }) {
+  return (
+    <section className="acr-sec">
+      <h3><span className="acr-num">{num}</span>{title}{hint && <small>{hint}</small>}</h3>
+      {children}
+    </section>
+  );
+}
+
+function Rich({ html }) {
+  return isBlankHtml(html)
+    ? <div className="acr-box acr-empty">Nothing reported.</div>
+    : <div className="acr-box" dangerouslySetInnerHTML={{ __html: safeHtml(html) }} />;
+}
+
+/* One institute's achievements — the layout of the legacy Segificant_achivements_report.jsp */
+function AchievementDoc({ instName, a }) {
+  const rows = (a.importRows || []).filter(r => r && (r.component || r.importedFrom || r.outcome));
+  return (
+    <article className="acr-doc">
+      <header className="acr-doc-head">
+        <h2>{instName}</h2>
+        {a.note && <p className="acr-note"><b>Note:</b> {a.note}</p>}
+      </header>
+
+      <Sec num="1" title="Import Substitution & Export Support">
+        <table className="acr-tbl">
+          <thead>
+            <tr>
+              <th style={{ width: '40%' }}>Components Designed / Manufactured</th>
+              <th style={{ width: '25%' }}>Imported From / Exported To</th>
+              <th>Outcome (in terms of Cost / Lead time saving etc.)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length ? rows.map((r, i) => (
+              <tr key={i}>
+                <td>{r.component}</td>
+                <td>{r.importedFrom}</td>
+                <td>{r.outcome}</td>
+              </tr>
+            )) : <tr><td colSpan={3} className="acr-empty">Nothing reported.</td></tr>}
+          </tbody>
+        </table>
+      </Sec>
+
+      <Sec num="2" title="Technical & Production Achievements"><Rich html={a.technical} /></Sec>
+
+      <Sec num="3" title="High-End Skilling">
+        <table className="acr-tbl acr-tbl-num">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th style={{ width: 190 }}>Number of Trainees<br /><small>During the Month</small></th>
+              <th style={{ width: 190 }}>Number of Trainees<br /><small>Cumulative</small></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>High-End Skilling<small>e.g. Emerging Technologies like AR/VR, 3D Printing, AI in Mfg, Robotics, IoT etc.</small></td>
+              <td>{n(a.highEndDtm)}</td>
+              <td>{n(a.highEndCum)}</td>
+            </tr>
+            <tr>
+              <td>Certified Master Trainers Trained / TOT / ToA</td>
+              <td>{n(a.masterDtm)}</td>
+              <td>{n(a.masterCum)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </Sec>
+
+      <Sec num="4" title="MoUs" hint="(Date of Execution, Purpose, Expected Outcomes)"><Rich html={a.mous} /></Sec>
+      <Sec num="5" title="Outcome of Earlier MoUs"><Rich html={a.earlierMous} /></Sec>
+      <Sec num="6" title="Academia Linkages"><Rich html={a.academia} /></Sec>
+      <Sec num="7" title="Awards and Recognitions"><Rich html={a.awards} /></Sec>
+    </article>
+  );
+}
 
 export default function AchievementReport() {
   const { state }  = useLocation();
   const navigate   = useNavigate();
   const { month, year } = state || {};
+  const instId   = state?.instId || ALL_INST;
+  const isAll    = instId === ALL_INST;
+  const instName = state?.instName || (isAll ? 'All institutes' : instId);
   const monthName = state?.monthName ? state.monthName.charAt(0) + state.monthName.slice(1).toLowerCase() : '';
-  const [rows, setRows]       = useState([]);
+  const [docs, setDocs]       = useState([]);     // [{ instName, a }]
+  const [missing, setMissing] = useState([]);     // institute names without data
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(false);
   const [search, setSearch]   = useState('');
-  const [show, setShow]       = useState('all');   // all | done | pending
-  const [expanded, setExpanded] = useState(false);
   usePrintOnlyReport();
-  const tableId = 'ach-rpt-tbl';
-  const title = `Significant Achievement — ${monthName}-${year}`;
 
   useEffect(() => {
     if (!month || !year) { navigate('/app/reports/achievement', { replace: true }); return; }
     setLoading(true); setError(false);
-    api.get('/reports/achievement', { params: { month, year } })
-      .then(r => setRows(r.data?.data || []))
-      .catch(() => { setRows([]); setError(true); })
+    const req = isAll
+      ? api.get('/reports/achievement', { params: { month, year } }).then(r => {
+          const rows = r.data?.data || [];
+          setDocs(rows.filter(x => !x.noData).map(x => ({ instName: x.instName, a: parseAch(x.text) })));
+          setMissing(rows.filter(x => x.noData).map(x => x.instName));
+        })
+      : api.get('/entry/achievement/load', { params: { instId, month, year } }).then(r => {
+          const d = r.data?.data || {};
+          setDocs(d.hasData ? [{ instName, a: parseAch(d.text) }] : []);
+          setMissing(d.hasData ? [] : [instName]);
+        });
+    req.catch(() => { setDocs([]); setMissing([]); setError(true); })
       .finally(() => setLoading(false));
-  }, [month, year, navigate]);
+  }, [month, year, instId, isAll, instName, navigate]);
 
   if (!month) return null;
 
-  const done = rows.filter(r => !r.noData).length;
-  const pending = rows.length - done;
   const q = search.trim().toLowerCase();
-  const shown = rows.filter(r =>
-    (show === 'all' || (show === 'done' ? !r.noData : r.noData)) &&
-    (!q || String(r.instName || '').toLowerCase().includes(q) || String(r.text || '').toLowerCase().includes(q)));
+  const shown = docs.filter(d => !q || d.instName.toLowerCase().includes(q));
+  const total = docs.length + missing.length;
 
   return (
     <div className="tb-page acr-page">
-      <div className="tb-print-title">{title}</div>
+      <div className="tb-print-title acr-print-title">
+        Significant Achievements<br />
+        <span>{isAll ? 'All institutes' : instName} — {monthName} {year}</span>
+      </div>
 
       {/* ── Header ── */}
       <header className="tb-hero rpt-no-print">
@@ -56,96 +146,50 @@ export default function AchievementReport() {
         <div className="tb-hero-text">
           <span className="tb-kicker">Reports · Significant achievements</span>
           <h1>Significant Achievements</h1>
-          <p><CalendarOutlined /> During {monthName} · FY {year}</p>
+          <p><CalendarOutlined /> {instName} · {monthName} · FY {year}</p>
         </div>
         <div className="tb-hero-actions">
-          <button className="tb-btn tb-btn-ghost" onClick={() => navigate('/app/reports/achievement')}><ArrowLeftOutlined /> Change month</button>
-          <button className="tb-btn tb-btn-ghost" onClick={() => window.print()} disabled={loading}><PrinterOutlined /> Print</button>
-          <button className="tb-btn" disabled={loading || !rows.length}
-            onClick={() => exportToExcel(tableId, `Achievement_${monthName}_${year}.xls`, { title })}>
-            <DownloadOutlined /> Export
-          </button>
+          <button className="tb-btn tb-btn-ghost" onClick={() => navigate('/app/reports/achievement')}><ArrowLeftOutlined /> Change selection</button>
+          <button className="tb-btn" onClick={() => window.print()} disabled={loading || !docs.length}><PrinterOutlined /> Print</button>
         </div>
       </header>
 
       {error && <div className="tb-banner rpt-no-print"><WarningOutlined /> Could not load report data. Please check your connection and try again.</div>}
 
-      {/* ── Summary ── */}
-      {!loading && rows.length > 0 && (
-        <div className="tb-tiles rpt-no-print" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-          <div className="tb-kpi tb-k-green">
-            <span className="tb-kpi-label"><CheckCircleOutlined /> Submitted</span>
-            <span className="tb-kpi-value">{done} <small className="acr-of">of {rows.length}</small></span>
-            <div className="tb-progress" role="progressbar" aria-valuenow={pct(done, rows.length)} aria-valuemin={0} aria-valuemax={100}>
-              <i style={{ width: `${pct(done, rows.length)}%` }} />
-            </div>
-            <span className="tb-kpi-sub">{pct(done, rows.length)}% of centres reported achievements</span>
-          </div>
-          <div className="tb-kpi tb-k-red">
-            <span className="tb-kpi-label"><ClockCircleOutlined /> Not submitted</span>
-            <span className="tb-kpi-value">{pending}</span>
-            <span className="tb-kpi-sub">{pending ? 'Centres yet to send achievements' : 'Every centre has reported'}</span>
-          </div>
-          <div className="tb-kpi tb-k-gold">
-            <span className="tb-kpi-label"><CalendarOutlined /> Period</span>
-            <span className="tb-kpi-value">{monthName}</span>
-            <span className="tb-kpi-sub">Financial year {year}</span>
-          </div>
+      {/* all-institutes view: count + search */}
+      {isAll && !loading && !error && (
+        <div className="acr-bar rpt-no-print">
+          <span><b>{docs.length}</b> of {total} institutes submitted achievements for {monthName}</span>
+          {docs.length > 1 && (
+            <span className="tb-search">
+              <SearchOutlined />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Find institute…" aria-label="Find institute" />
+            </span>
+          )}
         </div>
       )}
 
-      {/* ── List ── */}
-      <section className="tb-card">
-        <div className="tb-card-head rpt-no-print">
-          <h2><UnorderedListOutlined /> Centre-wise achievements</h2>
-          <div className="tb-seg" role="tablist" aria-label="Show">
-            {[['all', `All (${rows.length})`], ['done', `Submitted (${done})`], ['pending', `Not submitted (${pending})`]].map(([k, l]) => (
-              <button key={k} role="tab" aria-selected={show === k} className={show === k ? 'is-on' : ''} onClick={() => setShow(k)}>{l}</button>
-            ))}
-          </div>
-          <button className="acr-toggle" onClick={() => setExpanded(e => !e)} aria-pressed={expanded}>
-            {expanded ? <><VerticalAlignMiddleOutlined /> Collapse text</> : <><ColumnHeightOutlined /> Show full text</>}
-          </button>
-          <span className="tb-search">
-            <SearchOutlined />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search centre or text…" aria-label="Search centre or achievement text" />
-          </span>
-        </div>
+      {loading ? <div className="tb-loading"><Spin /></div> : (
+        <>
+          {shown.map(d => <AchievementDoc key={d.instName} instName={d.instName} a={d.a} />)}
 
-        {loading ? <div className="tb-loading"><Spin /></div> : (
-          <div className="rpt-table-wrap tb-wrap">
-            <div className="tb-scroll">
-              <table id={tableId} className={`tb-table acr-table${expanded ? ' is-expanded' : ''}`}>
-                <thead>
-                  <tr>
-                    <th className="tb-sno">S.No</th>
-                    <th className="tb-left acr-inst-col">Name of Technology Centre</th>
-                    <th className="tb-left">Significant Achievements during {monthName}-{year}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shown.map((r, i) => (
-                    <tr key={`${r.instName}${i}`} className={r.noData ? 'is-missing' : ''}>
-                      <td className="tb-sno">{i + 1}</td>
-                      <td className="tb-left tb-inst">{r.instName}</td>
-                      <td className="tb-left acr-text">
-                        {r.noData
-                          ? <span className="acr-pending">Not submitted</span>
-                          : <div className="acr-body" title={expanded ? undefined : r.text}>{r.text}</div>}
-                      </td>
-                    </tr>
-                  ))}
-                  {shown.length === 0 && (
-                    <tr><td colSpan={3} className="tb-empty">
-                      {rows.length ? 'Nothing matches the filter.' : `No data found for ${monthName} ${year}.`}
-                    </td></tr>
-                  )}
-                </tbody>
-              </table>
+          {!error && !docs.length && (
+            <div className="acr-doc acr-none">
+              {isAll ? `No institute has submitted significant achievements for ${monthName} ${year}.`
+                     : `${instName} has not submitted significant achievements for ${monthName} ${year}.`}
             </div>
-          </div>
-        )}
-      </section>
+          )}
+          {isAll && docs.length > 0 && q && !shown.length && (
+            <div className="acr-doc acr-none rpt-no-print">No institute matches “{search}”.</div>
+          )}
+
+          {isAll && missing.length > 0 && (
+            <div className="acr-missing">
+              <b>Not submitted ({missing.length}):</b> {missing.join(', ')}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

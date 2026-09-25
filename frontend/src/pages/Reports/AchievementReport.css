@@ -1,33 +1,73 @@
-/* ── Significant achievement report (builds on TraineeBreakdownReport.css) ── */
-.acr-of { font-size: 13px; font-weight: 600; color: var(--ink-3); }
+/* ── Significant achievement report (builds on TraineeBreakdownReport.css) ──
+   One document per institute, numbered sections 1–7 like the old report. */
+.acr-page { height: auto !important; }       /* documents flow; the page scrolls */
 
-.acr-toggle {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 32px; padding: 0 12px;
-  border: 1px solid #cdd8e4; border-radius: 10px; background: #fff;
-  font-family: var(--font-ui); font-size: 12.5px; font-weight: 600; color: var(--navy);
-  cursor: pointer; white-space: nowrap;
+.acr-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-size: 13px; color: var(--ink-2);
 }
-.acr-toggle:hover { border-color: var(--navy-2); background: #f5f9fd; }
+.acr-bar b { color: var(--ink); }
 
-.acr-table td { height: auto; vertical-align: top; padding-top: 7px; padding-bottom: 7px; }
-.acr-table td.tb-sno { padding-top: 8px; }
-.acr-inst-col { width: 220px; }
-.acr-table .tb-inst { white-space: normal; }
-.acr-text { white-space: normal !important; font-variant-numeric: normal; color: #22303f; }
-.acr-body {
-  white-space: pre-wrap; line-height: 1.55; font-size: 12.5px;
-  max-width: 1100px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+.acr-doc {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(7,51,84,0.05);
+  padding: 12px 16px 14px;
 }
-.acr-table.is-expanded .acr-body { display: block; -webkit-line-clamp: unset; overflow: visible; }
-.acr-pending {
-  display: inline-block; padding: 0 8px; border-radius: 6px;
-  font-size: 11px; font-weight: 700; line-height: 18px;
-  color: #c62828; background: #fdecec;
+.acr-doc-head { text-align: center; margin-bottom: 4px; }
+.acr-doc-head h2 { margin: 0; font-size: 16px; font-weight: 800; color: var(--navy); }
+.acr-note { margin: 4px 0 0; font-size: 12px; color: #9b1c1c; }
+
+.acr-sec { margin-top: 10px; }
+.acr-sec h3 {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 5px; font-size: 13px; font-weight: 700; color: var(--ink);
+}
+.acr-sec h3 small { font-weight: 500; color: var(--ink-3); font-size: 11.5px; }
+.acr-num {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--navy); color: #fff; font-size: 11px; font-weight: 700;
 }
 
+.acr-box {
+  border: 1px solid #dde4ec; border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12.5px; line-height: 1.55; color: #22303f;
+  overflow-wrap: anywhere;
+}
+.acr-box ul, .acr-box ol { margin: 2px 0; padding-left: 20px; }
+.acr-box p { margin: 0 0 4px; }
+.acr-empty { color: var(--ink-3) !important; font-style: italic; }
+
+.acr-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.acr-tbl th {
+  background: #eef3f9; color: var(--ink);
+  font-weight: 600; font-size: 11.5px; text-align: left;
+  padding: 5px 8px; border: 1px solid #dde4ec; line-height: 1.3;
+}
+.acr-tbl th small { font-weight: 500; color: var(--ink-3); }
+.acr-tbl td { padding: 5px 8px; border: 1px solid #dde4ec; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }
+.acr-tbl td small { display: block; font-size: 11px; color: var(--ink-3); white-space: normal; }
+.acr-tbl-num td + td { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.acr-tbl-num th + th { text-align: center; }
+
+.acr-none { text-align: center; color: var(--ink-2); padding: 28px; font-size: 13px; }
+.acr-missing {
+  font-size: 12px; color: var(--ink-2); line-height: 1.6;
+  padding: 8px 12px; border-radius: 10px;
+  background: #fff8f8; border: 1px solid #f3d0d0;
+}
+.acr-missing b { color: #9b1c1c; }
+
+/* Print: title, then each institute on its own page */
+.acr-print-title span { font-size: 13px; color: #000; font-weight: 700; }
 @media print {
-  body.rpt-printing .acr-body { display: block; -webkit-line-clamp: unset; overflow: visible; max-width: none; font-size: 10px; }
-  body.rpt-printing .acr-inst-col { width: 160px; }
+  body.rpt-printing .acr-doc { box-shadow: none; border: none; border-radius: 0; padding: 0; page-break-after: always; }
+  body.rpt-printing .acr-doc:last-of-type { page-break-after: auto; }
+  body.rpt-printing .acr-sec { page-break-inside: avoid; }
+  body.rpt-printing .acr-tbl th { background: #e9ecef !important; }
+  body.rpt-printing .acr-tbl th, body.rpt-printing .acr-tbl td, body.rpt-printing .acr-box { border-color: #999; }
+  body.rpt-printing .acr-missing { page-break-before: always; }
 }
