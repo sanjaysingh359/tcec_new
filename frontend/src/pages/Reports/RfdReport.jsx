@@ -1,12 +1,13 @@
 import { ProfileOutlined, ToolOutlined, ReadOutlined, WomanOutlined, TeamOutlined, HeartOutlined } from '@ant-design/icons';
 import InstituteTableReport, { fmt } from './InstituteTableReport';
 
+/* revenue columns are rounded to whole numbers, as legacy RDF_Report.jsp (Math.round) */
 const COLUMNS = [
   { group: 'Revenue from Production', tone: 'd', cols: [
-    { key: 'tooling', label: 'Tooling' },
-    { key: 'jobWork', label: 'Other Job Work' },
+    { key: 'tooling', label: 'Tooling', round: true },
+    { key: 'jobWork', label: 'Other Job Work', round: true },
   ] },
-  { key: 'revTraining', label: 'Revenue from Training' },
+  { key: 'revTraining', label: 'Revenue from Training', round: true },
   { key: 'women',       label: 'No. of Women Trainee' },
   { key: 'sc',          label: 'No. of SC Trained' },
   { key: 'st',          label: 'No. of ST Trained' },

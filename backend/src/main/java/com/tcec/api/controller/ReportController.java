@@ -103,12 +103,18 @@ public class ReportController {
             List<TblFinancial> fList = finByMonth.getOrDefault(m, List.of());
             List<TblPhysical>  pList = phyByMonth.getOrDefault(m, List.of());
 
-            double revenue      = sumBD(fList, TblFinancial::getRevEarCashTotalDtm);
-            double recExpdt     = sumBD(fList, TblFinancial::getRevExpCashDtm);
-            double surplus      = sumBD(fList, TblFinancial::getIncExpCashDtm);
-            double revenueCum   = sumBD(fList, TblFinancial::getRevEarCashTotalCum);
-            double recExpdtCum  = sumBD(fList, TblFinancial::getRevExpCashCum);
-            double surplusCum   = sumBD(fList, TblFinancial::getIncExpCashCum);
+            // Accrual basis, rounded, as legacy GraphicalReport.jsp (v_graphdata):
+            // surplus = inc_exp_accrual = accrual earning − accrual expenditure
+            double revenueA     = sumBD(fList, TblFinancial::getRevEarAccrualTotalDtm);
+            double recExpdtA    = sumBD(fList, TblFinancial::getRevExpAccrualDtm);
+            double revenueCumA  = sumBD(fList, TblFinancial::getRevEarAccrualTotalCum);
+            double recExpdtCumA = sumBD(fList, TblFinancial::getRevExpAccrualCum);
+            double revenue      = Math.round(revenueA);
+            double recExpdt     = Math.round(recExpdtA);
+            double surplus      = Math.round(revenueA - recExpdtA);
+            double revenueCum   = Math.round(revenueCumA);
+            double recExpdtCum  = Math.round(recExpdtCumA);
+            double surplusCum   = Math.round(revenueCumA - recExpdtCumA);
 
             // Trainees: use tring_total_not_dtm/cum (ttb_dtm_total is always 0 in DB)
             int trainees        = sumInt(pList, TblPhysical::getTringTotalNotDtm);
@@ -143,7 +149,7 @@ public class ReportController {
      * Columns:
      *   userId  = institute name
      *   target  = annual ta_target from tbl_trng_exp_target
-     *   dtmGen  = total − (SC+ST+OBC+MIN)  during the month
+     *   dtmGen/cumGen = stored gen / gen_cum columns (as the legacy report)
      *   dtmSC/ST/OBC/MIN = ttb_dtm_* columns
      *   cumGen/SC/ST/OBC/MIN = ttb_cum_* columns
      *   noData  = true when no tbl_physical row exists for this month
@@ -191,9 +197,7 @@ public class ReportController {
             seen.add(instId);
 
             // Get institute name
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName)
-                    .orElse(instId);
+            String instName = loginName(m, instId);
 
             TblPhysical p = phyByInst.get(instId);
             boolean noData = (p == null);
@@ -202,15 +206,13 @@ public class ReportController {
             int dtmST  = noData ? 0 : nvl(p.getTtbDtmSt());
             int dtmOBC = noData ? 0 : nvl(p.getTtbDtmObc());
             int dtmMin = noData ? 0 : nvl(p.getTtbDtmMin());
-            int dtmTot = noData ? 0 : nvl(p.getTringTotalNotDtm());
-            int dtmGen = Math.max(0, dtmTot - dtmSC - dtmST - dtmOBC - dtmMin);
+            int dtmGen = noData ? 0 : nvl(p.getGen());          // stored GEN, as legacy trainee.jsp
 
             int cumSC  = noData ? 0 : nvl(p.getTtbCumSc());
             int cumST  = noData ? 0 : nvl(p.getTtbCumSt());
             int cumOBC = noData ? 0 : nvl(p.getTtbCumObc());
             int cumMin = noData ? 0 : nvl(p.getTtbCumMin());
-            int cumTot = noData ? 0 : nvl(p.getTringTotalNotCum());
-            int cumGen = Math.max(0, cumTot - cumSC - cumST - cumOBC - cumMin);
+            int cumGen = noData ? 0 : nvl(p.getGenCum());       // stored GEN_CUM
 
             int target = targetByInst.getOrDefault(instId, 0);
 
@@ -275,8 +277,7 @@ public class ReportController {
             if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
             seen.add(instId);
 
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
 
             TblPhysical p  = phyByInst.get(instId);
             boolean noData = (p == null);
@@ -340,8 +341,7 @@ public class ReportController {
             if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
             seen.add(instId);
 
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
 
             TblPhysical p  = phyByInst.get(instId);
             boolean noData = (p == null);
@@ -420,8 +420,7 @@ public class ReportController {
             if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
             seen.add(instId);
 
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
 
             TblPhysical p  = phyByInst.get(instId);
             boolean noData = (p == null);
@@ -476,8 +475,7 @@ public class ReportController {
             if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
             seen.add(instId);
 
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
 
             TblBudget b    = budByInst.get(instId);
             boolean noData = (b == null);
@@ -525,7 +523,7 @@ public class ReportController {
         for (UserIdMapping m : mappingRepo.findRealInstituteUsers()) {
             String instId = m.getInstId() == null ? "" : m.getInstId().trim();
             if (instId.isBlank() || !seen.add(instId)) continue;
-            String instName = instRepo.findByInstId(instId).map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
             var t = byInst.get(instId);
 
             Map<String, Object> row = new LinkedHashMap<>();
@@ -591,8 +589,7 @@ public class ReportController {
             if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
             seen.add(instId);
 
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
 
             result.add(new MprReportRow(
                     instName,
@@ -644,8 +641,7 @@ public class ReportController {
             if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
             seen.add(instId);
 
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
 
             TblBudget b = budByInst.get(instId);
             String text = (b != null && b.getSignificant() != null) ? b.getSignificant().trim() : "";
@@ -693,8 +689,7 @@ public class ReportController {
             if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
             seen.add(instId);
 
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
 
             Set<String> submitted = achByInst.getOrDefault(instId, Set.of());
             Map<String, Object> row = new LinkedHashMap<>();
@@ -772,8 +767,7 @@ public class ReportController {
             String instId = m.getInstId() == null ? "" : m.getInstId().trim();
             if (instId.isBlank() || !seen.add(instId)) continue;
 
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
 
             TblFinancial f = finByInst.get(instId);
             TblPhysical  p = phyByInst.get(instId);
@@ -866,8 +860,7 @@ public class ReportController {
             if (instId == null || instId.isBlank() || seen.contains(instId)) continue;
             seen.add(instId);
 
-            String instName = instRepo.findByInstId(instId)
-                    .map(TlInstitute::getInstName).orElse(instId);
+            String instName = loginName(m, instId);
 
             TblFinancial f = finByInst.get(instId);
             TblPhysical  p = phyByInst.get(instId);
@@ -925,5 +918,11 @@ public class ReportController {
                     return v == null ? 0 : v;
                 })
                 .sum();
+    }
+
+    /** Institute as the legacy reports showed it: the TCEC login name (user_id_mapping.user_id, e.g. "TCEC-Madurai"). */
+    private static String loginName(UserIdMapping m, String instId) {
+        String u = m.getUserId() == null ? "" : m.getUserId().trim();
+        return u.isEmpty() ? instId : u;
     }
 }

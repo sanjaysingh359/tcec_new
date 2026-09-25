@@ -172,8 +172,11 @@ export default function MprReport() {
   const exADtm = aTotDtm - revExpADtm;  const exACum = aTotCum - revExpACum;
 
   /* %age Recovery */
-  const perRecCDtm = n(finEx.perRecCashAch);     const perRecCTgt = n(finTgt.perRecCash);
-  const perRecADtm = n(finEx.perRecAccrualAch);  const perRecATgt = n(finTgt.perRecAccrual);
+  /* earning ÷ expenditure × 100 for the month and cumulative; last column = cumulative ÷ target × 100 (legacy report.jsp) */
+  const rec = (earn, exp) => (n(exp) > 0 ? ((n(earn) / n(exp)) * 100).toFixed(2) : '0.00');   // legacy calper
+  const perRecCDtm = rec(cTotDtm, revExpCDtm);   const perRecCTgt = n(finTgt.perRecCash);
+  const perRecADtm = rec(aTotDtm, revExpADtm);   const perRecATgt = n(finTgt.perRecAccrual);
+  const perRecCCum = rec(cTotCum, revExpCCum);   const perRecACum = rec(aTotCum, revExpACum);
 
   /* ══════════════════════════════════════════════════
      PHYSICAL computed values
@@ -526,16 +529,16 @@ export default function MprReport() {
                   <td className="mpr-part" colSpan={2} rowSpan={2}>(4) %age recovery</td>
                   <td className="mpr-part-ind">Cash basis</td>
                   <td className="mpr-tgt">{f2(perRecCTgt)}</td>
-                  <td className="mpr-dtm">{f2(perRecCDtm)}</td>
-                  <td className="mpr-cum">{pct(cTotCum, revExpCCum)}</td>
-                  <td className="mpr-dash">-</td>
+                  <td className="mpr-dtm">{perRecCDtm}</td>
+                  <td className="mpr-cum">{perRecCCum}</td>
+                  <td className="mpr-pct">{pct(perRecCCum, perRecCTgt)}</td>
                 </tr>
                 <tr style={{ background: '#FBF8EF' }}>
                   <td className="mpr-part-ind">Accrual basis</td>
                   <td className="mpr-tgt">{f2(perRecATgt)}</td>
-                  <td className="mpr-dtm">{f2(perRecADtm)}</td>
-                  <td className="mpr-cum">{pct(aTotCum, revExpACum)}</td>
-                  <td className="mpr-dash">-</td>
+                  <td className="mpr-dtm">{perRecADtm}</td>
+                  <td className="mpr-cum">{perRecACum}</td>
+                  <td className="mpr-pct">{pct(perRecACum, perRecATgt)}</td>
                 </tr>
               </tbody>
             </table>

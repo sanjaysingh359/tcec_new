@@ -136,7 +136,7 @@ public class EntryController {
         e.setInstId(instId);
         e.setMonths(month);
         e.setYears(year);
-        e.setMonthsYear(month + "-" + year);
+        e.setMonthsYear(legacyMonthsYear(month, year));
 
         BigDecimal cashTrngDtm    = dbd(body, "cashTraining");
         BigDecimal cashToolDtm    = dbd(body, "cashTooling");
@@ -152,8 +152,6 @@ public class EntryController {
         BigDecimal accrTestDtm    = dbd(body, "accrualTesting");
         BigDecimal revExpCashDtm  = dbd(body, "revExpCash");
         BigDecimal revExpAccrDtm  = dbd(body, "revExpAccrual");
-        BigDecimal perRecCashAch  = dbd(body, "perRecCashAch");
-        BigDecimal perRecAccrAch  = dbd(body, "perRecAccrualAch");
 
         e.setRevEarCashTrngDtm(cashTrngDtm);
         e.setRevEarCashPrdtnToolingDtm(cashToolDtm);
@@ -169,8 +167,6 @@ public class EntryController {
         e.setTestCalServicesAccDtm(accrTestDtm);
         e.setRevExpCashDtm(revExpCashDtm);
         e.setRevExpAccrualDtm(revExpAccrDtm);
-        e.setPerRecCashDtm(perRecCashAch);
-        e.setPerRecAccrualDtm(perRecAccrAch);
 
         // Cumulative = sum of prev DTMs + current DTM
         e.setRevEarCashTrngCum(      sumBD(prev, TblFinancial::getRevEarCashTrngDtm).add(cashTrngDtm));
@@ -200,7 +196,16 @@ public class EntryController {
                 .add(e.getRevEarAccrualPrdtnOtherjobCum()).add(e.getRevEarAcclBasConsultCum())
                 .add(e.getRevEarAccrualMiscCum()).add(e.getTestCalServicesAccMon()));
 
-        finRepo.save(e);
+        // Excess of income over expenditure and %age recovery, stored as the legacy FinancialInsert did:
+        // excess = earning − expenditure, recovery = earning ÷ expenditure × 100 (month and cumulative)
+        e.setIncExpCashDtm(e.getRevEarCashTotalDtm().subtract(revExpCashDtm));
+        e.setIncExpCashCum(e.getRevEarCashTotalCum().subtract(e.getRevExpCashCum()));
+        e.setIncExpAccrualDtm(e.getRevEarAccrualTotalDtm().subtract(revExpAccrDtm));
+        e.setIncExpAccrualCum(e.getRevEarAccrualTotalCum().subtract(e.getRevExpAccrualCum()));
+        e.setPerRecCashDtm(recovery(e.getRevEarCashTotalDtm(), revExpCashDtm));
+        e.setPerRecCashCum(recovery(e.getRevEarCashTotalCum(), e.getRevExpCashCum()));
+        e.setPerRecAccrualDtm(recovery(e.getRevEarAccrualTotalDtm(), revExpAccrDtm));
+        e.setPerRecAccrualCum(recovery(e.getRevEarAccrualTotalCum(), e.getRevExpAccrualCum()));
 
         // Revenue Expenditure Target (Cash/Accrual) is editable right on this form;
         // it lives on the annual target row, so keep that in sync here.
@@ -211,6 +216,22 @@ public class EntryController {
         tgt.setRevExpCash(revExpCashTarget);
         tgt.setRevExpAcc(revExpAccrualTarget);
         targetRepo.save(tgt);
+
+        // The legacy form also submitted the annual targets with every month's row
+        e.setRevEarCashTotalTarget(nz(tgt.getRevEarnCash()));
+        e.setRevEarAccrualTotalTarget(BigDecimal.valueOf(nz(tgt.getRevEarnAcc())));
+        e.setRevExpCashTarget(BigDecimal.valueOf(revExpCashTarget));
+        e.setRevExpAccrualTarget(revExpAccrualTarget);
+        e.setIncExpCashTarget(BigDecimal.valueOf(nz(tgt.getIncExpCash())));
+        e.setIncExpAccrualTarget(BigDecimal.valueOf(nz(tgt.getIncExpAcc())));
+        e.setPerRecCashTarget(BigDecimal.valueOf(nz(tgt.getPerRecCash())));
+        e.setPerRecAccrualTarget(BigDecimal.valueOf(nz(tgt.getPerRecAcc())));
+
+        finRepo.save(e);
+
+        // Legacy FinancialInsert also wrote tooling / other job work to tbl_tooling_otherjob
+        // (the old Financial form reads its cumulatives from there) — keep it in step.
+        saveToolingOtherjob(e);
 
         return ResponseEntity.ok(ApiResponse.ok("Saved successfully"));
     }
@@ -379,7 +400,7 @@ public class EntryController {
 
         TblPhysical p = existingOpt.orElseGet(TblPhysical::new);
         p.setInstId(instId); p.setMonths(month); p.setYears(year);
-        p.setMonthsYear(month + "-" + year);
+        p.setMonthsYear(legacyMonthsYear(month, year));
 
         // DTM
         int twMsmeNo    = intVal(body.get("twMsmeNos"));
@@ -485,6 +506,7 @@ public class EntryController {
         p.setSeminarNoCum(      sumInt(prev, TblPhysical::getSeminarNoDtm)   + semNo);
         p.setSeminarParticipantsCum(sumInt(prev, TblPhysical::getSeminarParticipantsDtm) + semPts);
         p.setGeneralCum(        sumInt(prev, TblPhysical::getGen)            + gen);
+        p.setGenCum(            sumInt(prev, TblPhysical::getGen)            + gen);
         p.setTtbCumSc(          sumInt(prev, TblPhysical::getTtbDtmSc)       + sc);
         p.setTtbCumSt(          sumInt(prev, TblPhysical::getTtbDtmSt)       + st);
         p.setTtbCumObc(         sumInt(prev, TblPhysical::getTtbDtmObc)      + obc);
@@ -613,7 +635,7 @@ public class EntryController {
 
         TblBudget b = existingOpt.orElseGet(TblBudget::new);
         b.setInstId(instId); b.setMonths(month); b.setYears(year);
-        b.setMonthsYear(month + "-" + year);
+        b.setMonthsYear(legacyMonthsYear(month, year));
 
         BigDecimal cfAmt    = dbd(body, "cfAmount");
         BigDecimal cfDtm    = dbd(body, "cfDtm");
@@ -759,7 +781,8 @@ public class EntryController {
     @PostMapping("/placement/save")
     public ResponseEntity<ApiResponse<String>> savePlacement(
             @RequestBody Map<String, Object> body,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            jakarta.servlet.http.HttpServletRequest request) {
 
         if (!isAuth(authHeader)) return unauthorized();
         String role  = getRole(authHeader);
@@ -778,7 +801,9 @@ public class EntryController {
 
         TblPlacement pl = existingOpt.orElseGet(TblPlacement::new);
         pl.setInstId(instId); pl.setMonths(month); pl.setYears(year);
-        pl.setYearMonths(year + "-" + month);
+        pl.setYearMonths(legacyMonthsYear(month, year));
+        pl.setTime(new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date()));
+        pl.setIp(clientIp(request));
 
         int nsqfCom    = intVal(body.get("nsqfCom"));
         int nsqfExe    = intVal(body.get("nsqfExe"));
@@ -895,7 +920,7 @@ public class EntryController {
             nb.setInstId(instId);
             nb.setMonths(month);
             nb.setYears(year);
-            nb.setMonthsYear(month + "-" + year);
+            nb.setMonthsYear(legacyMonthsYear(month, year));
             return nb;
         });
         b.setSignificant(text);
@@ -922,6 +947,59 @@ public class EntryController {
     private <T> ResponseEntity<ApiResponse<T>> unauthorized() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("Authentication required"));
+    }
+
+    /** months_year / year_months exactly as the legacy app built it: "<years>-<month>-20" */
+    private static String legacyMonthsYear(String month, String year) {
+        return year + "-" + month + "-20";
+    }
+
+    private static int nz(Integer v) { return v == null ? 0 : v; }
+
+    /** %age recovery = earning ÷ expenditure × 100, 0 when there is no expenditure (legacy calper) */
+    private static BigDecimal recovery(BigDecimal earning, BigDecimal expenditure) {
+        if (expenditure == null || expenditure.signum() == 0) return BigDecimal.ZERO;
+        return earning.multiply(BigDecimal.valueOf(100)).divide(expenditure, 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    /** Upsert the month into tbl_tooling_otherjob, as the legacy NewFinancialInsert / Financialupdate did. */
+    private void saveToolingOtherjob(TblFinancial e) {
+        Object[] vals = {
+            nz(e.getRevEarCashPrdtnToolingTarget()), e.getRevEarCashPrdtnToolingDtm(), e.getRevEarCashPrdtnToolingCum(),
+            nz(e.getRevEarCashPrdtnOtherjobTarget()), e.getRevEarCashPrdtnOtherjobDtm(), e.getRevEarCashPrdtnOtherjobCum(),
+            nz(e.getRevEarAccrualPrdtnToolingTarget()), e.getRevEarAccrualPrdtnToolingDtm(), e.getRevEarAccrualPrdtnToolingCum(),
+            nz(e.getRevEarAccrualPrdtnOtherjobTarget()), e.getRevEarAccrualPrdtnOtherjobDtm(), e.getRevEarAccrualPrdtnOtherjobCum(),
+        };
+        int updated = jdbc.update(
+            "UPDATE tbl_tooling_otherjob SET rev_ear_cash_prdtn_tooling_target=?, rev_ear_cash_prdtn_tooling_dtm=?, rev_ear_cash_prdtn_tooling_cum=?, "
+          + "rev_ear_cash_prdtn_otherjob_target=?, rev_ear_cash_prdtn_otherjob_dtm=?, rev_ear_cash_prdtn_otherjob_cum=?, "
+          + "rev_ear_accrual_prdtn_tooling_target=?, rev_ear_accrual_prdtn_tooling_dtm=?, rev_ear_accrual_prdtn_tooling_cum=?, "
+          + "rev_ear_accrual_prdtn_otherjob_target=?, rev_ear_accrual_prdtn_otherjob_dtm=?, rev_ear_accrual_prdtn_otherjob_cum=?, months_year=? "
+          + "WHERE TRIM(inst_id)=? AND TRIM(months)=? AND TRIM(years)=?",
+            concat(vals, e.getMonthsYear(), e.getInstId(), e.getMonths(), e.getYears()));
+        if (updated == 0) {
+            jdbc.update(
+                "INSERT INTO tbl_tooling_otherjob (inst_id, months, years, months_year, "
+              + "rev_ear_cash_prdtn_tooling_target, rev_ear_cash_prdtn_tooling_dtm, rev_ear_cash_prdtn_tooling_cum, "
+              + "rev_ear_cash_prdtn_otherjob_target, rev_ear_cash_prdtn_otherjob_dtm, rev_ear_cash_prdtn_otherjob_cum, "
+              + "rev_ear_accrual_prdtn_tooling_target, rev_ear_accrual_prdtn_tooling_dtm, rev_ear_accrual_prdtn_tooling_cum, "
+              + "rev_ear_accrual_prdtn_otherjob_target, rev_ear_accrual_prdtn_otherjob_dtm, rev_ear_accrual_prdtn_otherjob_cum, sno) "
+              + "SELECT ?,?,?,?, ?,?,?, ?,?,?, ?,?,?, ?,?,?, COALESCE(MAX(sno), 0) + 1 FROM tbl_tooling_otherjob",
+                concat(new Object[] { e.getInstId(), e.getMonths(), e.getYears(), e.getMonthsYear() }, vals));
+        }
+    }
+
+    private static Object[] concat(Object[] a, Object... b) {
+        Object[] r = Arrays.copyOf(a, a.length + b.length);
+        System.arraycopy(b, 0, r, a.length, b.length);
+        return r;
+    }
+
+    /** Client address as the legacy page logged it (first X-Forwarded-For hop when behind a proxy). */
+    private static String clientIp(jakarta.servlet.http.HttpServletRequest request) {
+        String fwd = request.getHeader("X-Forwarded-For");
+        if (fwd != null && !fwd.isBlank()) return fwd.split(",")[0].trim();
+        return request.getRemoteAddr();
     }
 
     private static int safeInt(String s) {

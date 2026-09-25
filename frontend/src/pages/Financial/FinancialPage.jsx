@@ -22,7 +22,6 @@ const INIT_DTM = {
   accrualTraining: '', accrualTooling: '', accrualOtherJob: '',
   accrualConsult: '', accrualMisc: '',    accrualTesting: '',
   revExpCash: '',     revExpAccrual: '',
-  perRecCashAch: '', perRecAccrualAch: '',
 };
 
 const ZERO_CUM = {
@@ -220,7 +219,6 @@ export default function FinancialPage() {
       accrualOtherJob: dtm.accrualOtherJob, accrualConsult: dtm.accrualConsult,
       accrualMisc: dtm.accrualMisc, accrualTesting: dtm.accrualTesting,
       revExpCash: dtm.revExpCash, revExpAccrual: dtm.revExpAccrual,
-      perRecCashAch: dtm.perRecCashAch, perRecAccrualAch: dtm.perRecAccrualAch,
       revExpCashTarget: TARGETS.revExpCash, revExpAccrualTarget: TARGETS.revExpAccrual,
     }).then(() => {
       message.success('Financial data saved successfully!');
@@ -419,16 +417,16 @@ export default function FinancialPage() {
               <tr>
                 <td className="fin-cell fin-label">
                   (4) %age recovery
-                  <div className="fin-label-note">earning ÷ expenditure × 100 · last column: achievement (entered)</div>
+                  <div className="fin-label-note">earning ÷ expenditure × 100 · last column: cumulative ÷ target × 100</div>
                 </td>
                 <TgtCell value={TARGETS.perRecCash} cls="fin-grp-start" />
                 <CalcCell value={prCashDtm} />
                 <CalcCell value={prCashCum} />
-                <InCell value={dtm.perRecCashAch} onChange={handleChange('perRecCashAch')} disabled={blocked} />
+                <PctCell cumVal={prCashCum} target={TARGETS.perRecCash} />
                 <TgtCell value={TARGETS.perRecAccrual} cls="fin-grp-start" />
                 <CalcCell value={prAccrDtm} />
                 <CalcCell value={prAccrCum} />
-                <InCell value={dtm.perRecAccrualAch} onChange={handleChange('perRecAccrualAch')} disabled={blocked} />
+                <PctCell cumVal={prAccrCum} target={TARGETS.perRecAccrual} />
               </tr>
             </tbody>
           </table>

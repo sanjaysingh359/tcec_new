@@ -15,7 +15,7 @@ export const pct = (a, b) => (b > 0 ? Math.round((a * 100) / b) : 0);
 
 /**
  * Shared layout for the centre-wise monthly reports (budget / analysis / RFD).
- * `columns`: [{ group, tone, cols: [col] } | col], col = { key?, label, value?: r => number, strong? }.
+ * `columns`: [{ group, tone, cols: [col] } | col], col = { key?, label, value?: r => number, strong?, round? }.
  *   A col with `value` is computed (for rows and for the totals row, which gets the summed keys).
  * `tiles(tot, rows)` → [{ icon, label, value, sub, tone, progress?, good? }]
  */
@@ -49,12 +49,13 @@ export default function InstituteTableReport({
   const groups = columns.map(c => (c.cols ? c : { single: true, cols: [c] }));
   const leaf = groups.flatMap(g => g.cols);
   const keys = leaf.filter(c => c.key).map(c => c.key);
-  const val = (r, c) => (c.value ? c.value(r) : n(r[c.key]));
+  const val = (r, c) => { const v = c.value ? c.value(r) : n(r[c.key]); return c.round ? Math.round(v) : v; };
 
   const withData = rows.filter(r => !r.noData);
   const missing = rows.length - withData.length;
   const missingNames = rows.filter(r => r.noData).map(r => r.userId).join(', ');
-  const tot = Object.fromEntries(keys.map(k => [k, withData.reduce((s, r) => s + n(r[k]), 0)]));
+  const roundKeys = new Set(leaf.filter(c => c.round && c.key).map(c => c.key));
+  const tot = Object.fromEntries(keys.map(k => [k, withData.reduce((s, r) => s + (roundKeys.has(k) ? Math.round(n(r[k])) : n(r[k])), 0)]));
   const tileList = tiles ? tiles(tot, withData) : [];
 
   const q = search.trim().toLowerCase();
