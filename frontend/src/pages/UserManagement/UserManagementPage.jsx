@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button, Table, Tag, Modal, Form, Input, Select, Popconfirm, message, Space, Badge } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, LockOutlined, TeamOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, LockOutlined, TeamOutlined, SearchOutlined, ClearOutlined, BankOutlined } from '@ant-design/icons';
 import api from '../../services/api';
 import { currentApp } from '../../utils/apps';
 
@@ -8,7 +8,10 @@ const { Option } = Select;
 
 export default function UserManagementPage() {
   const [users,      setUsers]      = useState([]);
-  const [institutes, setInstitutes] = useState([]);
+  const [institutes, setInstitutes] = useState([]);      // institutes that have users (filter)
+  const [allInstitutes, setAllInstitutes] = useState([]); // every institute (assign to a user)
+  const [instModalOpen, setInstModalOpen] = useState(false);
+  const [instSaving, setInstSaving] = useState(false);
   const [loading,    setLoading]    = useState(false);
   const [modalOpen,  setModalOpen]  = useState(false);
   const [editUser,   setEditUser]   = useState(null);
@@ -20,6 +23,7 @@ export default function UserManagementPage() {
   const [filterInstId, setFilterInstId] = useState('');
 
   const [form] = Form.useForm();
+  const [instForm] = Form.useForm();
   const selectedRole = Form.useWatch('role', form);
 
   const loadUsers = () => {
@@ -30,12 +34,36 @@ export default function UserManagementPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    loadUsers();
+  const loadInstitutes = () => {
     api.get('/admin/institutes')
       .then(r => setInstitutes(r.data?.data || []))
       .catch(() => {});
+    api.get('/admin/institutes/all')
+      .then(r => setAllInstitutes(r.data?.data || []))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadUsers();
+    loadInstitutes();
   }, []);
+
+  /* Add an institute to this application (e.g. a new AB database starts with none) */
+  const handleAddInstitute = async () => {
+    try {
+      const vals = await instForm.validateFields();
+      setInstSaving(true);
+      const { data } = await api.post('/admin/institutes', { instName: vals.instName, instAddress: vals.instAddress || '' });
+      message.success(`Institute added: ${data.data.instName} (${data.data.instId})`);
+      setInstModalOpen(false);
+      instForm.resetFields();
+      loadInstitutes();
+    } catch (err) {
+      if (err?.response?.data?.message) message.error(err.response.data.message);
+    } finally {
+      setInstSaving(false);
+    }
+  };
 
   // ── filtered data ──
   const filtered = useMemo(() => {
@@ -164,6 +192,10 @@ export default function UserManagementPage() {
           <span style={{ fontSize: 12, background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '3px 12px' }}>
             {users.length} Total Users
           </span>
+          <Button icon={<BankOutlined />} onClick={() => { instForm.resetFields(); setInstModalOpen(true); }}
+            style={{ fontWeight: 'bold' }}>
+            Add Institute
+          </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}
             style={{ background: '#990000', borderColor: '#990000', fontWeight: 'bold' }}>
             Add User
@@ -320,7 +352,7 @@ export default function UserManagementPage() {
                   option?.children?.toString().toLowerCase().includes(input.toLowerCase())
                 }
               >
-                {institutes.map(inst => (
+                {allInstitutes.map(inst => (
                   <Option key={inst.instId} value={inst.instId}>
                     {inst.instName} ({inst.instId})
                   </Option>
@@ -335,6 +367,30 @@ export default function UserManagementPage() {
           >
             <Input.Password prefix={<LockOutlined />}
               placeholder={editUser ? 'Leave blank to keep current password' : 'Enter password'} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Add institute */}
+      <Modal
+        title={<span><BankOutlined style={{ marginRight: 8 }} />Add Institute</span>}
+        open={instModalOpen}
+        onOk={handleAddInstitute}
+        onCancel={() => setInstModalOpen(false)}
+        okText="Add Institute"
+        confirmLoading={instSaving}
+        destroyOnClose
+      >
+        <p style={{ color: '#666', fontSize: 12.5, marginTop: 0 }}>
+          The institute gets the next free ID (I1, I2 …) in this application only. Then add its user with “Add User”.
+        </p>
+        <Form form={instForm} layout="vertical">
+          <Form.Item name="instName" label="Institute name"
+            rules={[{ required: true, message: 'Enter the institute name' }, { max: 200 }]}>
+            <Input placeholder="e.g. Tool Room Ludhiana" maxLength={200} />
+          </Form.Item>
+          <Form.Item name="instAddress" label="Address (optional)" rules={[{ max: 200 }]}>
+            <Input.TextArea rows={2} maxLength={200} />
           </Form.Item>
         </Form>
       </Modal>

@@ -116,8 +116,17 @@ export default function DashboardPage() {
     setSelInstName(found?.instName || instId);
   }
 
+  // an application that has no institutes yet (e.g. a new AB database): the super user goes
+  // straight to User Management to add institutes and their users
+  const noInstitutes = isSU && !loading && institutes.length === 0;
+
   function handleSubmit(e) {
     e.preventDefault();
+    if (noInstitutes) {
+      saveSelection({ section: '2', month, monthName: MONTHS.find(m => m.value === month)?.label || '', year, instId: '', instName: 'No institutes yet' });
+      navigate('/app/users');
+      return;
+    }
     if (!selInstId) { setError('Please select an institute.'); return; }
     const monthLabel = MONTHS.find(m => m.value === month)?.label || '';
     saveSelection({
@@ -171,6 +180,8 @@ export default function DashboardPage() {
             <span className="as-label">Institute</span>
             {loading ? (
               <div className="db2-skeleton" />
+            ) : noInstitutes ? (
+              <div className="db2-inst-fixed"><BankOutlined /> No institutes in this application yet — continue to add them in User Management.</div>
             ) : (isSU || isRU) ? (
               <Select
                 className="db2-select"
@@ -234,8 +245,8 @@ export default function DashboardPage() {
             <b>{cap(monthName)} {year}</b>{selInstName && <> · <b>{selInstName}</b></>}
           </div>
 
-          <button type="submit" className="as-submit" disabled={loading || !selInstId}>
-            {loading ? 'Please wait…' : <>Continue <ArrowRightOutlined /></>}
+          <button type="submit" className="as-submit" disabled={loading || (!selInstId && !noInstitutes)}>
+            {loading ? 'Please wait…' : noInstitutes ? <>Open User Management <ArrowRightOutlined /></> : <>Continue <ArrowRightOutlined /></>}
           </button>
         </form>
       </div>

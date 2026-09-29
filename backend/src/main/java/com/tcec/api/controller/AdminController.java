@@ -95,6 +95,62 @@ public class AdminController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // GET /api/admin/institutes/all — every institute (inst_id "I…") of the current
+    // application, including ones with no user yet (for assigning a new user).
+    // ─────────────────────────────────────────────────────────────────────────
+    @GetMapping("/institutes/all")
+    public ResponseEntity<ApiResponse<List<InstituteItem>>> allInstitutes(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        if (!isSu(authHeader)) return unauthorized();
+        List<InstituteItem> result = instRepo.findAllOrdered().stream()
+                .filter(t -> t.getInstId() != null && t.getInstId().trim().startsWith("I"))
+                .map(t -> new InstituteItem(t.getInstId().trim(), t.getInstName() == null ? "" : t.getInstName().trim()))
+                .sorted(Comparator.comparing(InstituteItem::instName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // POST /api/admin/institutes — add an institute to the current application
+    // Body: { instName, instAddress (optional) }. inst_id = next free "I<n>".
+    // ─────────────────────────────────────────────────────────────────────────
+    @PostMapping("/institutes")
+    public ResponseEntity<ApiResponse<InstituteItem>> createInstitute(
+            @RequestBody Map<String, String> body,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        if (!isSu(authHeader)) return unauthorized();
+        String name    = body.getOrDefault("instName", "").trim();
+        String address = body.getOrDefault("instAddress", "").trim();
+        if (name.isEmpty())
+            return ResponseEntity.badRequest().body(ApiResponse.error("Institute name is required"));
+        if (name.length() > 200 || address.length() > 200)
+            return ResponseEntity.badRequest().body(ApiResponse.error("Name and address can be at most 200 characters"));
+
+        List<TlInstitute> all = instRepo.findAll();
+        boolean duplicate = all.stream().anyMatch(t -> t.getInstName() != null && t.getInstName().trim().equalsIgnoreCase(name));
+        if (duplicate)
+            return ResponseEntity.badRequest().body(ApiResponse.error("An institute named '" + name + "' already exists"));
+
+        int nextNo = all.stream()
+                .map(t -> t.getInstId() == null ? "" : t.getInstId().trim())
+                .filter(id -> id.matches("I\\d+"))
+                .mapToInt(id -> Integer.parseInt(id.substring(1)))
+                .max().orElse(0) + 1;
+        int nextRowId = all.stream().map(TlInstitute::getId).filter(Objects::nonNull)
+                .mapToInt(Integer::intValue).max().orElse(0) + 1;
+
+        TlInstitute t = new TlInstitute();
+        t.setId(nextRowId);
+        t.setInstId("I" + nextNo);
+        t.setInstName(name);
+        t.setInstAddress(address);
+        instRepo.save(t);
+        return ResponseEntity.ok(ApiResponse.ok("Institute added", new InstituteItem(t.getInstId(), name)));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // GET /api/admin/data-status?instId=X&year=Y
     // Returns 12 rows (fiscal months Apr–Mar) showing which sections have data.
     // ─────────────────────────────────────────────────────────────────────────
