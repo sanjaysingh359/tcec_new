@@ -1,5 +1,6 @@
 package com.tcec.api.service;
 
+import com.tcec.api.config.AppContext;
 import com.tcec.api.dto.LoginRequest;
 import com.tcec.api.dto.LoginResponse;
 import com.tcec.api.entity.MsmeUser;
@@ -29,6 +30,8 @@ public class AuthService {
 
     // In-memory token store: token → MsmeUser
     private final Map<String, MsmeUser> tokenStore = new ConcurrentHashMap<>();
+    // token → application it was issued for (each application has its own database)
+    private final Map<String, String> tokenApp = new ConcurrentHashMap<>();
 
     /** Same policy as the legacy chnagepsw.jsp: 8–15 chars, upper + lower + digit + special, no spaces. */
     private static final Pattern PASSWORD_POLICY =
@@ -58,6 +61,7 @@ public class AuthService {
 
         String token = UUID.randomUUID().toString();
         tokenStore.put(token, user);
+        tokenApp.put(token, AppContext.get());
 
         return Optional.of(new LoginResponse(
                 user.getUserId(),
@@ -108,8 +112,11 @@ public class AuthService {
                 clientIp == null ? "" : clientIp);
 
         // sign out every other session of this user; keep the current one
+        String app = AppContext.get();
         tokenStore.entrySet().removeIf(e -> !e.getKey().equals(token)
+                && app.equals(tokenApp.get(e.getKey()))
                 && e.getValue().getUserId() != null && e.getValue().getUserId().trim().equals(userId));
+        tokenApp.keySet().retainAll(tokenStore.keySet());
         session.setPassword(newHash);
         return null;
     }
@@ -118,14 +125,24 @@ public class AuthService {
      * Invalidate a token.
      */
     public void logout(String token) {
+        if (token == null) return;
         tokenStore.remove(token);
+        tokenApp.remove(token);
     }
 
     /**
      * Resolve a token to a user. Returns empty if invalid/expired.
      */
     public Optional<MsmeUser> getUserByToken(String token) {
+        if (token == null) return Optional.empty();
+        // a session is valid only inside the application it was opened in
+        if (!AppContext.get().equals(tokenApp.get(token))) return Optional.empty();
         return Optional.ofNullable(tokenStore.get(token));
+    }
+
+    /** Application the token was issued for, or null for an unknown token. */
+    public String appForToken(String token) {
+        return token == null ? null : tokenApp.get(token);
     }
 
     /** SHA-256 hex of input string. */

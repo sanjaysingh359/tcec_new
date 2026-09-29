@@ -1,6 +1,7 @@
 import { FileTextOutlined, BankOutlined } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import ReportSelector from '../../components/ReportSelector';
+import { mprName } from '../../utils/apps';
 
 const titleCase = s => s.charAt(0) + s.slice(1).toLowerCase();
 
@@ -11,7 +12,7 @@ export default function MprReportPage() {
   return (
     <ReportSelector
       title="Monthly Progress Report of MSME-AB"
-      description="The complete MPR-AB of the institute for the month — sections A to P, in the official format."
+      description={`The complete ${mprName()} report of the institute for the month — sections A to P, in the official format.`}
       target="/app/reports/mpr/report"
       icon={<FileTextOutlined />}
       includes={[

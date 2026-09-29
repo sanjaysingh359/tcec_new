@@ -238,3 +238,12 @@
   .as-card-head p { display: none; }
   .as-field { margin-bottom: 9px; }
 }
+
+/* chosen application on the sign-in card */
+.as-app-chip {
+  display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 6px;
+  background: #eaf1f9; color: var(--as-navy); font-size: 12px; font-weight: 800; letter-spacing: 0.5px;
+  vertical-align: 3px;
+}
+.as-app-switch { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12px; font-weight: 600; color: #1f5f96; }
+.as-app-switch:hover { text-decoration: underline; }

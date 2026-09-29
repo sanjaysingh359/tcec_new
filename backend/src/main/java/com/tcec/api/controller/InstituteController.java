@@ -45,7 +45,7 @@ public class InstituteController {
      */
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<List<TlInstitute>>> active() {
-        // Get all inst_ids from real TCEC institute users (userId starts with 'TCEC-')
+        // inst_ids of the current application's institute users
         List<String> mappedIds = mappingRepo.findRealInstituteUsers().stream()
                 .map(m -> m.getInstId())
                 .filter(id -> id != null && !id.isBlank())

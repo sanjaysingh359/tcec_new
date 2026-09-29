@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './HomePage.css';
+import { mprName } from '../../utils/apps';
 
 const n = v => parseFloat(v) || 0;
 const MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
@@ -30,7 +31,7 @@ const ENTRY_FORMS = [
 const REPORT_GROUPS = [
   { title: 'Overview', items: [
     { key: '/app/reports/graphical', icon: <LineChartOutlined />, label: 'Graphical Representation', desc: 'Charts & trends', iu: true },
-    { key: '/app/reports/mpr',       icon: <FileTextOutlined />,  label: 'MPR-AB Report',            desc: 'Monthly progress report', iu: true },
+    { key: '/app/reports/mpr',       icon: <FileTextOutlined />,  label: 'MPR Report',            desc: 'Monthly progress report', iu: true },
     { key: '/app/reports/analysis',  icon: <PieChartOutlined />,  label: 'Analysis Report',          desc: 'Targets vs achievement' },
   ]},
   { title: 'Trainees trained', items: [
@@ -320,7 +321,7 @@ export default function HomePage() {
       <header className="home-hero">
         <div className="home-hero-main">
           <span className="home-hero-kicker">{greeting()}, {name}</span>
-          <h1>{adminReports ? 'MPR-AB Reports Dashboard' : selection.instName}</h1>
+          <h1>{adminReports ? `${mprName()} Reports Dashboard` : selection.instName}</h1>
           <div className="home-hero-meta">
             <span><CalendarOutlined /> {selection.monthName} {selection.year}</span>
             {adminReports && <span><BarChartOutlined /> Viewing: {selection.instName}</span>}

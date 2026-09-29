@@ -4,6 +4,7 @@ import {
   BankOutlined, CustomerServiceOutlined, ToolOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
 import './ContactUsPage.css';
+import { mprName } from '../../utils/apps';
 
 /* Contact details as published on the legacy portal (msmecontact.jsp) */
 const CONTACTS = [
@@ -20,7 +21,7 @@ const CONTACTS = [
     key: 'tech',
     icon: <ToolOutlined />,
     title: 'Technical Support',
-    subtitle: 'MPR-AB portal',
+    subtitle: 'MPR portal',
     help: 'Login problems, errors on a page, reports not loading or exports failing.',
     phone: '9097846381',
     email: 'sanjay.singh359@gmail.com',
@@ -75,7 +76,7 @@ export default function ContactUsPage() {
       <header className="ct-hero">
         <div className="ct-hero-text">
           <h1>Contact Us</h1>
-          <p>Need help with the MPR-AB portal? Reach the right team below.</p>
+          <p>Need help with the {mprName()} portal? Reach the right team below.</p>
         </div>
         <img src="/images/india-gov-logo.jpg" alt="" className="ct-hero-emblem"
           onError={e => { e.currentTarget.style.display = 'none'; }} />

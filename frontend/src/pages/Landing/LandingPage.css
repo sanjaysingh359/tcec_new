@@ -108,3 +108,10 @@
 @media (max-width: 560px) {
   .ld-grid { grid-template-columns: 1fr; }
 }
+
+/* apps not open yet: visible but not clickable */
+.ld-card.is-disabled { cursor: not-allowed; filter: grayscale(0.55); opacity: 0.72; }
+.ld-card.is-disabled:hover { transform: none; box-shadow: none; }
+.ld-card.is-disabled .ld-enter { color: #8a99aa; }
+.ld-card.is-disabled:hover .ld-enter .anticon { transform: none; }
+.ld-badge-soon { background: #eef1f5 !important; color: #5d6e80 !important; }

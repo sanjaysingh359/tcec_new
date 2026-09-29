@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getAppKey } from '../utils/apps';
 
 const api = axios.create({
   baseURL: 'http://localhost:8082/api',
@@ -11,6 +12,9 @@ api.interceptors.request.use((config) => {
     const { token } = JSON.parse(user);
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
+  // application chosen on the landing page — selects that application's database on the server
+  const app = getAppKey();
+  if (app) config.headers['X-App'] = app;
   return config;
 });
 
@@ -21,7 +25,9 @@ api.interceptors.response.use(
     // Without this check, a wrong-password 401 would reload the page before the error message shows.
     const isLoginCall = err.config?.url?.includes('/auth/login');
     if (err.response?.status === 401 && !isLoginCall) {
-      sessionStorage.clear();
+      // sign out, but keep the chosen application so the user lands on its login page
+      sessionStorage.removeItem('tcec_user');
+      sessionStorage.removeItem('tcec_selection');
       window.location.href = '/login';
     }
     return Promise.reject(err);

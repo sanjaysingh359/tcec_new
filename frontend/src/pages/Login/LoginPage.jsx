@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   UserOutlined, LockOutlined, EyeOutlined, EyeInvisibleOutlined, ReloadOutlined,
-  SafetyOutlined, LoginOutlined, WarningOutlined, CalendarOutlined,
+  SafetyOutlined, LoginOutlined, WarningOutlined, CalendarOutlined, SwapOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import AuthShell from '../../components/AuthShell';
+import { currentApp } from '../../utils/apps';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -19,8 +20,8 @@ function generateCaptcha() {
 export default function LoginPage() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
-  const { state } = useLocation();
-  const clientTitle = state?.clientTitle || 'Monthly Progress Report-AB';
+  // the application chosen on the landing page; its own users sign in here
+  const app = currentApp();
   const [captcha, setCaptcha] = useState(generateCaptcha);
   const [uid, setUid]   = useState('');
   const [pwd, setPwd]   = useState('');
@@ -30,8 +31,9 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true });
-  }, [user, navigate]);
+    if (!app) navigate('/', { replace: true });
+    else if (user) navigate('/dashboard', { replace: true });
+  }, [app, user, navigate]);
 
   const refreshCaptcha = useCallback(() => {
     setCaptcha(generateCaptcha());
@@ -72,6 +74,8 @@ export default function LoginPage() {
     }
   }
 
+  if (!app) return null;
+
   const now = new Date();
   const dateStr = `${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
 
@@ -79,8 +83,9 @@ export default function LoginPage() {
     <AuthShell>
       <div className="as-card">
         <div className="as-card-head">
-          <h2>Sign in</h2>
-          <p>{clientTitle} — enter your User ID and password to continue.</p>
+          <h2>Sign in <span className="as-app-chip">{app.code}</span></h2>
+          <p>{app.title} — enter your {app.code} User ID and password to continue.</p>
+          <Link to="/" className="as-app-switch"><SwapOutlined /> Change application</Link>
         </div>
 
         <form onSubmit={handleSubmit} autoComplete="off">
@@ -90,7 +95,7 @@ export default function LoginPage() {
               <span className="as-input-icon"><UserOutlined /></span>
               <input className="as-input" type="text" value={uid} autoFocus
                 onChange={e => { setUid(e.target.value); setErrorMsg(''); }}
-                maxLength={45} autoComplete="off" placeholder="e.g. TCEC-Johrat" />
+                maxLength={45} autoComplete="off" placeholder={`e.g. ${app.loginHint}`} />
             </span>
           </label>
 

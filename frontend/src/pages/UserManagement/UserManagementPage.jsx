@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button, Table, Tag, Modal, Form, Input, Select, Popconfirm, message, Space, Badge } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, LockOutlined, TeamOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons';
 import api from '../../services/api';
+import { currentApp } from '../../utils/apps';
 
 const { Option } = Select;
 
@@ -290,7 +291,7 @@ export default function UserManagementPage() {
             rules={[{ required: true, message: 'User ID is required' }]}
           >
             <Input prefix={<UserOutlined />} disabled={!!editUser}
-              placeholder="e.g. admin, TCEC-Bengaluru" style={{ fontFamily: 'monospace' }} />
+              placeholder={`e.g. admin, ${currentApp()?.loginHint || 'TCEC-Bengaluru'}`} style={{ fontFamily: 'monospace' }} />
           </Form.Item>
 
           <Form.Item name="role" label="Role" initialValue="IU"

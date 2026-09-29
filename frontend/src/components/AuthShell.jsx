@@ -1,5 +1,6 @@
 import { BarChartOutlined, SafetyCertificateOutlined, FileTextOutlined, TeamOutlined } from '@ant-design/icons';
 import './AuthShell.css';
+import { mprName, currentApp } from '../utils/apps';
 
 const HIGHLIGHTS = [
   { icon: <FileTextOutlined />,          title: 'Monthly progress reporting', text: 'Financial, physical, budget & placement data in one place.' },
@@ -21,7 +22,7 @@ export function AuthTopBar() {
           <div className="as-org-main">Office of Development Commissioner (MSME)</div>
           <div className="as-org-sub">
             Ministry of Micro, Small &amp; Medium Enterprises, Government of India
-            <span className="as-org-app">MPR-AB</span>
+            <span className="as-org-app">{mprName()}</span>
           </div>
         </div>
       </div>
@@ -52,8 +53,8 @@ export default function AuthShell({ children }) {
         <section className="as-brand">
           <div className="as-brand-inner">
             <span className="as-kicker">DC-MSME · Technology Centres</span>
-            <h1>MPR-AB <span>Portal</span></h1>
-            <p className="as-tag">Monthly Progress Report of Technology Centres &amp; TCECs</p>
+            <h1>{mprName()} <span>Portal</span></h1>
+            <p className="as-tag">{currentApp()?.title || 'Monthly Progress Report'}{currentApp() ? ` · ${currentApp().subtitle}` : ''}</p>
             <ul className="as-points">
               {HIGHLIGHTS.map(h => (
                 <li key={h.title}>

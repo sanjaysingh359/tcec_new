@@ -1,14 +1,16 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRightOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, ClockCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { AuthTopBar, AuthFooter } from '../../components/AuthShell';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
+import { APPS, getAppKey, setAppKey } from '../../utils/apps';
 import './LandingPage.css';
 
-const CLIENTS = [
+/* card icons; names, colours and availability come from utils/apps.js */
+const ICONS = [
   {
-    id: 'DFO',
-    title: 'Monthly Progress\nReport-DFO',
-    subtitle: 'District Field Office',
-    color: '#1f6fb2',
+    key: 'dfo',
     icon: (
       <svg viewBox="0 0 64 64" width="44" height="44" fill="none">
         <rect x="6" y="38" width="10" height="20" rx="2" fill="currentColor" opacity="0.9"/>
@@ -20,10 +22,7 @@ const CLIENTS = [
     ),
   },
   {
-    id: 'TCEC',
-    title: 'Monthly Progress\nReport-TCEC',
-    subtitle: 'Technology Centre & Extension Centre',
-    color: '#1e7e34',
+    key: 'tcec',
     icon: (
       <svg viewBox="0 0 64 64" width="44" height="44" fill="none">
         <circle cx="32" cy="32" r="26" stroke="currentColor" strokeWidth="3" fill="none"/>
@@ -36,11 +35,7 @@ const CLIENTS = [
     ),
   },
   {
-    id: 'AB',
-    title: 'Monthly Progress\nReport-AB',
-    subtitle: 'MSME Autonomous Body',
-    color: '#b01818',
-    active: true,
+    key: 'ab',
     icon: (
       <svg viewBox="0 0 64 64" width="44" height="44" fill="none">
         <polyline points="6,52 18,36 28,42 40,20 54,12" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" fill="none"/>
@@ -54,10 +49,7 @@ const CLIENTS = [
     ),
   },
   {
-    id: 'TCSP',
-    title: 'Monthly Progress\nReport-TCSP',
-    subtitle: 'Technology Centre Scheme Project',
-    color: '#b36b00',
+    key: 'tcsp',
     icon: (
       <svg viewBox="0 0 64 64" width="44" height="44" fill="none">
         <rect x="8" y="16" width="48" height="36" rx="4" stroke="currentColor" strokeWidth="2.5" fill="none"/>
@@ -73,6 +65,28 @@ const CLIENTS = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [ready, setReady] = useState(null);   // { tcec: true, tcsp: false } from the server
+  const chosen = getAppKey();
+
+  useEffect(() => {
+    api.get('/apps')
+      .then(r => setReady(r.data?.data || {}))
+      .catch(() => setReady({}));
+  }, []);
+
+  const statusOf = key => {
+    if (APPS[key].comingSoon) return 'soon';
+    if (ready === null) return 'checking';
+    return ready[key] ? 'open' : 'setup';
+  };
+
+  async function enter(key) {
+    if (statusOf(key) !== 'open') return;
+    if (user && user.app !== key) await logout();   // a session never carries over to another application
+    setAppKey(key);
+    navigate(user && user.app === key ? '/dashboard' : '/login');
+  }
 
   return (
     <div className="as-page">
@@ -82,25 +96,36 @@ export default function LandingPage() {
         <section className="ld-hero">
           <span className="as-kicker">DC-MSME · Monthly Progress Report</span>
           <h1>Select your <span>application</span></h1>
-          <p>Choose the Monthly Progress Report system you want to sign in to.</p>
+          <p>Choose the Monthly Progress Report system you want to sign in to. Each one has its own users and data.</p>
         </section>
 
         <section className="ld-grid">
-          {CLIENTS.map(c => {
-            const [l1, l2] = c.title.split('\n');
+          {ICONS.map(({ key, icon }) => {
+            const app = APPS[key];
+            const [l1, l2] = ['Monthly Progress', `Report-${app.code}`];
+            const status = statusOf(key);
+            const open = status === 'open';
             return (
               <button
-                key={c.id}
+                key={key}
                 type="button"
-                className={`ld-card${c.active ? ' is-active' : ''}`}
-                style={{ '--c': c.color }}
-                onClick={() => navigate('/login', { state: { client: c.id, clientTitle: c.title.replace('\n', ' ') } })}
+                className={`ld-card${open && chosen === key ? ' is-active' : ''}${open ? '' : ' is-disabled'}`}
+                style={{ '--c': app.color }}
+                onClick={() => enter(key)}
+                disabled={!open}
+                aria-disabled={!open}
               >
-                {c.active && <span className="ld-badge">● Active</span>}
-                <span className="ld-icon">{c.icon}</span>
+                {open && chosen === key && <span className="ld-badge">● Last used</span>}
+                {status === 'soon' && <span className="ld-badge ld-badge-soon">Coming soon</span>}
+                <span className="ld-icon">{icon}</span>
                 <span className="ld-title"><small>{l1}</small>{l2}</span>
-                <span className="ld-sub">{c.subtitle}</span>
-                <span className="ld-enter">Click to enter <ArrowRightOutlined /></span>
+                <span className="ld-sub">{app.subtitle}</span>
+                <span className="ld-enter">
+                  {status === 'open' && <>Click to enter <ArrowRightOutlined /></>}
+                  {status === 'checking' && <><LoadingOutlined /> Checking…</>}
+                  {status === 'setup' && <><ClockCircleOutlined /> Database not set up yet</>}
+                  {status === 'soon' && <><ClockCircleOutlined /> Coming soon</>}
+                </span>
               </button>
             );
           })}

@@ -12,7 +12,8 @@ public interface UserIdMappingRepository extends JpaRepository<UserIdMapping, St
     @Query("SELECT m FROM UserIdMapping m WHERE TRIM(m.userId) = TRIM(:userId)")
     Optional<UserIdMapping> findByUserIdTrimmed(@Param("userId") String userId);
 
-    /** Returns all mappings where the login name starts with 'TCEC-' (real institute users). */
-    @Query("SELECT m FROM UserIdMapping m WHERE TRIM(m.userId) LIKE 'TCEC-%'")
+    /** Institute users of the current application (mapped to an institute "I…"; admins map to "SU").
+     *  Login names differ per application — "TCEC-…" in TCEC, "TC-…" in TCSP. */
+    @Query("SELECT m FROM UserIdMapping m WHERE TRIM(m.instId) LIKE 'I%'")
     java.util.List<UserIdMapping> findRealInstituteUsers();
 }

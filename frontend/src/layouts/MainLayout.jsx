@@ -12,6 +12,7 @@ import {
   BankOutlined, SwapOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
+import { mprName, currentApp } from '../utils/apps';
 
 /* ── Nav definitions ── */
 function buildNav(role, section) {
@@ -36,7 +37,7 @@ function buildNav(role, section) {
     { key: '__logout__',           icon: <LogoutOutlined />,     label: 'Logout' },
   ].filter(Boolean);
 
-  // SU sees all reports + Update/Delete; IU sees only Graphical + MPR-AB
+  // SU sees all reports + Update/Delete; IU sees only Graphical + MPR
   const suReportNav = [
     { divider: 'Main' },
     { key: '/dashboard',                          icon: <HomeOutlined />,      label: 'Application Home Page' },
@@ -49,7 +50,7 @@ function buildNav(role, section) {
     { divider: 'Reports' },
     { key: '/app/reports/budget',                 icon: <FundOutlined />,      label: 'Budget Report' },
     { key: '/app/reports/target',                 icon: <AimOutlined />,       label: 'Target Report' },
-    { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: 'MPR-AB Report' },
+    { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: `${mprName()} Report` },
     { key: '/app/reports/analysis',               icon: <PieChartOutlined />,  label: 'Analysis Report' },
     { key: '/app/reports/rfd',                    icon: <FileDoneOutlined />,  label: 'Report for RFD' },
     { key: '/app/reports/achievement',            icon: <TrophyOutlined />,    label: 'Significant Achievement Report' },
@@ -74,7 +75,7 @@ function buildNav(role, section) {
     { divider: 'Reports' },
     { key: '/app/reports/budget',                 icon: <FundOutlined />,      label: 'Budget Report' },
     { key: '/app/reports/target',                 icon: <AimOutlined />,       label: 'Target Report' },
-    { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: 'MPR-AB Report' },
+    { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: `${mprName()} Report` },
     { key: '/app/reports/analysis',               icon: <PieChartOutlined />,  label: 'Analysis Report' },
     { key: '/app/reports/rfd',                    icon: <FileDoneOutlined />,  label: 'Report for RFD' },
     { key: '/app/reports/achievement',            icon: <TrophyOutlined />,    label: 'Significant Achievement Report' },
@@ -89,7 +90,7 @@ function buildNav(role, section) {
     { key: '/dashboard',             icon: <HomeOutlined />,      label: 'Application Home Page' },
     { key: '/app/reports/graphical', icon: <LineChartOutlined />, label: 'Graphical Representation' },
     { divider: 'Reports' },
-    { key: '/app/reports/mpr',       icon: <FileTextOutlined />,  label: 'MPR-AB Report' },
+    { key: '/app/reports/mpr',       icon: <FileTextOutlined />,  label: `${mprName()} Report` },
     { divider: 'Account' },
     { key: '/app/contact',           icon: <PhoneOutlined />,     label: 'Contact Us' },
     { key: '__logout__',             icon: <LogoutOutlined />,    label: 'Logout' },
@@ -220,7 +221,7 @@ export default function MainLayout() {
           <div className="ml-topbar-org">
             <div className="ml-topbar-org-main">Office of Development Commissioner (MSME)</div>
             <div className="ml-topbar-org-sub">
-              Ministry of Micro, Small &amp; Medium Enterprises <span className="ml-topbar-app">MPR-AB</span>
+              Ministry of Micro, Small &amp; Medium Enterprises <span className="ml-topbar-app">{mprName()}</span>
             </div>
           </div>
         </div>
@@ -266,7 +267,7 @@ export default function MainLayout() {
           {/* Brand */}
           <div className="sn-brand">
             <div className="sn-brand-monogram">{collapsed ? 'M' : 'MPR'}</div>
-            {!collapsed && <div className="sn-brand-title">TCEC Portal</div>}
+            {!collapsed && <div className="sn-brand-title">{currentApp()?.code || 'MPR'} Portal</div>}
             {!collapsed && <div className="sn-brand-sub">Ministry of MSME</div>}
             {!collapsed && (
               <div className={`sn-brand-badge ${isEntry ? 'sn-badge-entry' : 'sn-badge-report'}`}>
@@ -294,7 +295,7 @@ export default function MainLayout() {
               );
             })}
           </nav>
-          {!collapsed && <div className="sn-bottom">O/O DC-MSME · MPR-AB</div>}
+          {!collapsed && <div className="sn-bottom">O/O DC-MSME · {mprName()}</div>}
         </aside>
 
         {/* ── CONTENT ── */}
