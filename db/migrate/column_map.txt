@@ -1,0 +1,9 @@
+# MySQL column  ->  PostgreSQL column, for columns whose name differs.
+#   table.column = pg_column      one table
+#   *.column     = pg_column      every table (used only where the PG table has pg_column
+#                                 and not the original name)
+# Columns with the same name (any case) need no entry.
+
+# The first MySQL->PostgreSQL conversion (migrate_to_pg.py) renamed every `year`
+# column to "smallint" (its type regex hit the column name). Keep the data in it.
+*.year = smallint
