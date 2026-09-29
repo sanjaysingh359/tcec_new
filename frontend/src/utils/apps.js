@@ -16,7 +16,7 @@ export const APPS = {
   ab: {
     key: 'ab', code: 'AB', title: 'Monthly Progress Report-AB',
     subtitle: 'MSME Autonomous Body', color: '#b01818',
-    comingSoon: true,
+    institutes: 'MSME Autonomous Bodies',   // database dcmsme_tool; login names known once its data is loaded
   },
   tcsp: {
     key: 'tcsp', code: 'TCSP', title: 'Monthly Progress Report-TCSP',

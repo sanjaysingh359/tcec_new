@@ -66,18 +66,27 @@ const ICONS = [
 export default function LandingPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [ready, setReady] = useState(null);   // { tcec: true, tcsp: false } from the server
+  const [ready, setReady] = useState(null);   // { tcec: true, tcsp: false } from the server; 'offline' when unreachable
   const chosen = getAppKey();
 
+  // ask the server which applications are up; keep retrying while it is unreachable
+  // (e.g. during a backend restart) and re-check now and then so a new database shows up
   useEffect(() => {
-    api.get('/apps')
-      .then(r => setReady(r.data?.data || {}))
-      .catch(() => setReady({}));
+    let alive = true;
+    let timer;
+    const check = () => {
+      api.get('/apps', { timeout: 8000 })
+        .then(r => { if (alive) { setReady(r.data?.data || {}); timer = setTimeout(check, 30000); } })
+        .catch(() => { if (alive) { setReady('offline'); timer = setTimeout(check, 4000); } });
+    };
+    check();
+    return () => { alive = false; clearTimeout(timer); };
   }, []);
 
   const statusOf = key => {
     if (APPS[key].comingSoon) return 'soon';
     if (ready === null) return 'checking';
+    if (ready === 'offline') return 'offline';
     return ready[key] ? 'open' : 'setup';
   };
 
@@ -124,6 +133,7 @@ export default function LandingPage() {
                   {status === 'open' && <>Click to enter <ArrowRightOutlined /></>}
                   {status === 'checking' && <><LoadingOutlined /> Checking…</>}
                   {status === 'setup' && <><ClockCircleOutlined /> Database not set up yet</>}
+                  {status === 'offline' && <><LoadingOutlined /> Server not reachable — retrying…</>}
                   {status === 'soon' && <><ClockCircleOutlined /> Coming soon</>}
                 </span>
               </button>

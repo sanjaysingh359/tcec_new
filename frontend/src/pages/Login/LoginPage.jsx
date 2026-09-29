@@ -95,7 +95,7 @@ export default function LoginPage() {
               <span className="as-input-icon"><UserOutlined /></span>
               <input className="as-input" type="text" value={uid} autoFocus
                 onChange={e => { setUid(e.target.value); setErrorMsg(''); }}
-                maxLength={45} autoComplete="off" placeholder={`e.g. ${app.loginHint}`} />
+                maxLength={45} autoComplete="off" placeholder={app.loginHint ? `e.g. ${app.loginHint}` : "Enter your User ID"} />
             </span>
           </label>
 
