@@ -5,6 +5,7 @@ import LandingPage from './pages/Landing/LandingPage';
 import LoginPage from './pages/Login/LoginPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import MainLayout from './layouts/MainLayout';
+import A11yWidgets from './components/A11yWidgets';
 import HomePage from './pages/Dashboard/HomePage';
 import GraphicalReportPage from './pages/Reports/GraphicalReportPage';
 import GraphicalReportChart from './pages/Reports/GraphicalReportChart';
@@ -38,6 +39,7 @@ import AchievementPage from './pages/Achievement/AchievementPage';
 import AchievementReportPage from './pages/Reports/AchievementReportPage';
 import AchievementReport from './pages/Reports/AchievementReport';
 import AchievementStatusPage from './pages/Reports/AchievementStatusPage';
+import { setDocTitle } from './utils/apps';
 
 const antTheme = {
   token: {
@@ -91,8 +93,10 @@ function SuOrRuRoute({ children }) {
 }
 
 export default function App() {
+  setDocTitle();   // follows the application chosen on the landing page
   return (
     <ConfigProvider theme={antTheme}>
+      <A11yWidgets />
       <AuthProvider>
         <BrowserRouter>
           <Routes>

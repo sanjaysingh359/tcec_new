@@ -1,0 +1,120 @@
+/* ── Language + accessibility widgets (rendered outside #root) ── */
+.a11y-root { font-family: var(--font-ui); }
+
+/* Language — bottom-left */
+.a11y-lang { position: fixed; left: 12px; bottom: 8px; z-index: 2000; }
+.a11y-lang-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 11px 0 9px;
+  border: none; border-radius: 10px;
+  background: #073354; color: #fff;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+  box-shadow: 0 6px 18px rgba(3,15,30,0.28);
+  cursor: pointer;
+}
+.a11y-lang-btn:hover { background: #0d4f82; }
+.a11y-lang-btn:focus-visible, .a11y-fab:focus-visible, .a11y-panel button:focus-visible, .a11y-lang-menu button:focus-visible {
+  outline: 3px solid #FFD700; outline-offset: 2px;
+}
+.a11y-lang-icon { font-size: 16px; color: #FFD700; }
+.a11y-lang-caret { font-size: 10px; opacity: 0.8; transition: transform 0.15s; }
+.a11y-lang-caret.is-open { transform: rotate(180deg); }
+.a11y-lang-menu {
+  position: absolute; left: 0; bottom: 44px;
+  width: 180px; max-height: 320px; overflow-y: auto;
+  margin: 0; padding: 4px; list-style: none;
+  background: #fff; border: 1px solid #dfe7f0; border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(3,15,30,0.22);
+}
+.a11y-lang-menu button {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  padding: 7px 10px; border: none; border-radius: 7px; background: transparent;
+  font-family: var(--font-ui); font-size: 13.5px; color: #0f2440; text-align: left; cursor: pointer;
+}
+.a11y-lang-menu button:hover { background: #eef3f9; }
+.a11y-lang-menu button[aria-selected="true"] { font-weight: 700; color: #073354; }
+.a11y-lang-menu .anticon { color: #1f5f96; }
+.a11y-gt-hidden { display: none; }
+
+/* Accessibility — bottom-right */
+.a11y-acc { position: fixed; right: 12px; bottom: 8px; z-index: 2000; }
+.a11y-fab {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 3px solid #fff; background: #5b3fd6; color: #fff;
+  box-shadow: 0 6px 18px rgba(3,15,30,0.3);
+  cursor: pointer;
+}
+.a11y-fab:hover { background: #4a30bd; }
+.a11y-fab.is-changed { box-shadow: 0 0 0 3px #FFD700, 0 6px 18px rgba(3,15,30,0.3); }
+.a11y-panel {
+  position: absolute; right: 0; bottom: 58px;
+  width: 290px; padding: 12px 14px 14px;
+  background: #fff; border: 1px solid #dfe7f0; border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(3,15,30,0.25);
+  color: #0f2440; font-size: 13px;
+}
+.a11y-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.a11y-panel-head b { font-size: 15px; }
+.a11y-x { border: none; background: transparent; color: #5d6e80; cursor: pointer; font-size: 14px; padding: 4px; border-radius: 6px; }
+.a11y-x:hover { background: #eef3f9; }
+.a11y-group { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.a11y-group-lbl { width: 64px; font-weight: 600; color: #4a5a6c; font-size: 12.5px; }
+.a11y-seg { display: inline-flex; padding: 2px; border-radius: 8px; background: #f1f4f8; border: 1px solid #dfe7f0; }
+.a11y-seg button {
+  min-width: 42px; height: 28px; padding: 0 8px;
+  border: none; border-radius: 6px; background: transparent;
+  font-family: var(--font-ui); font-size: 12.5px; font-weight: 700; color: #4a5a6c; cursor: pointer;
+}
+.a11y-seg button:hover:not(:disabled) { color: #073354; }
+.a11y-seg button.is-on { background: #073354; color: #fff; }
+.a11y-seg button:disabled { opacity: 0.4; cursor: not-allowed; }
+.a11y-val { font-size: 12px; color: #8a99aa; font-variant-numeric: tabular-nums; }
+.a11y-opts { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 10px; }
+.a11y-opt {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 6px 6px; border: none; border-radius: 7px; background: transparent;
+  font-family: var(--font-ui); font-size: 13px; color: #0f2440; text-align: left; cursor: pointer;
+}
+.a11y-opt:hover { background: #f3f6fa; }
+.a11y-opt-box {
+  width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid #b8c3cf; color: #fff; font-size: 11px;
+}
+.a11y-opt.is-on .a11y-opt-box { background: #073354; border-color: #073354; }
+.a11y-reset {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+  height: 32px; border: 1px solid #cdd8e4; border-radius: 8px; background: #fff;
+  font-family: var(--font-ui); font-size: 12.5px; font-weight: 600; color: #073354; cursor: pointer;
+}
+.a11y-reset:hover:not(:disabled) { background: #f3f6fa; }
+.a11y-reset:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Effects on the page (the widgets live outside #root, so they stay put) ── */
+html.a11y-contrast #root { filter: contrast(1.45) saturate(1.2); }
+html.a11y-dark #root { filter: invert(1) hue-rotate(180deg); background: #fff; }
+html.a11y-dark #root img, html.a11y-dark #root video, html.a11y-dark #root svg image { filter: invert(1) hue-rotate(180deg); }
+html.a11y-gray #root { filter: grayscale(1); }
+html.a11y-gray.a11y-contrast #root { filter: grayscale(1) contrast(1.45); }
+html.a11y-gray.a11y-dark #root { filter: grayscale(1) invert(1) hue-rotate(180deg); }
+html.a11y-links #root a, html.a11y-links #root button, html.a11y-links #root [role="button"] {
+  outline: 2px solid #FFD700 !important; outline-offset: 1px; text-decoration: underline !important;
+}
+html.a11y-font #root, html.a11y-font #root * { font-family: Verdana, Tahoma, Arial, sans-serif !important; }
+html.a11y-spacing #root * { letter-spacing: 0.04em !important; word-spacing: 0.12em !important; line-height: 1.6 !important; }
+html.a11y-still *, html.a11y-still *::before, html.a11y-still *::after {
+  animation: none !important; transition: none !important; scroll-behavior: auto !important;
+}
+
+/* Google translator chrome: hide its top banner / tooltip so the layout does not move */
+body > .skiptranslate, .goog-te-banner-frame, #goog-gt-tt, .goog-te-balloon-frame { display: none !important; }
+body { top: 0 !important; }
+.goog-text-highlight { background: none !important; box-shadow: none !important; }
+
+/* never on paper */
+@media print { .a11y-root { display: none !important; } }
+
+/* keep footer text clear of the two corner widgets */
+.as-foot, .ml-footer { padding-left: 150px !important; padding-right: 72px !important; }
+@media (max-width: 760px) { .as-foot, .ml-footer { padding-left: 16px !important; padding-bottom: 56px !important; } }
