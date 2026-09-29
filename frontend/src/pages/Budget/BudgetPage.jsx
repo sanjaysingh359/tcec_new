@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './BudgetPage.css';
 import '../../styles/entry-compact.css';
+import { hasAchievements } from '../../utils/apps';
 
 /* ═══════════════════════════════════════════════════════
    Cell helpers — defined OUTSIDE component
@@ -141,7 +142,10 @@ export default function BudgetPage() {
       setPrevMac(parseFloat(pc.machineCum) || 0);
       if (data.targets?.beBudget != null)
         setBeBudget(parseFloat(data.targets.beBudget).toFixed(2));
-      const achText = achievementText(data.existing?.sigAchiev);
+      // apps with the Significant Achievement module keep that page's JSON read-only here;
+      // elsewhere (TCEC, as in the legacy form) G is an ordinary text box, prefilled with any such text
+      const parsedAch = achievementText(data.existing?.sigAchiev);
+      const achText = hasAchievements() ? parsedAch : null;
       setSigFromAch(achText);
       if (data.hasData) {
         setHasData(true);
@@ -157,7 +161,7 @@ export default function BudgetPage() {
           posA: ex.posA?.toString() || '', posB: ex.posB?.toString() || '',
           posC: ex.posC?.toString() || '', posD: ex.posD?.toString() || '',
           machineDtm: ex.machineDtm?.toString() || '',
-          detailVisit: ex.detailVisit || '', sigAchiev: achText === null ? (ex.sigAchiev || '') : '',
+          detailVisit: ex.detailVisit || '', sigAchiev: achText === null ? (parsedAch ?? (ex.sigAchiev || '')) : '',
           shortFalls: ex.shortFalls || '',
           promoActiv: ex.promoActiv || '',
         }));

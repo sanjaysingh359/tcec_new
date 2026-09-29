@@ -39,7 +39,7 @@ import AchievementPage from './pages/Achievement/AchievementPage';
 import AchievementReportPage from './pages/Reports/AchievementReportPage';
 import AchievementReport from './pages/Reports/AchievementReport';
 import AchievementStatusPage from './pages/Reports/AchievementStatusPage';
-import { setDocTitle } from './utils/apps';
+import { setDocTitle, hasAchievements } from './utils/apps';
 
 const antTheme = {
   token: {
@@ -92,6 +92,11 @@ function SuOrRuRoute({ children }) {
   return children;
 }
 
+// Significant Achievement module only in applications that have it (not TCEC)
+function AchievementsRoute({ children }) {
+  return hasAchievements() ? children : <Navigate to="/app/home" replace />;
+}
+
 export default function App() {
   setDocTitle();   // follows the application chosen on the landing page
   return (
@@ -133,9 +138,9 @@ export default function App() {
               <Route path="reports/analysis/report" element={<SuOrRuRoute><AnalysisReport /></SuOrRuRoute>} />
               <Route path="reports/rfd" element={<SuOrRuRoute><RfdReportPage /></SuOrRuRoute>} />
               <Route path="reports/rfd/report" element={<SuOrRuRoute><RfdReport /></SuOrRuRoute>} />
-              <Route path="reports/achievement" element={<SuOrRuRoute><AchievementReportPage /></SuOrRuRoute>} />
-              <Route path="reports/achievement/report" element={<SuOrRuRoute><AchievementReport /></SuOrRuRoute>} />
-              <Route path="reports/achievement/status" element={<SuOrRuRoute><AchievementStatusPage /></SuOrRuRoute>} />
+              <Route path="reports/achievement" element={<AchievementsRoute><SuOrRuRoute><AchievementReportPage /></SuOrRuRoute></AchievementsRoute>} />
+              <Route path="reports/achievement/report" element={<AchievementsRoute><SuOrRuRoute><AchievementReport /></SuOrRuRoute></AchievementsRoute>} />
+              <Route path="reports/achievement/status" element={<AchievementsRoute><SuOrRuRoute><AchievementStatusPage /></SuOrRuRoute></AchievementsRoute>} />
               {/* SU only — admin actions */}
               <Route path="modify-data" element={<SuRoute><ModifyDataPage /></SuRoute>} />
               <Route path="users" element={<SuRoute><UserManagementPage /></SuRoute>} />
@@ -146,7 +151,7 @@ export default function App() {
               {/* Change password — every signed-in user */}
               <Route path="change-password" element={<ChangePasswordPage />} />
               {/* Significant Achievement — both roles */}
-              <Route path="achievement" element={<AchievementPage />} />
+              <Route path="achievement" element={<AchievementsRoute><AchievementPage /></AchievementsRoute>} />
               {/* Entry forms — both roles */}
               <Route path="financial" element={<FinancialPage />} />
               <Route path="physical" element={<PhysicalPage />} />

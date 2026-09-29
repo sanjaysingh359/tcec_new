@@ -27,6 +27,10 @@ public class EntryController {
     private final AuthService          authService;
     private final JdbcTemplate         jdbc;
 
+    /** Applications with the Significant Achievement module (legacy TCSP had it; TCEC did not). */
+    @org.springframework.beans.factory.annotation.Value("${app.achievements:tcsp,ab}")
+    private String achievementApps;
+
     public EntryController(FinancialRepository  finRepo,
                            PhysicalRepository   phyRepo,
                            BudgetRepository     budRepo,
@@ -658,7 +662,9 @@ public class EntryController {
         // Only overwrite significant if budget form sends non-empty value (achievement page owns this field)
         String sigAchiev = (String) body.get("sigAchiev");
         // ...and never replace the Achievement page's JSON with plain text from the budget form
-        boolean achOwned = b.getSignificant() != null && b.getSignificant().trim().startsWith("{");
+        // (only in applications that have that module; TCEC's field G is plain text, as in the legacy form)
+        boolean achOwned = hasAchievementModule()
+                && b.getSignificant() != null && b.getSignificant().trim().startsWith("{");
         if (sigAchiev != null && !sigAchiev.isBlank() && !achOwned) {
             b.setSignificant(sigAchiev);
         }
@@ -955,6 +961,11 @@ public class EntryController {
     }
 
     private static int nz(Integer v) { return v == null ? 0 : v; }
+
+    private boolean hasAchievementModule() {
+        return java.util.Arrays.stream(achievementApps.split(","))
+                .map(String::trim).anyMatch(a -> a.equalsIgnoreCase(com.tcec.api.config.AppContext.get()));
+    }
 
     /** %age recovery = earning ÷ expenditure × 100, 0 when there is no expenditure (legacy calper) */
     private static BigDecimal recovery(BigDecimal earning, BigDecimal expenditure) {

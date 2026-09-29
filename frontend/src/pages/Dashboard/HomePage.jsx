@@ -11,7 +11,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './HomePage.css';
-import { mprName } from '../../utils/apps';
+import { mprName, hasAchievements } from '../../utils/apps';
 
 const n = v => parseFloat(v) || 0;
 const MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
@@ -123,7 +123,7 @@ function InstituteView({ selection, isSU, isEntry, navigate }) {
 
   const cur = status?.[monthIdx] || {};
   const done = { fin: cur.fin, phy: cur.phy, bud: cur.bud, pla: cur.pla, ach: extra.ach, tgt: extra.tgt };
-  const forms = ENTRY_FORMS.filter(f => !f.suOnly || isSU);
+  const forms = ENTRY_FORMS.filter(f => (!f.suOnly || isSU) && (f.status !== 'ach' || hasAchievements()));
   const monthly = forms.filter(f => !f.yearly);
   const doneCount = monthly.filter(f => done[f.status]).length;
 
@@ -310,7 +310,8 @@ export default function HomePage() {
   const name = user?.userId || user?.uid || user?.userName || 'User';
 
   const groups = REPORT_GROUPS
-    .map(g => ({ ...g, items: g.items.filter(i => (adminReports ? (!i.suOnly || isSU) : i.iu)) }))
+    .map(g => ({ ...g, items: g.items.filter(i => (adminReports ? (!i.suOnly || isSU) : i.iu)
+      && (!i.key.startsWith('/app/reports/achievement') || hasAchievements())) }))
     .filter(g => g.items.length);
 
   if (!selection) return null;

@@ -12,7 +12,7 @@ import {
   BankOutlined, SwapOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
-import { mprName, currentApp } from '../utils/apps';
+import { mprName, currentApp, hasAchievements } from '../utils/apps';
 
 /* ── Nav definitions ── */
 function buildNav(role, section) {
@@ -29,7 +29,7 @@ function buildNav(role, section) {
     { key: '/app/physical',        icon: <BarChartOutlined />,   label: 'Physical Section' },
     { key: '/app/budget',          icon: <FundOutlined />,       label: 'Budget Section' },
     { key: '/app/placement',       icon: <UserSwitchOutlined />, label: 'Placement Section' },
-    { key: '/app/achievement',     icon: <TrophyOutlined />,     label: 'Significant Achievement' },
+    hasAchievements() && { key: '/app/achievement', icon: <TrophyOutlined />, label: 'Significant Achievement' },
     { divider: 'Account' },
     isSU && { key: '/app/users',   icon: <UsergroupAddOutlined />, label: 'User Management' },
     { key: '/app/change-password', icon: <LockOutlined />,       label: 'Change Password' },
@@ -53,14 +53,14 @@ function buildNav(role, section) {
     { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: `${mprName()} Report` },
     { key: '/app/reports/analysis',               icon: <PieChartOutlined />,  label: 'Analysis Report' },
     { key: '/app/reports/rfd',                    icon: <FileDoneOutlined />,  label: 'Report for RFD' },
-    { key: '/app/reports/achievement',            icon: <TrophyOutlined />,    label: 'Significant Achievement Report' },
-    { key: '/app/reports/achievement/status',     icon: <CheckCircleOutlined />,    label: 'Achievement Status' },
+    hasAchievements() && { key: '/app/reports/achievement', icon: <TrophyOutlined />, label: 'Significant Achievement Report' },
+    hasAchievements() && { key: '/app/reports/achievement/status', icon: <CheckCircleOutlined />, label: 'Achievement Status' },
     { key: '/app/modify-data',                    icon: <EditOutlined />,      label: 'Update / Delete' },
     { divider: 'Account' },
     { key: '/app/users',                          icon: <UsergroupAddOutlined />, label: 'User Management' },
     { key: '/app/contact',                        icon: <PhoneOutlined />,     label: 'Contact Us' },
     { key: '__logout__',                          icon: <LogoutOutlined />,    label: 'Logout' },
-  ];
+  ].filter(Boolean);
 
   // RU: same as SU report nav but without User Management and Update/Delete
   const ruReportNav = [
@@ -78,12 +78,12 @@ function buildNav(role, section) {
     { key: '/app/reports/mpr',                    icon: <FileTextOutlined />,  label: `${mprName()} Report` },
     { key: '/app/reports/analysis',               icon: <PieChartOutlined />,  label: 'Analysis Report' },
     { key: '/app/reports/rfd',                    icon: <FileDoneOutlined />,  label: 'Report for RFD' },
-    { key: '/app/reports/achievement',            icon: <TrophyOutlined />,    label: 'Significant Achievement Report' },
-    { key: '/app/reports/achievement/status',     icon: <CheckCircleOutlined />,    label: 'Achievement Status' },
+    hasAchievements() && { key: '/app/reports/achievement', icon: <TrophyOutlined />, label: 'Significant Achievement Report' },
+    hasAchievements() && { key: '/app/reports/achievement/status', icon: <CheckCircleOutlined />, label: 'Achievement Status' },
     { divider: 'Account' },
     { key: '/app/contact',                        icon: <PhoneOutlined />,     label: 'Contact Us' },
     { key: '__logout__',                          icon: <LogoutOutlined />,    label: 'Logout' },
-  ];
+  ].filter(Boolean);
 
   const iuReportNav = [
     { divider: 'Main' },
