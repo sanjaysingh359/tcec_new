@@ -48,3 +48,6 @@ pg_migration.sql
 
 # Temp / scratch files
 backend/set
+
+# database setup run log
+db/setup_databases.log
