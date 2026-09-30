@@ -54,3 +54,6 @@ db/setup_databases.log
 
 # full database exports (db/export_databases.bat) — real data incl. password hashes; share privately
 db/dumps/
+
+# server database archive (local only)
+ServerDataBaseUpdated.zip
