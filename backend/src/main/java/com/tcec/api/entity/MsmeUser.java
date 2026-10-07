@@ -20,10 +20,10 @@ public class MsmeUser {
     @Column(name = "password", length = 125)
     private String password;
 
-    @PostLoad
-    void trimFields() {
-        if (userId   != null) userId   = userId.trim();
-        if (role     != null) role     = role.trim();
-        if (password != null) password = password.trim();
-    }
+    // CHAR(n) columns come back space-padded. The fields keep the value exactly as loaded and the
+    // getters trim it: changing a field after load makes Hibernate treat the row as modified (it
+    // rewrites it on the next transaction, and rejects it outright when the field is the @Id).
+    public String getUserId() { return userId == null ? null : userId.trim(); }
+    public String getRole() { return role == null ? null : role.trim(); }
+    public String getPassword() { return password == null ? null : password.trim(); }
 }

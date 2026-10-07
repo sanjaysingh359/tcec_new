@@ -20,9 +20,9 @@ public class UserIdMapping {
     @Column(name = "tr_cat_id")
     private Integer trCatId;
 
-    @PostLoad
-    void trimFields() {
-        if (userId != null) userId = userId.trim();
-        if (instId != null) instId = instId.trim();
-    }
+    // CHAR(n) columns come back space-padded. The fields keep the value exactly as loaded and the
+    // getters trim it: changing a field after load makes Hibernate treat the row as modified (it
+    // rewrites it on the next transaction, and rejects it outright when the field is the @Id).
+    public String getUserId() { return userId == null ? null : userId.trim(); }
+    public String getInstId() { return instId == null ? null : instId.trim(); }
 }

@@ -14,6 +14,8 @@ public interface UserIdMappingRepository extends JpaRepository<UserIdMapping, St
 
     /** Institute users of the current application (mapped to an institute "I…"; admins map to "SU").
      *  Login names differ per application — "TCEC-…" in TCEC, "TC-…" in TCSP. */
-    @Query("SELECT m FROM UserIdMapping m WHERE TRIM(m.instId) LIKE 'I%'")
+    // admin logins (e.g. "adminadmin" -> the placeholder institute I70 "admin") are not institutes;
+    // the legacy institute list (TotalInst) never included them either
+    @Query("SELECT m FROM UserIdMapping m WHERE TRIM(m.instId) LIKE 'I%' AND LOWER(TRIM(m.userId)) NOT LIKE 'admin%'")
     java.util.List<UserIdMapping> findRealInstituteUsers();
 }

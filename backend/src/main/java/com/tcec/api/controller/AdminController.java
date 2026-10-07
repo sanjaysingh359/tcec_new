@@ -344,6 +344,7 @@ public class AdminController {
     // PUT /api/admin/users/{userId}  — update role and/or password
     // Body: { role, password (optional), instId (optional) }
     // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
     @PutMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<Void>> updateUser(
             @PathVariable String userId,
@@ -361,20 +362,21 @@ public class AdminController {
         String password = body.getOrDefault("password", "").trim();
         String instId   = body.getOrDefault("instId", "").trim();
 
-        user.setRole(role);
-        if (!password.isEmpty()) user.setPassword(sha256(password));
-        userRepo.save(user);
+        // user_id is CHAR(n) (space-padded) and the entities trim it after loading, so Hibernate
+        // refuses to save/delete a loaded row ("identifier altered"). Write with SQL on TRIM(user_id).
+        String uid = userId.trim();
+        if (password.isEmpty())
+            jdbc.update("UPDATE msme_users SET role = ? WHERE TRIM(user_id) = ?", role, uid);
+        else
+            jdbc.update("UPDATE msme_users SET role = ?, password = ? WHERE TRIM(user_id) = ?", role, sha256(password), uid);
 
         // update or remove institute mapping
-        Optional<UserIdMapping> existingMapping = mappingRepo.findByUserIdTrimmed(userId);
         if ("IU".equals(role) && !instId.isEmpty()) {
-            UserIdMapping mapping = existingMapping.orElseGet(() -> {
-                UserIdMapping m = new UserIdMapping(); m.setUserId(userId); return m;
-            });
-            mapping.setInstId(instId);
-            mappingRepo.save(mapping);
+            int changed = jdbc.update("UPDATE user_id_mapping SET inst_id = ? WHERE TRIM(user_id) = ?", instId, uid);
+            if (changed == 0)
+                jdbc.update("INSERT INTO user_id_mapping (user_id, inst_id) VALUES (?, ?)", uid, instId);
         } else if ("SU".equals(role) || "RU".equals(role)) {
-            existingMapping.ifPresent(mappingRepo::delete);
+            jdbc.update("DELETE FROM user_id_mapping WHERE TRIM(user_id) = ?", uid);
         }
 
         return ResponseEntity.ok(ApiResponse.ok("User updated successfully", null));
@@ -383,6 +385,7 @@ public class AdminController {
     // ─────────────────────────────────────────────────────────────────────────
     // DELETE /api/admin/users/{userId}
     // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<Void>> deleteUser(
             @PathVariable String userId,
@@ -393,8 +396,14 @@ public class AdminController {
         if (userRepo.findByUserIdTrimmed(userId).isEmpty())
             return ResponseEntity.status(404).body(ApiResponse.error("User not found"));
 
-        mappingRepo.findByUserIdTrimmed(userId).ifPresent(mappingRepo::delete);
-        userRepo.deleteById(userId);
+        String uid = userId.trim();
+        String me = authService.getUserByToken(AuthService.extractToken(authHeader))
+                .map(u -> u.getUserId() == null ? "" : u.getUserId().trim()).orElse("");
+        if (me.equalsIgnoreCase(uid))
+            return ResponseEntity.badRequest().body(ApiResponse.error("You cannot delete the account you are signed in with"));
+
+        jdbc.update("DELETE FROM user_id_mapping WHERE TRIM(user_id) = ?", uid);
+        jdbc.update("DELETE FROM msme_users WHERE TRIM(user_id) = ?", uid);
         return ResponseEntity.ok(ApiResponse.ok("User deleted successfully", null));
     }
 

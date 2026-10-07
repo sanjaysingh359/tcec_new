@@ -23,10 +23,10 @@ public class TlInstitute {
     @Column(name = "inst_address", columnDefinition = "char(200)")
     private String instAddress;
 
-    @PostLoad
-    void trimFields() {
-        if (instId      != null) instId      = instId.trim();
-        if (instName    != null) instName    = instName.trim();
-        if (instAddress != null) instAddress = instAddress.trim();
-    }
+    // CHAR(n) columns come back space-padded. The fields keep the value exactly as loaded and the
+    // getters trim it: changing a field after load makes Hibernate treat the row as modified (it
+    // rewrites it on the next transaction, and rejects it outright when the field is the @Id).
+    public String getInstId() { return instId == null ? null : instId.trim(); }
+    public String getInstName() { return instName == null ? null : instName.trim(); }
+    public String getInstAddress() { return instAddress == null ? null : instAddress.trim(); }
 }

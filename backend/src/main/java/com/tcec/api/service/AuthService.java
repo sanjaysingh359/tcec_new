@@ -52,7 +52,7 @@ public class AuthService {
         if (opt.isEmpty()) return Optional.empty();
 
         MsmeUser user = opt.get();
-        // Passwords stored as SHA-256 hex strings (fields trimmed via @PostLoad)
+        // Passwords stored as SHA-256 hex strings (entity getters trim the CHAR padding)
         String hashedInput = sha256(req.password());
         String storedPwd   = user.getPassword() == null ? "" : user.getPassword();
         if (!hashedInput.equalsIgnoreCase(storedPwd)) {
@@ -99,8 +99,8 @@ public class AuthService {
         if (recent.stream().anyMatch(h -> h != null && h.trim().equalsIgnoreCase(newHash)))
             return "New password must not be one of your last " + PASSWORD_HISTORY + " passwords.";
 
-        user.setPassword(newHash);
-        userRepo.save(user);
+        // SQL on TRIM(user_id): the loaded entity's id is trimmed, so userRepo.save(user) is refused
+        jdbc.update("UPDATE msme_users SET password = ? WHERE TRIM(user_id) = ?", newHash, userId);
 
         // password history (legacy table has no sequence on sno)
         Integer changes = jdbc.queryForObject(
