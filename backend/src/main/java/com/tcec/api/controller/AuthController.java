@@ -28,7 +28,12 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest req) {
 
-        Optional<LoginResponse> result = authService.login(req);
+        Optional<LoginResponse> result;
+        try {
+            result = authService.login(req);
+        } catch (AuthService.PasswordExpiredException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(e.getMessage()));
+        }
         if (result.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Invalid username or password"));

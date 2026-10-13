@@ -12,8 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -25,8 +23,16 @@ import java.util.regex.Pattern;
 @Service
 public class AuthService {
 
-    private final MsmeUserRepository userRepo;
-    private final JdbcTemplate       jdbc;
+    private final MsmeUserRepository    userRepo;
+    private final JdbcTemplate          jdbc;
+    private final PasswordExpiryService passwordExpiry;
+
+    /** The password is correct but its validity period is over (see {@link PasswordExpiryService}). */
+    public static class PasswordExpiredException extends RuntimeException {
+        public PasswordExpiredException() {
+            super("Your password has expired. Please contact the administrator.");
+        }
+    }
 
     // In-memory token store: token → MsmeUser
     private final Map<String, MsmeUser> tokenStore = new ConcurrentHashMap<>();
@@ -39,13 +45,15 @@ public class AuthService {
     /** Legacy rule: a new password may not repeat any of the last 3 (user_old_pass_toolroom). */
     private static final int PASSWORD_HISTORY = 3;
 
-    public AuthService(MsmeUserRepository userRepo, JdbcTemplate jdbc) {
-        this.userRepo = userRepo;
-        this.jdbc     = jdbc;
+    public AuthService(MsmeUserRepository userRepo, JdbcTemplate jdbc, PasswordExpiryService passwordExpiry) {
+        this.userRepo       = userRepo;
+        this.jdbc           = jdbc;
+        this.passwordExpiry = passwordExpiry;
     }
 
     /**
      * Validate credentials and issue a bearer token.
+     * @throws PasswordExpiredException the credentials are right but the password has expired
      */
     public Optional<LoginResponse> login(LoginRequest req) {
         Optional<MsmeUser> opt = userRepo.findByUserIdTrimmed(req.userId().trim());
@@ -58,6 +66,12 @@ public class AuthService {
         if (!hashedInput.equalsIgnoreCase(storedPwd)) {
             return Optional.empty();
         }
+
+        // An expired password blocks the login, as in the legacy application. Super users are
+        // let in so that somebody can always renew passwords from User Management.
+        String role = user.getRole() == null ? "" : user.getRole();
+        if (!"SU".equals(role) && passwordExpiry.isExpired(user.getUserId()))
+            throw new PasswordExpiredException();
 
         String token = UUID.randomUUID().toString();
         tokenStore.put(token, user);
@@ -93,8 +107,10 @@ public class AuthService {
             return "New password must be different from the current password.";
 
         String newHash = sha256(newPassword);
+        // distinct: a renewal repeats the current password in the history
         List<String> recent = jdbc.queryForList(
-                "SELECT password FROM user_old_pass_toolroom WHERE TRIM(inst) = ? ORDER BY sno DESC LIMIT ?",
+                "SELECT LOWER(TRIM(password)) FROM user_old_pass_toolroom WHERE TRIM(inst) = ? "
+              + "GROUP BY LOWER(TRIM(password)) ORDER BY MAX(sno) DESC LIMIT ?",
                 String.class, userId, PASSWORD_HISTORY);
         if (recent.stream().anyMatch(h -> h != null && h.trim().equalsIgnoreCase(newHash)))
             return "New password must not be one of your last " + PASSWORD_HISTORY + " passwords.";
@@ -102,14 +118,8 @@ public class AuthService {
         // SQL on TRIM(user_id): the loaded entity's id is trimmed, so userRepo.save(user) is refused
         jdbc.update("UPDATE msme_users SET password = ? WHERE TRIM(user_id) = ?", newHash, userId);
 
-        // password history (legacy table has no sequence on sno)
-        Integer changes = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM user_old_pass_toolroom WHERE TRIM(inst) = ?", Integer.class, userId);
-        jdbc.update("INSERT INTO user_old_pass_toolroom (sno, inst, password, no_of_changes, \"time\", user_ip) "
-                  + "VALUES ((SELECT COALESCE(MAX(sno), 0) + 1 FROM user_old_pass_toolroom), ?, ?, ?, ?, ?)",
-                userId, newHash, (changes == null ? 0 : changes) + 1,
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
-                clientIp == null ? "" : clientIp);
+        // password history; also starts the next validity period
+        passwordExpiry.record(userId, newHash, true, clientIp);
 
         // sign out every other session of this user; keep the current one
         String app = AppContext.get();

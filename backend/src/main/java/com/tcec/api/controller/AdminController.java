@@ -14,6 +14,8 @@ import com.tcec.api.repository.PlacementRepository;
 import com.tcec.api.repository.TlInstituteRepository;
 import com.tcec.api.repository.UserIdMappingRepository;
 import com.tcec.api.service.AuthService;
+import com.tcec.api.service.PasswordExpiryService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +47,7 @@ public class AdminController {
     private final MsmeUserRepository      userRepo;
     private final AuthService             authService;
     private final JdbcTemplate            jdbc;
+    private final PasswordExpiryService   passwordExpiry;
 
     public AdminController(FinancialRepository  finRepo,
                            PhysicalRepository   phyRepo,
@@ -54,7 +57,9 @@ public class AdminController {
                            UserIdMappingRepository mappingRepo,
                            MsmeUserRepository      userRepo,
                            AuthService             authService,
-                           JdbcTemplate            jdbc) {
+                           JdbcTemplate            jdbc,
+                           PasswordExpiryService   passwordExpiry) {
+        this.passwordExpiry = passwordExpiry;
         this.finRepo     = finRepo;
         this.phyRepo     = phyRepo;
         this.budRepo     = budRepo;
@@ -288,10 +293,18 @@ public class AdminController {
         Map<String, String> instNames = new HashMap<>();
         instRepo.findAll().forEach(i -> instNames.put(i.getInstId(), i.getInstName()));
 
+        Map<String, java.time.LocalDateTime> expiry = passwordExpiry.expiresAtByUser();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
         List<Map<String, Object>> result = users.stream().map(u -> {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("userId", u.getUserId());
             row.put("role",   u.getRole());
+            java.time.LocalDateTime at = expiry.get(u.getUserId() == null ? "" : u.getUserId().toLowerCase());
+            row.put("passwordExpiresOn", at == null ? null : at.toLocalDate().toString());
+            row.put("passwordExpired",   at != null && !at.isAfter(now));
+            row.put("passwordDaysLeft",  at == null ? null
+                    : java.time.temporal.ChronoUnit.DAYS.between(now.toLocalDate(), at.toLocalDate()));
             String instId = mappings.get(u.getUserId());
             row.put("instId",   instId);
             row.put("instName", instId != null ? instNames.getOrDefault(instId, instId) : null);
@@ -308,7 +321,8 @@ public class AdminController {
     @PostMapping("/users")
     public ResponseEntity<ApiResponse<Void>> createUser(
             @RequestBody Map<String, String> body,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            HttpServletRequest request) {
 
         if (!isSu(authHeader)) return unauthorized();
 
@@ -337,6 +351,9 @@ public class AdminController {
         }
         // RU and SU: no institute mapping needed
 
+        // first password-history row: the password is valid for 3 months from now
+        passwordExpiry.record(userId, sha256(password), true, request.getRemoteAddr());
+
         return ResponseEntity.ok(ApiResponse.ok("User created successfully", null));
     }
 
@@ -349,7 +366,8 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> updateUser(
             @PathVariable String userId,
             @RequestBody Map<String, String> body,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            HttpServletRequest request) {
 
         if (!isSu(authHeader)) return unauthorized();
 
@@ -367,8 +385,11 @@ public class AdminController {
         String uid = userId.trim();
         if (password.isEmpty())
             jdbc.update("UPDATE msme_users SET role = ? WHERE TRIM(user_id) = ?", role, uid);
-        else
+        else {
             jdbc.update("UPDATE msme_users SET role = ?, password = ? WHERE TRIM(user_id) = ?", role, sha256(password), uid);
+            // a new password is valid for 3 months from now
+            passwordExpiry.record(uid, sha256(password), true, request.getRemoteAddr());
+        }
 
         // update or remove institute mapping
         if ("IU".equals(role) && !instId.isEmpty()) {
@@ -380,6 +401,33 @@ public class AdminController {
         }
 
         return ResponseEntity.ok(ApiResponse.ok("User updated successfully", null));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // POST /api/admin/users/{userId}/renew-password
+    // Keeps the password and makes it valid for another 3 months from today.
+    // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/users/{userId}/renew-password")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> renewPassword(
+            @PathVariable String userId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            HttpServletRequest request) {
+
+        if (!isSu(authHeader)) return unauthorized();
+
+        MsmeUser user = userRepo.findByUserIdTrimmed(userId).orElse(null);
+        if (user == null)
+            return ResponseEntity.status(404).body(ApiResponse.error("User not found"));
+
+        passwordExpiry.record(user.getUserId(), user.getPassword() == null ? "" : user.getPassword(),
+                false, request.getRemoteAddr());
+
+        java.time.LocalDateTime at = passwordExpiry.expiresAt(user.getUserId());
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("passwordExpiresOn", at == null ? null : at.toLocalDate().toString());
+        return ResponseEntity.ok(ApiResponse.ok("Password validity extended by "
+                + PasswordExpiryService.VALID_MONTHS + " months", data));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

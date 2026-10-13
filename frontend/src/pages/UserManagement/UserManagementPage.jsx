@@ -1,10 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button, Table, Tag, Modal, Form, Input, Select, Popconfirm, message, Space, Badge } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, LockOutlined, TeamOutlined, SearchOutlined, ClearOutlined, BankOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, LockOutlined, TeamOutlined, SearchOutlined, ClearOutlined, BankOutlined, HistoryOutlined } from '@ant-design/icons';
 import api from '../../services/api';
 import { currentApp } from '../../utils/apps';
 
 const { Option } = Select;
+
+/* A password is valid for 3 months; the list flags it this many days before it runs out. */
+const EXPIRY_WARN_DAYS = 15;
+
+const fmtDate = iso => (iso ? iso.split('-').reverse().join('-') : '');   // yyyy-mm-dd → dd-mm-yyyy
+
+/* 'expired' | 'soon' | 'valid' | 'none' (no password history: never expires) */
+const expiryState = u =>
+  !u.passwordExpiresOn ? 'none'
+    : u.passwordExpired ? 'expired'
+    : u.passwordDaysLeft <= EXPIRY_WARN_DAYS ? 'soon' : 'valid';
 
 export default function UserManagementPage() {
   const [users,      setUsers]      = useState([]);
@@ -21,6 +32,8 @@ export default function UserManagementPage() {
   const [searchId,     setSearchId]     = useState('');
   const [filterRole,   setFilterRole]   = useState('');
   const [filterInstId, setFilterInstId] = useState('');
+  const [filterExpiry, setFilterExpiry] = useState('');
+  const [renewing,     setRenewing]     = useState('');   // user id being renewed
 
   const [form] = Form.useForm();
   const [instForm] = Form.useForm();
@@ -71,13 +84,14 @@ export default function UserManagementPage() {
       if (searchId     && !u.userId.toLowerCase().includes(searchId.toLowerCase())) return false;
       if (filterRole   && u.role !== filterRole) return false;
       if (filterInstId && u.instId !== filterInstId) return false;
+      if (filterExpiry && expiryState(u) !== filterExpiry) return false;
       return true;
     });
-  }, [users, searchId, filterRole, filterInstId]);
+  }, [users, searchId, filterRole, filterInstId, filterExpiry]);
 
-  const hasFilter = searchId || filterRole || filterInstId;
+  const hasFilter = searchId || filterRole || filterInstId || filterExpiry;
 
-  const clearFilters = () => { setSearchId(''); setFilterRole(''); setFilterInstId(''); };
+  const clearFilters = () => { setSearchId(''); setFilterRole(''); setFilterInstId(''); setFilterExpiry(''); };
 
   const openCreate = () => { setEditUser(null); form.resetFields(); setModalOpen(true); };
 
@@ -121,6 +135,20 @@ export default function UserManagementPage() {
     }
   };
 
+  /* Keep the same password and make it valid for another 3 months from today */
+  const handleRenew = async (userId) => {
+    setRenewing(userId);
+    try {
+      const { data } = await api.post(`/admin/users/${encodeURIComponent(userId)}/renew-password`);
+      message.success(`${userId}: password valid until ${fmtDate(data.data?.passwordExpiresOn)}`);
+      loadUsers();
+    } catch (err) {
+      message.error(err.response?.data?.message || 'Could not extend the password validity');
+    } finally {
+      setRenewing('');
+    }
+  };
+
   const columns = [
     {
       title: '#', key: 'idx', width: 46,
@@ -151,9 +179,37 @@ export default function UserManagementPage() {
           </span>,
     },
     {
-      title: 'Actions', key: 'actions', width: 140, align: 'center',
+      title: 'Password Expiry', key: 'expiry', width: 200,
+      sorter: (a, b) => (a.passwordExpiresOn || '9999').localeCompare(b.passwordExpiresOn || '9999'),
+      render: (_, row) => {
+        const st = expiryState(row);
+        if (st === 'none') return <span style={{ color: '#bbb', fontStyle: 'italic' }}>— not set</span>;
+        const days = row.passwordDaysLeft;
+        return (
+          <span style={{ whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 13, marginRight: 8 }}>{fmtDate(row.passwordExpiresOn)}</span>
+            {st === 'expired' && <Tag color="red" style={{ fontWeight: 'bold' }}>Expired</Tag>}
+            {st === 'soon'    && <Tag color="gold">{days <= 0 ? 'Expires today' : `${days} day${days === 1 ? '' : 's'} left`}</Tag>}
+            {st === 'valid'   && <Tag color="green">Valid</Tag>}
+          </span>
+        );
+      },
+    },
+    {
+      title: 'Actions', key: 'actions', width: 260, align: 'center',
       render: (_, row) => (
         <Space>
+          <Popconfirm
+            title={`Extend password validity for "${row.userId}"?`}
+            description="The password stays the same and becomes valid for 3 months from today."
+            onConfirm={() => handleRenew(row.userId)}
+            okText="Extend 3 months" cancelText="Cancel"
+          >
+            <Button size="small" icon={<HistoryOutlined />} loading={renewing === row.userId}
+              type={row.passwordExpired ? 'primary' : 'default'}>
+              Extend
+            </Button>
+          </Popconfirm>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>Edit</Button>
           <Popconfirm
             title={`Delete user "${row.userId}"?`}
@@ -171,6 +227,7 @@ export default function UserManagementPage() {
   const suCount = users.filter(u => u.role === 'SU').length;
   const iuCount = users.filter(u => u.role === 'IU').length;
   const ruCount = users.filter(u => u.role === 'RU').length;
+  const expiredCount = users.filter(u => u.passwordExpired).length;
 
   return (
     <div style={{ padding: '0 0 32px', fontFamily: 'Arial, Helvetica, sans-serif', background: '#f4f6f9', minHeight: '100%' }}>
@@ -210,6 +267,7 @@ export default function UserManagementPage() {
           { label: 'Super Users (SU)',      val: suCount,      color: '#0a4a78' },
           { label: 'Institute Users (IU)', val: iuCount,      color: '#2e7d32' },
           { label: 'Report Users (RU)',    val: ruCount,      color: '#e65c00' },
+          { label: 'Passwords Expired',    val: expiredCount, color: '#b3261e' },
         ].map(({ label, val, color }) => (
           <div key={label} style={{
             flex: 1, background: '#fff', borderRadius: 8, padding: '12px 16px',
@@ -276,6 +334,19 @@ export default function UserManagementPage() {
                 {inst.instName}
               </Option>
             ))}
+          </Select>
+
+          {/* Filter by password status */}
+          <Select
+            placeholder="All Passwords"
+            value={filterExpiry || undefined}
+            onChange={v => setFilterExpiry(v || '')}
+            allowClear
+            style={{ width: 170, fontSize: 12 }}
+          >
+            <Option value="expired">Expired</Option>
+            <Option value="soon">Expiring within {EXPIRY_WARN_DAYS} days</Option>
+            <Option value="valid">Valid</Option>
           </Select>
 
           {hasFilter && (
