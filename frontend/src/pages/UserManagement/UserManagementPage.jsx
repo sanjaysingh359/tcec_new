@@ -34,6 +34,7 @@ export default function UserManagementPage() {
   const [filterInstId, setFilterInstId] = useState('');
   const [filterExpiry, setFilterExpiry] = useState('');
   const [renewing,     setRenewing]     = useState('');   // user id being renewed
+  const [renewingAll,  setRenewingAll]  = useState(false);
 
   const [form] = Form.useForm();
   const [instForm] = Form.useForm();
@@ -149,6 +150,20 @@ export default function UserManagementPage() {
     }
   };
 
+  /* Extend every expired password of this application in one go */
+  const handleRenewAllExpired = async () => {
+    setRenewingAll(true);
+    try {
+      const { data } = await api.post('/admin/users/renew-expired');
+      message.success(data.message || 'Expired passwords extended');
+      loadUsers();
+    } catch (err) {
+      message.error(err.response?.data?.message || 'Could not extend the expired passwords');
+    } finally {
+      setRenewingAll(false);
+    }
+  };
+
   const columns = [
     {
       title: '#', key: 'idx', width: 46,
@@ -249,6 +264,17 @@ export default function UserManagementPage() {
           <span style={{ fontSize: 12, background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '3px 12px' }}>
             {users.length} Total Users
           </span>
+          <Popconfirm
+            title={`Extend all ${expiredCount} expired password${expiredCount === 1 ? '' : 's'}?`}
+            description="Each keeps its current password and becomes valid for 3 months from today."
+            onConfirm={handleRenewAllExpired}
+            okText="Extend all" cancelText="Cancel" disabled={!expiredCount}
+          >
+            <Button icon={<HistoryOutlined />} loading={renewingAll} disabled={!expiredCount}
+              style={{ fontWeight: 'bold' }}>
+              Extend All Expired{expiredCount ? ` (${expiredCount})` : ''}
+            </Button>
+          </Popconfirm>
           <Button icon={<BankOutlined />} onClick={() => { instForm.resetFields(); setInstModalOpen(true); }}
             style={{ fontWeight: 'bold' }}>
             Add Institute

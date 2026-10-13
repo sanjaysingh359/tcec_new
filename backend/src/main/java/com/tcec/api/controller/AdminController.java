@@ -431,6 +431,37 @@ public class AdminController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // POST /api/admin/users/renew-expired
+    // Extends every expired password of this application by 3 months from today.
+    // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/users/renew-expired")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> renewExpiredPasswords(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            HttpServletRequest request) {
+
+        if (!isSu(authHeader)) return unauthorized();
+
+        Map<String, java.time.LocalDateTime> expiry = passwordExpiry.expiresAtByUser();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        List<String> renewed = new ArrayList<>();
+        for (MsmeUser u : userRepo.findAll()) {
+            String uid = u.getUserId();
+            if (uid == null || uid.isEmpty()) continue;
+            java.time.LocalDateTime at = expiry.get(uid.toLowerCase());
+            if (at == null || at.isAfter(now)) continue;          // no expiry, or still valid
+            passwordExpiry.record(uid, u.getPassword() == null ? "" : u.getPassword(), false, request.getRemoteAddr());
+            renewed.add(uid);
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("renewed", renewed.size());
+        data.put("users", renewed);
+        return ResponseEntity.ok(ApiResponse.ok(renewed.size() + " expired password(s) extended by "
+                + PasswordExpiryService.VALID_MONTHS + " months", data));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // DELETE /api/admin/users/{userId}
     // ─────────────────────────────────────────────────────────────────────────
     @org.springframework.transaction.annotation.Transactional
