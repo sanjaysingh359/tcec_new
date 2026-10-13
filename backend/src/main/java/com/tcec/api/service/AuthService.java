@@ -27,7 +27,7 @@ public class AuthService {
     private final JdbcTemplate          jdbc;
     private final PasswordExpiryService passwordExpiry;
 
-    /** The password is correct but its validity period is over (see {@link PasswordExpiryService}). */
+    /** The user's password validity period is over (see {@link PasswordExpiryService}). */
     public static class PasswordExpiredException extends RuntimeException {
         public PasswordExpiredException() {
             super("Your password has expired. Please contact the administrator.");
@@ -53,25 +53,26 @@ public class AuthService {
 
     /**
      * Validate credentials and issue a bearer token.
-     * @throws PasswordExpiredException the credentials are right but the password has expired
+     * @throws PasswordExpiredException the user exists but the password has expired
      */
     public Optional<LoginResponse> login(LoginRequest req) {
         Optional<MsmeUser> opt = userRepo.findByUserIdTrimmed(req.userId().trim());
         if (opt.isEmpty()) return Optional.empty();
 
         MsmeUser user = opt.get();
+        // An expired password blocks the login. As in the legacy application this is checked for
+        // the user name before the password, so the user is told "expired" whatever they type.
+        // Super users are let in so that somebody can always renew passwords from User Management.
+        String role = user.getRole() == null ? "" : user.getRole();
+        if (!"SU".equals(role) && passwordExpiry.isExpired(user.getUserId()))
+            throw new PasswordExpiredException();
+
         // Passwords stored as SHA-256 hex strings (entity getters trim the CHAR padding)
         String hashedInput = sha256(req.password());
         String storedPwd   = user.getPassword() == null ? "" : user.getPassword();
         if (!hashedInput.equalsIgnoreCase(storedPwd)) {
             return Optional.empty();
         }
-
-        // An expired password blocks the login, as in the legacy application. Super users are
-        // let in so that somebody can always renew passwords from User Management.
-        String role = user.getRole() == null ? "" : user.getRole();
-        if (!"SU".equals(role) && passwordExpiry.isExpired(user.getUserId()))
-            throw new PasswordExpiredException();
 
         String token = UUID.randomUUID().toString();
         tokenStore.put(token, user);
