@@ -1,4 +1,4 @@
-/* The four Monthly Progress Report applications. Each one is a separate system with its own
+/* The Monthly Progress Report applications. Each one is a separate system with its own
    database and users; the one chosen on the landing page is sent to the backend (X-App header)
    and locks the session to that application's data. */
 
@@ -7,6 +7,7 @@ export const APPS = {
     key: 'dfo', code: 'DFO', title: 'Monthly Progress Report-DFO',
     subtitle: 'District Field Office', color: '#1f6fb2',
     comingSoon: true,
+    hidden: true,          // not offered yet: no card on the landing page
   },
   tcec: {
     key: 'tcec', code: 'TCEC', title: 'Monthly Progress Report-TCEC',
@@ -29,7 +30,7 @@ export const APPS = {
   },
 };
 
-export const APP_ORDER = ['dfo', 'tcec', 'ab', 'tcsp'];
+export const APP_ORDER = ['dfo', 'tcec', 'ab', 'tcsp'].filter(k => !APPS[k].hidden);
 
 const STORAGE_KEY = 'mpr_app';
 

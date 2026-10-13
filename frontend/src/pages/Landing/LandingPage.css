@@ -39,10 +39,10 @@
 /* Application cards */
 .ld-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--ld-cols, 4), minmax(0, 1fr));
   gap: 20px;
   width: 100%;
-  max-width: 1180px;
+  max-width: calc(var(--ld-cols, 4) * 295px);   /* keeps cards the same width whatever the count */
   margin: -88px auto 40px;
   padding: 0 24px;
   position: relative;

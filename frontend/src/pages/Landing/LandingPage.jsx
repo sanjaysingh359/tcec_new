@@ -63,6 +63,9 @@ const ICONS = [
   },
 ];
 
+/* applications marked hidden in utils/apps.js get no card */
+const CARDS = ICONS.filter(({ key }) => !APPS[key].hidden);
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -108,8 +111,8 @@ export default function LandingPage() {
           <p>Choose the Monthly Progress Report system you want to sign in to. Each one has its own users and data.</p>
         </section>
 
-        <section className="ld-grid">
-          {ICONS.map(({ key, icon }) => {
+        <section className="ld-grid" style={{ '--ld-cols': CARDS.length }}>
+          {CARDS.map(({ key, icon }) => {
             const app = APPS[key];
             const [l1, l2] = ['Monthly Progress', `Report-${app.code}`];
             const status = statusOf(key);
